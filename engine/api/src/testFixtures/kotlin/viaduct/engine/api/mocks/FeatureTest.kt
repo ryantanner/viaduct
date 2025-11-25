@@ -3,7 +3,6 @@
 package viaduct.engine.api.mocks
 
 import graphql.ExecutionResult
-import graphql.execution.instrumentation.Instrumentation
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import viaduct.engine.EngineConfiguration
@@ -60,17 +59,25 @@ import viaduct.service.runtime.noderesolvers.ViaductNodeResolverAPIBootstrapper
  * Note that Viaduct turns exceptions thrown by resolvers into field errors.  Thus,
  * assertions placed in resolvers will _not_ cause tests to fail if you don't check
  * query results to esnure that they have no errors.
+ *
+ * @param engineConfig The [EngineConfigruation] to use for this test. If null, EngineConfiguration.featureTestDefault will be used
  */
 fun MockTenantModuleBootstrapper.runFeatureTest(
     withoutDefaultQueryNodeResolvers: Boolean = false,
     schema: ViaductSchema? = null,
-    additionalInstrumentation: Instrumentation? = null,
+    engineConfig: EngineConfiguration? = null,
     block: FeatureTest.() -> Unit
 ) {
     val executableSchema = schema ?: fullSchema
-    val engine = toEngineFactory(withoutDefaultQueryNodeResolvers, additionalInstrumentation).create(executableSchema, fullSchema = fullSchema)
+    val engine = toEngineFactory(withoutDefaultQueryNodeResolvers, engineConfig).create(executableSchema, fullSchema = fullSchema)
     FeatureTest(engine).block()
 }
+
+val EngineConfiguration.Companion.featureTestDefault: EngineConfiguration
+    get() = EngineConfiguration.default.copy(
+        flagManager = MockFlagManager.Enabled,
+        chainInstrumentationWithDefaults = true,
+    )
 
 /**
  * Convert a MockTenantModuleBootstrapper into an EngineFactory
@@ -84,7 +91,7 @@ fun MockTenantModuleBootstrapper.runFeatureTest(
  */
 private fun MockTenantModuleBootstrapper.toEngineFactory(
     withoutDefaultQueryNodeResolvers: Boolean,
-    additionalInstrumentation: Instrumentation? = null
+    engineConfig: EngineConfiguration?
 ): EngineFactory {
     val mods = listOf(this)
     val tenantAPIBootstrapper = buildList {
@@ -104,11 +111,7 @@ private fun MockTenantModuleBootstrapper.toEngineFactory(
         validator,
         checkerExecutorFactory
     ).create(fullSchema)
-    val config = EngineConfiguration.default.copy(
-        flagManager = MockFlagManager.Enabled,
-        chainInstrumentationWithDefaults = true,
-        additionalInstrumentation = additionalInstrumentation
-    )
+    val config = engineConfig ?: EngineConfiguration.featureTestDefault
     return EngineFactory(config, dispatcherRegistry)
 }
 

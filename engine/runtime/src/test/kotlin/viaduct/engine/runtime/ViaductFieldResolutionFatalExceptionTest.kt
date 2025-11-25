@@ -8,9 +8,11 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import viaduct.engine.EngineConfiguration
 import viaduct.engine.api.instrumentation.IViaductInstrumentation
 import viaduct.engine.api.instrumentation.ViaductInstrumentationBase
 import viaduct.engine.api.mocks.MockTenantModuleBootstrapper
+import viaduct.engine.api.mocks.featureTestDefault
 import viaduct.engine.api.mocks.runFeatureTest
 
 /**
@@ -42,7 +44,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "world" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ hello }")
             }
@@ -89,7 +91,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "val" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ nested { leaf } }")
             }
@@ -145,7 +147,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "val" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ level1 { level2 { leaf } } }")
             }
@@ -178,7 +180,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "world" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ hello }")
             }
@@ -209,7 +211,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "world" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ hello }")
             }
@@ -244,7 +246,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> throw RuntimeException("Resolver error") }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ hello }")
             }
@@ -275,7 +277,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "world" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ hello }")
             }
@@ -306,7 +308,7 @@ class ViaductFieldResolutionFatalExceptionTest {
                     fn { _, _, _, _, _ -> "world" }
                 }
             }
-        }.runFeatureTest(additionalInstrumentation = throwingInstrumentation.asStandardInstrumentation()) {
+        }.runFeatureTest(engineConfig = engineConfig(throwingInstrumentation)) {
             val exception = assertThrows<Exception> {
                 runQuery("{ hello }")
             }
@@ -318,6 +320,11 @@ class ViaductFieldResolutionFatalExceptionTest {
             )
         }
     }
+
+    private fun engineConfig(instrumentation: ViaductInstrumentationBase) =
+        EngineConfiguration.featureTestDefault.copy(
+            additionalInstrumentation = instrumentation.asStandardInstrumentation()
+        )
 
     private fun throwingFieldInstrumentation(
         onBegin: ((InstrumentationFieldParameters) -> Unit)? = null,

@@ -16,18 +16,28 @@ def main():
   git_cmd = [
     'git', 'log',
     f'{args.commit1}..{args.commit2}',
-    '--format=format:%s by AUTHOR_START%aeAUTHOR_END CO_AUTHORS_START%(trailers:key=Co-authored-by,valueonly,separator=%x7C)CO_AUTHORS_END'
+    '--format=format:SHA_START%hSHA_END %s by AUTHOR_START%aeAUTHOR_END CO_AUTHORS_START%(trailers:key=Co-authored-by,valueonly,separator=%x7C)CO_AUTHORS_END'
   ]
 
   result = subprocess.run(git_cmd, capture_output=True, text=True)
 
   entries = result.stdout.splitlines()
 
-  formatted_entries = [format_entry(entry) for entry in entries]
+  filtered_entries = [entry for entry in entries if should_include_entry(entry)]
+
+  formatted_entries = [format_entry(entry) for entry in filtered_entries]
 
   changelog = "\n".join(formatted_entries)
 
   print(changelog)
+
+def should_include_entry(entry: str) -> bool:
+  commit_message_end = entry.find(' by AUTHOR_START')
+  if commit_message_end == -1:
+    return True
+
+  commit_message = entry[:commit_message_end].strip()
+  return not commit_message.lower().startswith('ignore:')
 
 def clean_commit_message(message: str) -> str:
   # Remove internal metadata patterns but keep "Closes #123", "Fixes #456", etc.
@@ -43,6 +53,13 @@ def clean_commit_message(message: str) -> str:
   return cleaned.strip()
 
 def format_entry(entry):
+  # Extract and remove SHA from entry
+  sha_start_idx = entry.find('SHA_START')
+  sha_end_idx = entry.find('SHA_END')
+  commit_sha = entry[sha_start_idx + len('SHA_START'):sha_end_idx].strip()
+  # Remove SHA markers and the space after SHA_END from entry
+  entry = entry[:sha_start_idx] + entry[sha_end_idx + len('SHA_END '):]
+
   # Extract commit author
   author_start_idx = entry.find('AUTHOR_START') + 'AUTHOR_START'.__len__()
   author_end_idx = entry.find('AUTHOR_END')
@@ -70,6 +87,9 @@ def format_entry(entry):
   # Get commit message part and clean metadata
   commit_info = entry[:entry.find(' by AUTHOR_START')].strip()
   commit_info = clean_commit_message(commit_info)
+
+  # Replace (AIRBNB) with commit SHA
+  commit_info = re.sub(r'\(AIRBNB\)', f'({commit_sha})', commit_info, flags=re.IGNORECASE)
 
   # Format output
   if usernames:

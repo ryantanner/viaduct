@@ -40,7 +40,6 @@ import viaduct.engine.runtime.ObjectEngineResultImpl.Companion.RAW_VALUE_SLOT
 import viaduct.engine.runtime.ObjectEngineResultImpl.Companion.setCheckerValue
 import viaduct.engine.runtime.ObjectEngineResultImpl.Companion.setRawValue
 import viaduct.engine.runtime.Value
-import viaduct.engine.runtime.context.findLocalContextForType
 import viaduct.engine.runtime.exceptions.FieldFetchingException
 import viaduct.engine.runtime.execution.FieldExecutionHelpers.buildDataFetchingEnvironment
 import viaduct.engine.runtime.execution.FieldExecutionHelpers.buildOERKeyForField
@@ -108,7 +107,7 @@ class FieldResolver(
         parameters: ExecutionParameters
     ): Value<Unit> {
         val instrumentationParameters =
-            InstrumentationExecutionStrategyParameters(parameters.executionContext, parameters.gjParameters)
+            InstrumentationExecutionStrategyParameters(parameters.executionContextWithLocalContext, parameters.gjParameters)
         val resolveObjectCtx = nonNullCtx(
             parameters.instrumentation.beginFetchObject(
                 instrumentationParameters,
@@ -125,8 +124,18 @@ class FieldResolver(
                     resolveField(newParams, field)
                 }
 
+            val immediate = Value.waitAll(results.map { it.immediate })
+            val overall = Value.waitAll(results.map { it.overall })
+
+            val parentOER = parameters.parentEngineResult
+            // We don't use the result of this operation, but we need to ensure it's scheduled
+            // so that the resolution state is updated when the immediate values are ready.
+            immediate.thenApply { _, throwable ->
+                parentOER.fieldResolutionState.complete(Unit)
+            }
+
             // Wait for all values to be completed.
-            return Value.waitAll(results)
+            return overall
                 .map {
                     resolveObjectCtx.onCompleted(Unit, null)
                     it
@@ -166,7 +175,7 @@ class FieldResolver(
         parameters: ExecutionParameters
     ): Value<Unit> {
         val instrumentationParameters =
-            InstrumentationExecutionStrategyParameters(parameters.executionContext, parameters.gjParameters)
+            InstrumentationExecutionStrategyParameters(parameters.executionContextWithLocalContext, parameters.gjParameters)
         val resolveObjectCtx = nonNullCtx(
             parameters.instrumentation.beginFetchObject(
                 instrumentationParameters,
@@ -177,14 +186,17 @@ class FieldResolver(
         try {
             val fields = collectFields(objectType, parameters).selections
             val initial: Value<Unit> = Value.fromValue(Unit)
+            val immediateResults = mutableListOf<Value<FieldResolutionResult>>()
 
             // iterate over each field to build a chained execution
             // Each field will kick off only after the previous one completes
-            return fields.fold(initial) { acc, field ->
+            val overall = fields.fold(initial) { acc, field ->
                 field as QueryPlan.CollectedField
                 acc.flatMap { _ ->
                     val fieldParameters = parameters.forField(objectType, field)
-                    resolveField(fieldParameters, field)
+                    val fd = resolveField(fieldParameters, field)
+                    immediateResults.add(fd.immediate)
+                    fd.overall
                 }
             }.map {
                 resolveObjectCtx.onCompleted(Unit, null)
@@ -193,6 +205,10 @@ class FieldResolver(
                 resolveObjectCtx.onCompleted(null, t)
                 Value.fromThrowable(t)
             }
+            Value.waitAll(immediateResults).thenApply { _, _ ->
+                parameters.parentEngineResult.fieldResolutionState.complete(Unit)
+            }
+            return overall
         } catch (e: Exception) {
             resolveObjectCtx.onCompleted(null, e)
             throw e
@@ -211,13 +227,28 @@ class FieldResolver(
      * @param parameters ExecutionParameters containing the context and execution state
      * @param field The field from the query plans to resolve
      */
-    fun resolveField(
+    internal fun resolveField(
         parameters: ExecutionParameters,
         field: QueryPlan.CollectedField
-    ): Value<Unit> {
+    ): FieldDispatch {
         field.childPlans.forEach { launchQueryPlan(parameters, it) }
         return executeField(parameters)
     }
+
+    /**
+     * Represents the result of dispatching a field for resolution.
+     *
+     * @property immediate A [Value] that completes when the field's data fetcher has finished
+     *   and the [FieldResolutionResult] is available. This signals that the field's "immediate"
+     *   value is ready, though nested objects or lazy data may still be pending.
+     * @property overall A [Value] that completes when the field and all of its nested objects
+     *   and lazy data have been fully resolved. Used to track when the entire field subtree
+     *   is complete.
+     */
+    internal data class FieldDispatch(
+        val immediate: Value<FieldResolutionResult>,
+        val overall: Value<Unit>
+    )
 
     private fun launchQueryPlan(
         parameters: ExecutionParameters,
@@ -231,8 +262,8 @@ class FieldResolver(
 
         // Produce the object data and field arguments for the current field and make them available to child
         // plan VariablesResolver.
-        val engineExecCtx =
-            parameters.executionContext.findLocalContextForType<EngineExecutionContextImpl>()
+        val engineExecCtx = parameters.localContext.get<EngineExecutionContextImpl>()
+            ?: throw IllegalStateException("Expected EngineExecutionContextImpl in local context.")
 
         parameters.launchOnRootScope {
             val variables = FieldExecutionHelpers.resolveQueryPlanVariables(
@@ -263,7 +294,7 @@ class FieldResolver(
      * @param parameters The execution parameters containing field and context information
      */
     @Suppress("UNCHECKED_CAST")
-    private fun executeField(parameters: ExecutionParameters): Value<Unit> {
+    private fun executeField(parameters: ExecutionParameters): FieldDispatch {
         val field = checkNotNull(parameters.field) { "Expected field to be non-null." }
 
         // We're fetching an individual field; the current engine result will always be an ObjectEngineResult
@@ -272,7 +303,7 @@ class FieldResolver(
         val executionStepInfoForField = parameters.executionStepInfo
 
         val fieldInstrumentationCtx = parameters.instrumentation.beginFieldExecution(
-            InstrumentationFieldParameters(parameters.executionContext) { executionStepInfoForField },
+            InstrumentationFieldParameters(parameters.executionContextWithLocalContext) { executionStepInfoForField },
             parameters.executionContext.instrumentationState
         ) ?: FieldFetchingInstrumentationContext.NOOP
 
@@ -318,7 +349,7 @@ class FieldResolver(
             slotSetter.setCheckerValue(checkerResult)
         } as Value<FieldResolutionResult>
 
-        return fieldResolutionResultValue.thenCompose { v, e ->
+        val overall = fieldResolutionResultValue.thenCompose { v, e ->
             fieldInstrumentationCtx.onCompleted(v, e)
             if (e != null) {
                 // if the field resolution failed, don't attempt to fetch lazy data or nested objects
@@ -345,6 +376,8 @@ class FieldResolver(
                 )
             }
         }
+
+        return FieldDispatch(fieldResolutionResultValue, overall)
     }
 
     private val typeResolver = ResolveType()
@@ -615,7 +648,7 @@ class FieldResolver(
             )
 
             val instrumentationFieldFetchParams = InstrumentationFieldFetchParameters(
-                parameters.executionContext,
+                parameters.executionContextWithLocalContext,
                 dataFetchingEnvironmentProvider,
                 parameters.gjParameters,
                 dataFetcher is TrivialDataFetcher<*>

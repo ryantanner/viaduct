@@ -18,6 +18,6 @@ internal fun <K : Any, V, C : Any> DataLoader<K, V, C>.executionContextForBatchL
         context
     } else {
         // For batch resolution, clear out any field-specific scope that would not be applicable to all keys
-        context.copy(fieldScope = EngineExecutionContextImpl.FieldExecutionScopeImpl(), dataFetchingEnvironment = null)
+        context.copy(fieldScopeSupplier = { EngineExecutionContextImpl.FieldExecutionScopeImpl() }, dataFetchingEnvironment = null)
     }
 }

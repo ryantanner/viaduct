@@ -56,6 +56,7 @@ dependencies {
     testImplementation(libs.kotest.property.jvm)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.strikt.core)
+    testImplementation(libs.viaduct.engine.wiring)
     testImplementation(libs.viaduct.service.runtime)
     testImplementation(libs.viaduct.shared.arbitrary)
     testImplementation(testFixtures(libs.viaduct.engine.api))

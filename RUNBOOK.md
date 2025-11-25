@@ -41,7 +41,7 @@ Before performing your first release, ensure you have the following setup:
    ```bash
    # macOS
    brew install gh
-   
+
    # Verify installation
    gh --version
    ```
@@ -187,7 +187,7 @@ Viaduct follows a weekly release cadence.
    for i in demoapps/*/settings.gradle.kts; do
      # Backup first
      cp "$i" "$i.backup"
-   
+
      # Add mavenLocal() to repositories
      sed -i '' 's/^\([ ]*\)repositories {/\1repositories { mavenLocal()/g' "$i"
    done
@@ -200,15 +200,15 @@ Viaduct follows a weekly release cadence.
    # Test starwars
    cd demoapps/starwars
    ./gradlew clean test --scan
-   
+
    # Test cli-starter
    cd ../cli-starter
    ./gradlew clean test --scan
-   
+
    # Test ktor-starter
    cd ../ktor-starter
    ./gradlew clean test --scan
-   
+
    # Test jetty-starter
    cd ../jetty-starter
    ./gradlew clean test --scan
@@ -243,7 +243,7 @@ Viaduct follows a weekly release cadence.
    ```bash
    cd ~/repos/viaduct-public    # Or wherever your public viaduct clone is
    git checkout release/v0.X.0  # Your release branch
-   
+
    # Generate changelog from previous release to current HEAD
    ./.github/scripts/generate_changelog.py origin/release/v0.(X-1).0 HEAD
    ```
@@ -271,7 +271,7 @@ Viaduct follows a weekly release cadence.
    ```bash
    # Save to a file for later use
    ./.github/scripts/generate_changelog.py origin/release/v0.6.0 HEAD > /tmp/release-v0.7.0-changelog.md
-   
+
    # Edit with your preferred editor
    code /tmp/release-v0.7.0-changelog.md  # or vim, nano, etc.
    ```

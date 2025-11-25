@@ -1,5 +1,8 @@
 package viaduct.engine.runtime
 
+import graphql.GraphQLError
+import graphql.schema.DataFetchingEnvironment
+import graphql.schema.GraphQLFieldDefinition
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertContains
 import kotlin.test.assertNull
@@ -8,12 +11,17 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import viaduct.engine.EngineConfiguration
 import viaduct.engine.api.EngineObjectData
 import viaduct.engine.api.mocks.MockTenantModuleBootstrapper
+import viaduct.engine.api.mocks.featureTestDefault
 import viaduct.engine.api.mocks.mkEngineObjectData
 import viaduct.engine.api.mocks.mkRSS
 import viaduct.engine.api.mocks.mkSchemaWithWiring
 import viaduct.engine.api.mocks.runFeatureTest
+import viaduct.engine.runtime.execution.ViaductDataFetcherExceptionHandler
+import viaduct.service.api.spi.ResolverErrorBuilder
+import viaduct.service.api.spi.ResolverErrorReporter
 
 @ExperimentalCoroutinesApi
 class AccessCheckExecutionTest {
@@ -945,5 +953,111 @@ class AccessCheckExecutionTest {
             assertEquals(mapOf("baz" to mapOf("id" to "1")), result.getData())
             assertEquals(7, plusManyValue.get())
         }
+    }
+
+    @Test
+    fun `field access check errors are handled`() {
+        var reported: Boolean = false
+        val engineConfig = engineConfigWithHandler { exception ->
+            if (exception is IllegalAccessException) reported = true
+        }
+        MockTenantModuleBootstrapper(schema) {
+            fieldWithValue("Query" to "string1", "hello, world")
+            field("Query" to "string1") {
+                checker {
+                    fn { _, _ -> throw IllegalAccessException("permission denied") }
+                }
+            }
+        }.runFeatureTest(engineConfig = engineConfig) {
+            val result = runQuery("{ string1 }")
+            assertEquals(mapOf("string1" to null), result.getData())
+            assertEquals(1, result.errors.size)
+            val error = result.errors[0]
+            assertEquals(listOf("string1"), error.path)
+            assertContains(error.message, "permission denied")
+            assertEquals("FOO", error.extensions.get("type"))
+            assertTrue(reported)
+        }
+    }
+
+    @Test
+    fun `list item access check errors are handled`() {
+        var reported: Boolean = false
+        val engineConfig = engineConfigWithHandler { exception ->
+            if (exception is IllegalAccessException) reported = true
+        }
+        MockTenantModuleBootstrapper(schema) {
+            field("Query" to "bazList") {
+                resolver {
+                    fn { _, _, _, _, ctx ->
+                        listOf(
+                            mkEngineObjectData(bazType, mapOf("id" to 1)),
+                            mkEngineObjectData(bazType, mapOf("id" to 2)),
+                        )
+                    }
+                }
+            }
+            type("Baz") {
+                checker {
+                    objectSelections("key", "id")
+                    fn { _, objectDataMap ->
+                        val eod = objectDataMap["key"]!!
+                        if (eod.fetch("id") == 2) throw IllegalAccessException("permission denied")
+                    }
+                }
+            }
+        }.runFeatureTest(engineConfig = engineConfig) {
+            val result = runQuery("{ bazList { id }}")
+            assertEquals(
+                mapOf(
+                    "bazList" to listOf(
+                        mapOf("id" to "1"),
+                        null
+                    )
+                ),
+                result.getData()
+            )
+            assertEquals(1, result.errors.size)
+            val error = result.errors[0]
+            assertEquals(listOf("bazList", 1), error.path)
+            assertContains(error.message, "permission denied")
+            assertEquals("FOO", error.extensions.get("type"))
+            assertTrue(reported)
+        }
+    }
+
+    fun engineConfigWithHandler(reporter: (Throwable) -> Unit): EngineConfiguration {
+        val errorReporter = object : ResolverErrorReporter {
+            override fun reportError(
+                exception: Throwable,
+                fieldDefinition: GraphQLFieldDefinition,
+                dataFetchingEnvironment: DataFetchingEnvironment,
+                errorMessage: String,
+                metadata: ResolverErrorReporter.Companion.ErrorMetadata
+            ) {
+                reporter(exception)
+            }
+        }
+        val errorBuilder = object : ResolverErrorBuilder {
+            override fun exceptionToGraphQLError(
+                throwable: Throwable,
+                dataFetchingEnvironment: DataFetchingEnvironment,
+                errorMetadata: ResolverErrorReporter.Companion.ErrorMetadata
+            ): List<GraphQLError>? {
+                return listOf(
+                    GraphQLError.newError()
+                        .message(throwable.message)
+                        .path(dataFetchingEnvironment.executionStepInfo.path)
+                        .extensions(mapOf("type" to "FOO"))
+                        .build()
+                )
+            }
+        }
+        return EngineConfiguration.featureTestDefault.copy(
+            dataFetcherExceptionHandler = ViaductDataFetcherExceptionHandler(
+                errorReporter = errorReporter,
+                errorBuilder = errorBuilder
+            )
+        )
     }
 }

@@ -1187,7 +1187,7 @@ class DeferredExtensionsTest {
             }
 
         @Test
-        fun `waitAllDeferreds SLOW exception cancels others`() =
+        fun `waitAllDeferreds SLOW exception does NOT cancel others`() =
             runBlocking {
                 val first = CompletableDeferred<Unit>()
                 val second = CompletableDeferred<Unit>()
@@ -1196,14 +1196,18 @@ class DeferredExtensionsTest {
 
                 first.completeExceptionally(IllegalStateException("boom"))
 
+                // Result should eventually fail with "boom", but we need second to complete for result to complete
+                assertFalse(result.isCompleted)
+                assertFalse(second.isCancelled)
+
+                second.complete(Unit)
+
                 val ex = assertThrows<IllegalStateException> { result.await() }
                 assertEquals("boom", ex.message)
-                val cancel = assertThrows<CancellationException> { second.await() }
-                assertEquals("waitAll fail-fast", cancel.message)
             }
 
         @Test
-        fun `waitAllDeferreds SLOW cancellation cancels others`() =
+        fun `waitAllDeferreds SLOW cancellation does NOT cancel others`() =
             runBlocking {
                 val first = CompletableDeferred<Unit>()
                 val second = CompletableDeferred<Unit>()
@@ -1213,10 +1217,14 @@ class DeferredExtensionsTest {
                 val cancel = CancellationException("stop")
                 first.cancel(cancel)
 
+                // Result should eventually fail with "stop", but we need second to complete for result to complete
+                assertFalse(result.isCompleted)
+                assertFalse(second.isCancelled)
+
+                second.complete(Unit)
+
                 val thrown = assertThrows<CancellationException> { result.await() }
                 assertEquals("stop", thrown.message)
-                val other = assertThrows<CancellationException> { second.await() }
-                assertEquals("stop", other.message)
             }
 
         // Regression test for a past implementation that folded over inputs and chained `invokeOnCompletion` callbacks.

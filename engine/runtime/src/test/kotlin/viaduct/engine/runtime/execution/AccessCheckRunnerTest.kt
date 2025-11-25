@@ -2,6 +2,7 @@
 
 package viaduct.engine.runtime.execution
 
+import graphql.execution.ExecutionContext
 import graphql.schema.DataFetchingEnvironment
 import graphql.schema.GraphQLInterfaceType
 import graphql.schema.GraphQLObjectType
@@ -259,9 +260,15 @@ class AccessCheckRunnerTest {
             every { instrumentation } returns mockk {
                 every { instrumentAccessCheck(any(), any(), any()) } answers { firstArg() }
             }
-            every { executionContext } returns mockk {
+            every { executionContext } returns mockk<ExecutionContext> {
+                every { instrumentationState } returns mockk()
+            }
+            every { executionContextWithLocalContext } returns mockk {
                 every { instrumentationState } returns mockk()
                 engineExecutionContext?.let { every { getLocalContextForType<EngineExecutionContextImpl>() } returns it }
+            }
+            every { localContext } returns mockk {
+                engineExecutionContext?.let { every { get<EngineExecutionContextImpl>() } returns it }
             }
             every { gjParameters } returns mockk()
             every { field } returns mockk {

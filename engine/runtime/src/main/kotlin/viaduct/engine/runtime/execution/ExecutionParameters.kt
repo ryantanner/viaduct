@@ -81,7 +81,11 @@ data class ExecutionParameters(
     val path: ResultPath = executionStepInfo.path
 
     /** The ExecutionContext with the current local context applied */
-    val executionContext: ExecutionContext = constants.executionContext.transform { it.localContext(localContext) }
+    val executionContextWithLocalContext: ExecutionContext by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        constants.executionContext.transform { it.localContext(localContext) }
+    }
+
+    val executionContext: ExecutionContext = constants.executionContext
 
     /** Convenient access to the GraphQL schema from constants */
     val graphQLSchema: GraphQLSchema = constants.executionContext.graphQLSchema
@@ -449,7 +453,7 @@ data class ExecutionParameters(
 
                 // Create the execution scope with all execution-wide dependencies
                 val constants = Constants(
-                    executionContext = executionContext,
+                    executionContext = executionContext.transform { it.localContext(localContext) },
                     rootEngineResult = rootEngineResult,
                     queryEngineResult = queryEngineResult,
                     supervisorScopeFactory = supervisorScopeFactory,
@@ -512,6 +516,12 @@ data class ExecutionParameters(
         val fieldResolverDispatcherRegistry: FieldResolverDispatcherRegistry,
     ) {
         /**
+         * Cache for collected fields during execution (shared between [FieldResolver] and [FieldCompleter])
+         * to avoid redundant work.
+         */
+        internal val collectCache: CollectCache = CollectCache()
+
+        /**
          * Launches a coroutine on the root execution scope.
          * This ensures all async operations are properly scoped to the execution lifetime.
          *
@@ -526,8 +536,8 @@ data class ExecutionParameters(
          * The instrumentation instance from the execution context.
          * Automatically wraps standard instrumentation in ViaductModernGJInstrumentation if needed.
          */
-        val instrumentation: ViaductModernGJInstrumentation
-            get() = if (executionContext.instrumentation !is ViaductModernGJInstrumentation) {
+        val instrumentation: ViaductModernGJInstrumentation =
+            if (executionContext.instrumentation !is ViaductModernGJInstrumentation) {
                 ViaductModernGJInstrumentation.fromStandardInstrumentation(executionContext.instrumentation)
             } else {
                 executionContext.instrumentation as ViaductModernGJInstrumentation

@@ -217,10 +217,9 @@ class ViaductExecutionStrategy internal constructor(
                                 fieldResolver.fetchObjectSerially(objType, parameters)
                             } else {
                                 fieldResolver.fetchObject(objType, parameters)
-                            }
+                            }.await()
                         }
                         // ensure we bubble any fatal errors and thus cause this job to fail
-                        value.await()
                         log.ifDebug {
                             debug("Took $duration to resolve query: ${executionContext.operationDefinition.name}.")
                         }
@@ -229,7 +228,7 @@ class ViaductExecutionStrategy internal constructor(
                 // Get list of completed FieldValueInfos
                 val (queryResult, duration) = measureTimedValue {
                     runCatching {
-                        fieldCompleter.completeObject(parameters).asDeferred().await()
+                        fieldCompleter.completeObject(parameters).await()
                     }
                 }
                 log.ifDebug {
