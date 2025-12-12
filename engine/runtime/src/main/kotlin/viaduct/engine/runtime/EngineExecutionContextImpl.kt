@@ -55,7 +55,7 @@ class EngineExecutionContextFactory(
             resolverInstrumentation,
             ConcurrentHashMap<String, FieldDataLoader>(),
             ConcurrentHashMap<String, NodeDataLoader>(),
-            flagManager.isEnabled(Flags.EXECUTE_ACCESS_CHECKS_IN_MODERN_EXECUTION_STRATEGY),
+            flagManager.isEnabled(Flags.EXECUTE_ACCESS_CHECKS),
             engine,
             globalIDCodec,
         )

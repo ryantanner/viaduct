@@ -1,5 +1,7 @@
 package viaduct.service.api.spi
 
+import viaduct.apiannotations.StableApi
+
 /**
  * GlobalIDCodec provides a way to serialize and deserialize GlobalIDs.
  *
@@ -8,6 +10,7 @@ package viaduct.service.api.spi
  * modules in a single Viaduct instance must use the same codec so that GlobalIDs
  * serialized by one module can be correctly deserialized by another module.
  */
+@StableApi
 interface GlobalIDCodec {
     /**
      * Serializes a GlobalID into a string representation.

@@ -6,6 +6,8 @@ import kotlin.annotation.AnnotationTarget.CLASS
 import kotlin.annotation.AnnotationTarget.CONSTRUCTOR
 import kotlin.annotation.AnnotationTarget.FUNCTION
 import kotlin.annotation.AnnotationTarget.PROPERTY
+import kotlin.annotation.AnnotationTarget.PROPERTY_GETTER
+import kotlin.annotation.AnnotationTarget.PROPERTY_SETTER
 import kotlin.annotation.AnnotationTarget.TYPEALIAS
 
 /**
@@ -26,5 +28,7 @@ import kotlin.annotation.AnnotationTarget.TYPEALIAS
     PROPERTY,
     CONSTRUCTOR,
     TYPEALIAS,
+    PROPERTY_GETTER,
+    PROPERTY_SETTER,
 )
 annotation class TestingApi
