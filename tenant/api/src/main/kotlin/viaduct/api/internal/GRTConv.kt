@@ -21,6 +21,7 @@ import viaduct.api.types.Enum
 import viaduct.api.types.Input
 import viaduct.api.types.NodeCompositeOutput
 import viaduct.api.types.Object
+import viaduct.apiannotations.InternalApi
 import viaduct.engine.api.EngineObjectData
 import viaduct.engine.api.RawSelectionSet
 import viaduct.engine.api.gj
@@ -34,6 +35,7 @@ import viaduct.mapping.graphql.IR
  *
  * @see invoke
  */
+@InternalApi
 object GRTConv {
     /**
      * Create a [Conv] for [viaduct.api.types.GRT] values backed by [type].

@@ -203,20 +203,23 @@ into Viaduct’s stability vocabulary.
 
 ```kotlin
 /**
- * Utilities used by Viaduct tests to exercise error handling.
- * Not intended for use in production code.
+ * Utility class for testing purposes, used to expose otherwise-internal methods to test code.
  */
 @TestingApi
-object ExceptionsForTesting {
-    private class TestViaductTenantException(message: String) :
-        ViaductTenantException,
-        Exception(message)
-
-    fun throwViaductFrameworkException(message: String): Nothing =
-        throw ViaductFrameworkException(message)
-
-    fun throwViaductTenantException(message: String): Nothing =
-        throw TestViaductTenantException(message)
+object ObjectBaseTestHelpers {
+  /**
+   * Similar to [ObjectBase.Builder.put], but allows setting an alias for the field.
+   * This is primarily for testing purposes to ensure that the aliasing works correctly.
+   */
+  fun <T, R : ObjectBase.Builder<T>> putWithAlias(
+    builder: R,
+    name: String,
+    alias: String,
+    value: Any?
+  ): R {
+    builder.put(name, value, alias)
+    return builder
+  }
 }
 ```
 

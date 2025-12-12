@@ -11,6 +11,7 @@ import graphql.schema.GraphQLScalarType
 import graphql.schema.GraphQLType
 import java.time.temporal.TemporalAccessor
 import viaduct.api.internal.EngineValueConv.invoke
+import viaduct.apiannotations.InternalApi
 import viaduct.engine.api.EngineObjectData
 import viaduct.engine.api.RawSelectionSet
 import viaduct.engine.api.ResolvedEngineObjectData
@@ -24,6 +25,7 @@ import viaduct.mapping.graphql.IR
  *
  * @see invoke
  */
+@InternalApi
 object EngineValueConv {
     private val objectMapper = ObjectMapper()
 

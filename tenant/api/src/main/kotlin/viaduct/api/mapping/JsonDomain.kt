@@ -9,6 +9,7 @@ import viaduct.api.internal.InternalContext
 import viaduct.api.internal.InternalSelectionSet
 import viaduct.api.internal.JsonConv
 import viaduct.api.internal.internal
+import viaduct.api.mapping.JsonDomain.forSelectionSet
 import viaduct.api.mapping.JsonDomain.forType
 import viaduct.api.mapping.JsonDomain.invoke
 import viaduct.api.reflect.Type
@@ -16,6 +17,7 @@ import viaduct.api.select.SelectionSet
 import viaduct.api.types.CompositeOutput
 import viaduct.api.types.Input
 import viaduct.api.types.Object
+import viaduct.apiannotations.StableApi
 import viaduct.engine.api.RawSelectionSet
 import viaduct.mapping.graphql.Conv
 import viaduct.mapping.graphql.Domain
@@ -25,6 +27,7 @@ import viaduct.mapping.graphql.IR
  * A mapping [Domain] that converts between json-formatted Strings
  * describing object values and [IR.Value.Object]s
  */
+@StableApi
 object JsonDomain {
     private class Impl(
         val internal: InternalContext,

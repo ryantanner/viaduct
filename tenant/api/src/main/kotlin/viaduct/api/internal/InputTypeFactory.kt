@@ -4,6 +4,7 @@ import graphql.introspection.Introspection
 import graphql.schema.GraphQLInputObjectField
 import graphql.schema.GraphQLInputObjectType
 import graphql.schema.GraphQLObjectType
+import viaduct.apiannotations.InternalApi
 import viaduct.engine.api.ViaductSchema
 import viaduct.utils.string.decapitalize
 
@@ -11,6 +12,7 @@ import viaduct.utils.string.decapitalize
  * Internal factory for creating GraphQLInputObjectType instances for Arguments and Input GRTs.
  * This is framework-internal and should not be used by tenant code.
  */
+@InternalApi
 object InputTypeFactory {
     /**
      * Return a synthetic input type for an Argument GRT. "Synthetic" means the field

@@ -36,6 +36,7 @@ import viaduct.api.types.Mutation
 import viaduct.api.types.NodeObject
 import viaduct.api.types.Object
 import viaduct.api.types.Query
+import viaduct.apiannotations.TestingApi
 import viaduct.engine.api.FragmentLoader
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.runtime.RawSelectionsLoaderImpl
@@ -96,6 +97,7 @@ import viaduct.tenant.runtime.select.SelectionsLoaderImpl
  *    )
  *    assertEquals("Hawaii", result)
  */
+@OptIn(TestingApi::class)
 interface ResolverTestBase {
     /**
      * An ExecutionContext that can be used to construct a builder, e.g. Foo.Builder(context).

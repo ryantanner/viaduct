@@ -1,8 +1,11 @@
 package viaduct.api.internal
 
+import viaduct.apiannotations.TestingApi
+
 /**
  * Utility class for testing purposes, used to expose otherwise-internal methods to test code.
  */
+@TestingApi
 object ObjectBaseTestHelpers {
     /**
      * Similar to [ObjectBase.Builder.put], but allows setting an alias for the field.
