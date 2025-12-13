@@ -124,7 +124,7 @@ internal class ExtensionsTest {
         Files.createDirectories(child)
 
         val classLoader = ExtensionsTest::class.java.classLoader
-        val schemaStream = classLoader.getResourceAsStream("sample-schema.graphql")
+        val schemaStream = classLoader.getResourceAsStream("sample-schema/sample-schema.graphql")
         val temp: Path = Files.createTempFile(child, "sample-schema-", ".graphql")
         Files.copy(schemaStream, temp, StandardCopyOption.REPLACE_EXISTING)
         return temp.toFile()
