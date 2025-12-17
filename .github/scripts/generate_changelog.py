@@ -2,8 +2,10 @@
 import argparse
 import re
 import subprocess
+from semantic_release.commit_parser.conventional import ConventionalCommitParser
+from semantic_release.changelog.context import make_changelog_context
 
-# Generate changelog between two git refs
+# Generate conventional changelog between two git refs
 # Usage: python generate_changelog.py <commit1> <commit2>
 # Example: python generate_changelog.py v1.0.0 v1.1.0
 # This will output the changelog entries between the two commits, including co-authors formatted as GitHub usernames.
@@ -12,6 +14,8 @@ def main():
   parser.add_argument('commit1', help='First git ref')
   parser.add_argument('commit2', help='Second git ref')
   args = parser.parse_args()
+
+  context = make_changelog_context()
 
   git_cmd = [
     'git', 'log',
