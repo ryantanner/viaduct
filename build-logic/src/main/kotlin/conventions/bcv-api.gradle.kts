@@ -20,3 +20,19 @@ configure<ApiValidationExtension> {
     nonPublicMarkers.add("viaduct.TestingApi")
     nonPublicMarkers.add("viaduct.ExperimentalApi")
 }
+
+// We need to control apiCheck execution
+// this code removes apiCheck from check task
+// apiCheck is executed independently in CI scripts after building the project
+tasks.named("check").configure {
+    val filteredDependsOn = dependsOn.filterNot { dep ->
+        when (dep) {
+            is TaskProvider<*> -> dep.name == "apiCheck"
+            is Task -> dep.name == "apiCheck"
+            else -> false
+        }
+    }
+
+    dependsOn.clear()
+    dependsOn.addAll(filteredDependsOn)
+}
