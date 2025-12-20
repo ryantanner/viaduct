@@ -37,6 +37,63 @@ class MySchemaImplSubtypeTest : ViaductSchemaSubtypeContract<MySchemaImpl>() {
 }
 ```
 
+### Other Tests
+
+**Unit tests**
+
+Bazel:
+```bash
+bazel test //projects/viaduct/oss/shared/viaduct/...
+```
+
+Gradle (from `projects/viaduct/oss`):
+```bash
+./gradlew :core:shared:shared-viaductschema:test
+```
+
+**Integration Tests**
+
+Bazel:
+```bash
+bazel run //projects/viaduct/oss/shared/viaductschema:run -- mmdiff -p $HOME/repos/treehouse/projects/viaduct/modules
+```
+
+Gradle (from `projects/viaduct/oss`):
+```bash
+./gradlew :core:shared:shared-viaductschema:run --args="mmdiff -p $HOME/repos/treehouse/projects/viaduct/modules"
+```
+
+**Benchmarks**
+
+Bazel:
+```bash
+BENCHMARK_SCHEMA_SIZE=5000 bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema
+``
+To run only specific benchmarks, add a regex filter:
+
+```bash
+# Only ViaductSchemaBenchmark
+BENCHMARK_SCHEMA_SIZE=5000 bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema -- "ViaductSchemaBenchmark"
+
+# Only CentralSchemaBenchmark
+bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema -- "CentralSchemaBenchmark"
+
+# Only binary read benchmarks
+BENCHMARK_SCHEMA_SIZE=5000 bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema -- ".*Bin.*"
+```
+
+To list available benchmarks without running them:
+
+```bash
+bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema -- -l
+```
+
+Gradle:
+```bash
+BENCHMARK_SCHEMA_SIZE=5000 ./gradlew :core:shared:shared-viaductschema:jmh
+```
+
+
 ## Required Test Coverage
 
 ### 1. Type Signatures

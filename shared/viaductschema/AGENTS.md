@@ -112,7 +112,7 @@ The `AppliedDirective` interface represents directive applications (e.g., `@depr
 
 ### Primary Implementations
 
-The library provides three main implementations of `ViaductSchema`:
+The library provides three main implementations of `ViaductSchema`, plus a binary serialization format:
 
 #### 1. GJSchemaRaw
 
@@ -139,7 +139,30 @@ The library provides three main implementations of `ViaductSchema`:
 
 **When to use**: When you need guaranteed schema validity and can afford the validation cost.
 
-#### 3. FilteredSchema
+#### 3. Binary Schema Format
+
+**Purpose**: A compact binary serialization format for `ViaductSchema` that enables fast loading and reduced memory footprint.
+
+**Key characteristics:**
+
+* Serializes any `ViaductSchema` to a binary format optimized for fast deserialization
+* String deduplication via an interned string table
+* Significantly faster to load than parsing SDL text (10-20x speedup on large schemas)
+* Lower memory overhead than graphql-java's object model
+* Round-trip tested: binary → ViaductSchema → binary produces identical output
+
+**When to use**: For production schema loading where startup time and memory usage matter. Schemas can be pre-compiled to binary format during build time, then loaded quickly at runtime.
+
+**API**:
+```kotlin
+// Write a schema to binary format
+writeBSchema(outputStream, viaductSchema)
+
+// Read a schema from binary format
+val schema: ViaductSchema = readBSchema(inputStream)
+```
+
+#### 4. FilteredSchema
 
 **Purpose**: Projects an existing `ViaductSchema` through a filter to create a restricted view.
 
