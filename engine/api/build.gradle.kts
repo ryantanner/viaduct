@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     /** Viaduct dependencies **/
+    api(libs.viaduct.service.api)
     implementation(libs.viaduct.shared.utils)
     implementation(libs.viaduct.shared.graphql)
     implementation(libs.viaduct.shared.apiannotations)

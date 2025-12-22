@@ -3,6 +3,7 @@ package viaduct.service
 import graphql.execution.DataFetcherExceptionHandler
 import io.micrometer.core.instrument.MeterRegistry
 import viaduct.apiannotations.TestingApi
+import viaduct.engine.api.TenantModuleBootstrapper
 import viaduct.service.api.spi.ErrorReporter
 import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.GlobalIDCodec
@@ -15,7 +16,7 @@ class ViaductBuilder {
     val builder = StandardViaduct.Builder()
 
     /** See [withTenantAPIBootstrapperBuilder]. */
-    fun withTenantAPIBootstrapperBuilder(builder: TenantAPIBootstrapperBuilder) =
+    fun withTenantAPIBootstrapperBuilder(builder: TenantAPIBootstrapperBuilder<TenantModuleBootstrapper>) =
         apply {
             this.builder.withTenantAPIBootstrapperBuilders(listOf(builder))
         }
@@ -28,7 +29,7 @@ class ViaductBuilder {
      * @param builders The builder instance that will be used to create a TenantAPIBootstrapper
      * @return This Builder instance for method chaining
      */
-    fun withTenantAPIBootstrapperBuilders(builders: List<TenantAPIBootstrapperBuilder>) =
+    fun withTenantAPIBootstrapperBuilders(builders: List<TenantAPIBootstrapperBuilder<TenantModuleBootstrapper>>) =
         apply {
             builder.withTenantAPIBootstrapperBuilders(builders)
         }

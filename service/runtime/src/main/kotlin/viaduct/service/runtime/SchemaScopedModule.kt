@@ -11,7 +11,7 @@ import viaduct.engine.EngineFactory
 import viaduct.engine.api.CheckerExecutorFactory
 import viaduct.engine.api.CheckerExecutorFactoryCreator
 import viaduct.engine.api.RequiredSelectionSetRegistry
-import viaduct.engine.api.TenantAPIBootstrapper
+import viaduct.engine.api.TenantModuleBootstrapper
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentation
 import viaduct.engine.runtime.DispatcherRegistry
@@ -19,6 +19,7 @@ import viaduct.engine.runtime.tenantloading.DispatcherRegistryFactory
 import viaduct.engine.runtime.tenantloading.ExecutorValidator
 import viaduct.service.api.SchemaId
 import viaduct.service.api.spi.FlagManager
+import viaduct.service.api.spi.TenantAPIBootstrapper as BaseTenantAPIBootstrapper
 import viaduct.utils.slf4j.logger
 
 internal class SchemaScopedModule(
@@ -96,7 +97,7 @@ internal class SchemaScopedModule(
         validator: ExecutorValidator,
         checkerExecutorFactory: CheckerExecutorFactory,
         schema: ViaductSchema,
-        tenantBootstrapper: TenantAPIBootstrapper,
+        tenantBootstrapper: BaseTenantAPIBootstrapper<TenantModuleBootstrapper>,
         @Suppress("UNUSED_PARAMETER") flagManager: FlagManager,
         resolverInstrumentation: ViaductResolverInstrumentation
     ): DispatcherRegistry {

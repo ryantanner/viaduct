@@ -56,7 +56,6 @@ public abstract interface class viaduct/service/api/Viaduct {
 	public abstract fun execute (Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;)Lgraphql/ExecutionResult;
 	public abstract fun executeAsync (Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun getAppliedScopes (Lviaduct/service/api/SchemaId;)Ljava/util/Set;
-	public abstract fun getSchema (Lviaduct/service/api/SchemaId;)Lviaduct/engine/api/ViaductSchema;
 }
 
 public final class viaduct/service/api/Viaduct$DefaultImpls {
@@ -177,8 +176,17 @@ public final class viaduct/service/api/spi/SourceLocation {
 	public fun toString ()Ljava/lang/String;
 }
 
+public abstract interface class viaduct/service/api/spi/TenantAPIBootstrapper {
+	public static final field Companion Lviaduct/service/api/spi/TenantAPIBootstrapper$Companion;
+	public abstract fun tenantModuleBootstrappers (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class viaduct/service/api/spi/TenantAPIBootstrapper$Companion {
+	public final fun flatten (Ljava/lang/Iterable;)Lviaduct/service/api/spi/TenantAPIBootstrapper;
+}
+
 public abstract interface class viaduct/service/api/spi/TenantAPIBootstrapperBuilder {
-	public abstract fun create ()Lviaduct/engine/api/TenantAPIBootstrapper;
+	public abstract fun create ()Lviaduct/service/api/spi/TenantAPIBootstrapper;
 }
 
 public abstract interface class viaduct/service/api/spi/TenantCodeInjector {

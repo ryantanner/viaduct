@@ -20,7 +20,7 @@ class FeatureTestTenantAPIBootstrapperBuilder(
     val nodeBatchResolverStubs: Map<String, NodeBatchResolverStub>,
     val reflectionLoader: ReflectionLoader,
     val globalIDCodec: GlobalIDCodec,
-) : TenantAPIBootstrapperBuilder {
+) : TenantAPIBootstrapperBuilder<TenantModuleBootstrapper> {
     override fun create() =
         object : TenantAPIBootstrapper {
             val module: TenantModuleBootstrapper = FeatureTestTenantModuleBootstrapper(

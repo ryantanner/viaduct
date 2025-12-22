@@ -54,7 +54,7 @@ class ViaductTenantAPIBootstrapper
         /**
          * Builder for creating a ViaductTenantAPIBootstrapper instance.
          */
-        class Builder : TenantAPIBootstrapperBuilder {
+        class Builder : TenantAPIBootstrapperBuilder<TenantModuleBootstrapper> {
             private var tenantCodeInjector: TenantCodeInjector = TenantCodeInjector.Naive
             private var tenantPackagePrefix: String? = null
             private var tenantPackageFinder: TenantPackageFinder? = null

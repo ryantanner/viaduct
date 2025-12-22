@@ -26,9 +26,10 @@ import viaduct.engine.api.EngineExecutionContext
 import viaduct.engine.api.FragmentLoader
 import viaduct.engine.api.GraphQLBuildError
 import viaduct.engine.api.TemporaryBypassAccessCheck
-import viaduct.engine.api.TenantAPIBootstrapper.Companion.flatten
+import viaduct.engine.api.TenantModuleBootstrapper
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.api.coroutines.CoroutineInterop
+import viaduct.engine.api.flatten
 import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentation
 import viaduct.engine.runtime.execution.DefaultCoroutineInterop
 import viaduct.engine.runtime.execution.TenantNameResolver
@@ -100,7 +101,7 @@ class StandardViaduct
             private var schemaConfiguration: SchemaConfiguration = SchemaConfiguration.DEFAULT
             private var documentProviderFactory: DocumentProviderFactory? = null
             private var tenantNameResolver: TenantNameResolver = TenantNameResolver()
-            private var tenantAPIBootstrapperBuilders: List<TenantAPIBootstrapperBuilder> = emptyList()
+            private var tenantAPIBootstrapperBuilders: List<TenantAPIBootstrapperBuilder<TenantModuleBootstrapper>> = emptyList()
             private var chainInstrumentationWithDefaults: Boolean = false
             private var defaultQueryNodeResolversEnabled: Boolean = true
             private var meterRegistry: MeterRegistry? = null
@@ -119,7 +120,7 @@ class StandardViaduct
                 }
 
             /** See [withTenantAPIBootstrapperBuilder]. */
-            fun withTenantAPIBootstrapperBuilder(builder: TenantAPIBootstrapperBuilder): Builder = withTenantAPIBootstrapperBuilders(listOf(builder))
+            fun withTenantAPIBootstrapperBuilder(builder: TenantAPIBootstrapperBuilder<TenantModuleBootstrapper>): Builder = withTenantAPIBootstrapperBuilders(listOf(builder))
 
             /**
              * Adds a TenantAPIBootstrapperBuilder to be used for creating TenantAPIBootstrapper instances.
@@ -129,7 +130,7 @@ class StandardViaduct
              * @param builders The builder instance that will be used to create a TenantAPIBootstrapper
              * @return This Builder instance for method chaining
              */
-            fun withTenantAPIBootstrapperBuilders(builders: List<TenantAPIBootstrapperBuilder>): Builder =
+            fun withTenantAPIBootstrapperBuilders(builders: List<TenantAPIBootstrapperBuilder<TenantModuleBootstrapper>>): Builder =
                 apply {
                     tenantAPIBootstrapperBuilders = builders
                 }
@@ -425,7 +426,6 @@ class StandardViaduct
          * @return Set of scopes that are applied to the schema
          */
         override fun getAppliedScopes(schemaId: SchemaId): Set<String> {
-            @Suppress("DEPRECATION")
             return getSchema(schemaId).scopes()
         }
 
@@ -452,17 +452,13 @@ class StandardViaduct
         }
 
         /**
-         * Temporary - Will be either private/or somewhere not exposed
-         *
          * This function is used to get the GraphQLSchema from the registered scopes.
          *
          * @param schemaId the id of the schema for which we want a [GraphQLSchema]
          *
          * @return GraphQLSchema instance of the registered scope
          */
-        @Suppress("DEPRECATION")
-        @Deprecated("Will be either private/or somewhere not exposed")
-        override fun getSchema(schemaId: SchemaId): ViaductSchema = engineRegistry.getSchema(schemaId)
+        fun getSchema(schemaId: SchemaId): ViaductSchema = engineRegistry.getSchema(schemaId)
 
         /**
          * Airbnb only

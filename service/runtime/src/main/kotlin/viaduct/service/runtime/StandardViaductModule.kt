@@ -5,6 +5,7 @@ package viaduct.service.runtime
 import com.google.inject.AbstractModule
 import com.google.inject.Provides
 import com.google.inject.Singleton
+import com.google.inject.TypeLiteral
 import graphql.execution.DataFetcherExceptionHandler
 import graphql.execution.instrumentation.Instrumentation
 import io.micrometer.core.instrument.MeterRegistry
@@ -16,6 +17,7 @@ import viaduct.engine.api.FragmentLoader
 import viaduct.engine.api.NoOpCheckerExecutorFactoryImpl
 import viaduct.engine.api.TemporaryBypassAccessCheck
 import viaduct.engine.api.TenantAPIBootstrapper
+import viaduct.engine.api.TenantModuleBootstrapper
 import viaduct.engine.api.coroutines.CoroutineInterop
 import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentation
 import viaduct.engine.runtime.execution.TenantNameResolver
@@ -24,6 +26,7 @@ import viaduct.engine.runtime.fragment.ViaductExecutableFragmentParser
 import viaduct.service.api.spi.ErrorReporter
 import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.ResolverErrorBuilder
+import viaduct.service.api.spi.TenantAPIBootstrapper as BaseTenantAPIBootstrapper
 
 class StandardViaductModule(
     private val tenantBootstrapper: TenantAPIBootstrapper,
@@ -50,7 +53,7 @@ class StandardViaductModule(
         bind(TemporaryBypassAccessCheck::class.java).toInstance(engineConfiguration.temporaryBypassAccessCheck)
         bind(ErrorReporter::class.java).toInstance(engineConfiguration.resolverErrorReporter)
         bind(ResolverErrorBuilder::class.java).toInstance(engineConfiguration.resolverErrorBuilder)
-        bind(TenantAPIBootstrapper::class.java).toInstance(tenantBootstrapper)
+        bind(object : TypeLiteral<BaseTenantAPIBootstrapper<TenantModuleBootstrapper>>() {}).toInstance(tenantBootstrapper)
         bind(TenantNameResolver::class.java).toInstance(tenantNameResolver)
         bind(ViaductResolverInstrumentation::class.java).toInstance(engineConfiguration.resolverInstrumentation)
 
