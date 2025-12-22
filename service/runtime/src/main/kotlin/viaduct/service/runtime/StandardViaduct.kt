@@ -38,10 +38,10 @@ import viaduct.engine.runtime.tenantloading.RequiredSelectionsAreInvalid
 import viaduct.service.api.ExecutionInput
 import viaduct.service.api.SchemaId
 import viaduct.service.api.Viaduct
+import viaduct.service.api.spi.ErrorReporter
 import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.GlobalIDCodec
 import viaduct.service.api.spi.ResolverErrorBuilder
-import viaduct.service.api.spi.ResolverErrorReporter
 import viaduct.service.api.spi.TenantAPIBootstrapperBuilder
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 import viaduct.service.runtime.noderesolvers.ViaductNodeResolverAPIBootstrapper
@@ -94,7 +94,7 @@ class StandardViaduct
             @Suppress("DEPRECATION")
             private var temporaryBypassAccessCheck: TemporaryBypassAccessCheck? = null
             private var dataFetcherExceptionHandler: DataFetcherExceptionHandler? = null
-            private var resolverErrorReporter: ResolverErrorReporter? = null
+            private var resolverErrorReporter: ErrorReporter? = null
             private var resolverErrorBuilder: ResolverErrorBuilder? = null
             private var coroutineInterop: CoroutineInterop? = null
             private var schemaConfiguration: SchemaConfiguration = SchemaConfiguration.DEFAULT
@@ -190,7 +190,7 @@ class StandardViaduct
                     this.dataFetcherExceptionHandler = dataFetcherExceptionHandler
                 }
 
-            fun withResolverErrorReporter(resolverErrorReporter: ResolverErrorReporter): Builder =
+            fun withResolverErrorReporter(resolverErrorReporter: ErrorReporter): Builder =
                 apply {
                     this.resolverErrorReporter = resolverErrorReporter
                 }

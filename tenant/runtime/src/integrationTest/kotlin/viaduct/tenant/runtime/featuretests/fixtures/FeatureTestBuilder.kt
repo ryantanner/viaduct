@@ -25,9 +25,9 @@ import viaduct.engine.api.SelectionSetVariable
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentation
 import viaduct.engine.api.select.SelectionsParser
+import viaduct.service.api.spi.ErrorReporter
 import viaduct.service.api.spi.FlagManager.Flags
 import viaduct.service.api.spi.GlobalIDCodec
-import viaduct.service.api.spi.ResolverErrorReporter
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 import viaduct.service.api.spi.mocks.MockFlagManager
 import viaduct.service.runtime.SchemaConfiguration
@@ -414,7 +414,7 @@ class FeatureTestBuilder(
 
         // Log data-fetcher exceptions for diagnostic purposes
         standardViaduct.withResolverErrorReporter(
-            ResolverErrorReporter { exception, _, _, errorMessage, metadata ->
+            ErrorReporter { exception, errorMessage, metadata ->
                 logger.info("Resolver error: $errorMessage", exception)
                 logger.info("Error metadata: $metadata")
             }

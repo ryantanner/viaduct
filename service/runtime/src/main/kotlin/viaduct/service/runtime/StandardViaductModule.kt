@@ -21,9 +21,9 @@ import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentatio
 import viaduct.engine.runtime.execution.TenantNameResolver
 import viaduct.engine.runtime.fragment.ExecutableFragmentParser
 import viaduct.engine.runtime.fragment.ViaductExecutableFragmentParser
+import viaduct.service.api.spi.ErrorReporter
 import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.ResolverErrorBuilder
-import viaduct.service.api.spi.ResolverErrorReporter
 
 class StandardViaductModule(
     private val tenantBootstrapper: TenantAPIBootstrapper,
@@ -48,7 +48,7 @@ class StandardViaductModule(
         bind(DataFetcherExceptionHandler::class.java).toInstance(engineConfiguration.dataFetcherExceptionHandler)
         @Suppress("DEPRECATION")
         bind(TemporaryBypassAccessCheck::class.java).toInstance(engineConfiguration.temporaryBypassAccessCheck)
-        bind(ResolverErrorReporter::class.java).toInstance(engineConfiguration.resolverErrorReporter)
+        bind(ErrorReporter::class.java).toInstance(engineConfiguration.resolverErrorReporter)
         bind(ResolverErrorBuilder::class.java).toInstance(engineConfiguration.resolverErrorBuilder)
         bind(TenantAPIBootstrapper::class.java).toInstance(tenantBootstrapper)
         bind(TenantNameResolver::class.java).toInstance(tenantNameResolver)
