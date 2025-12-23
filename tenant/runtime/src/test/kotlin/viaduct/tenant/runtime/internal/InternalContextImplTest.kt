@@ -9,7 +9,6 @@ import viaduct.api.globalid.GlobalID
 import viaduct.api.internal.InternalContext
 import viaduct.api.internal.ReflectionLoader
 import viaduct.api.internal.internal
-import viaduct.api.mocks.MockGlobalIDCodec
 import viaduct.api.mocks.MockReflectionLoader
 import viaduct.api.reflect.Type
 import viaduct.api.types.NodeCompositeOutput
@@ -17,13 +16,14 @@ import viaduct.api.types.NodeObject
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.api.mocks.MockSchema
 import viaduct.service.api.spi.GlobalIDCodec
+import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 
 class InternalContextImplTest {
     private val schema = MockSchema.minimal
 
     @Test
     fun simple() {
-        val ctx = InternalContextImpl(schema, MockGlobalIDCodec, MockReflectionLoader())
+        val ctx = InternalContextImpl(schema, GlobalIDCodecDefault, MockReflectionLoader())
         assertSame(schema, ctx.schema)
     }
 

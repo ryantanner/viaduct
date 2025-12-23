@@ -104,7 +104,7 @@ class MockInternalContext(
             schema: ViaductSchema,
             grtPackage: String = "viaduct.api.grts",
             classLoader: ClassLoader = ClassLoader.getSystemClassLoader()
-        ): MockInternalContext = MockInternalContext(schema, MockGlobalIDCodec, mockReflectionLoader(grtPackage, classLoader))
+        ): MockInternalContext = MockInternalContext(schema, GlobalIDCodecDefault, mockReflectionLoader(grtPackage, classLoader))
     }
 }
 

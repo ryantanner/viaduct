@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import viaduct.api.context.FieldExecutionContext
 import viaduct.api.globalid.GlobalID
-import viaduct.api.mocks.MockGlobalIDCodec
 import viaduct.api.mocks.MockInternalContext
 import viaduct.api.reflect.Type
 import viaduct.api.select.SelectionSet
@@ -25,6 +24,7 @@ import viaduct.api.types.Query
 import viaduct.engine.runtime.mocks.ContextMocks
 import viaduct.service.api.spi.GlobalIDCodec
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
+import viaduct.service.api.spi.globalid.GlobalIDCodecDefault as DefaultCodec
 import viaduct.tenant.runtime.globalid.GlobalIDImpl
 import viaduct.tenant.runtime.globalid.GlobalIdFeatureAppTest
 import viaduct.tenant.runtime.globalid.User
@@ -35,7 +35,7 @@ class ExecutionContextImplTest : ContextTestBase() {
         obj: Object = Obj,
         query: Query = Q,
         args: Arguments = Args,
-        globalIDCodec: GlobalIDCodec = MockGlobalIDCodec,
+        globalIDCodec: GlobalIDCodec = DefaultCodec,
         selectionSet: SelectionSet<CompositeOutput> = noSelections,
     ): FieldExecutionContext<Object, Query, Arguments, CompositeOutput> =
         FieldExecutionContextImpl(

@@ -6,8 +6,6 @@ import graphql.schema.idl.SchemaGenerator
 import graphql.schema.idl.SchemaParser
 import kotlin.reflect.KClass
 import viaduct.api.context.ExecutionContext
-import viaduct.api.globalid.GlobalID
-import viaduct.api.globalid.GlobalIDCodec as DeprecatedGlobalIDCodec
 import viaduct.api.internal.ReflectionLoader
 import viaduct.api.internal.select.SelectionsLoader
 import viaduct.api.reflect.Type
@@ -20,7 +18,6 @@ import viaduct.api.types.NodeObject
 import viaduct.api.types.Query
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.graphqljava.GJSchema
-import viaduct.service.api.spi.GlobalIDCodec
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 
 fun mkSchema(sdl: String): GraphQLSchema {
@@ -45,49 +42,6 @@ fun mockReflectionLoader(
 val GraphQLSchema.viaduct: ViaductSchema
     get() =
         GJSchema.fromSchema(this)
-
-// TODO: remove (https://app.asana.com/1/150975571430/task/1211628405683375?focus=true)
-@Suppress("UNCHECKED_CAST")
-class MockDeprecatedGlobalIDCodec : DeprecatedGlobalIDCodec {
-    override fun <T : NodeCompositeOutput> serialize(id: GlobalID<T>): String = "${id.type.name}:${id.internalID}"
-
-    override fun <T : NodeCompositeOutput> deserialize(str: String): GlobalID<T> =
-        str.split(":", limit = 2).let { (typeName, internalId) ->
-            MockGlobalID(
-                MockType(typeName, NodeObject::class),
-                internalId
-            ) as GlobalID<T>
-        }
-}
-
-/**
- * Mock implementation of service-level GlobalIDCodec for testing.
- * Uses "TypeName:internalID" format for simple debugging.
- */
-object MockGlobalIDCodec : GlobalIDCodec {
-    override fun serialize(
-        typeName: String,
-        localID: String
-    ): String = "$typeName:$localID"
-
-    override fun deserialize(globalID: String): Pair<String, String> {
-        val parts = globalID.split(":", limit = 2)
-        require(parts.size == 2) { "Invalid mock GlobalID format: $globalID" }
-        return parts[0] to parts[1]
-    }
-}
-
-// TODO: remove (https://app.asana.com/1/150975571430/task/1211628405683375?focus=true)
-class MockGlobalID<T : NodeObject>(
-    override val type: Type<T>,
-    override val internalID: String
-) : GlobalID<T> {
-    override fun toString(): String = "${type.name}:$internalID"
-
-    override fun equals(other: Any?): Boolean = other is GlobalID<*> && type.name == other.type.name && internalID == other.internalID
-
-    override fun hashCode(): Int = toString().hashCode()
-}
 
 class MockType<T : GRT>(override val name: String, override val kcls: KClass<T>) : Type<T> {
     companion object {

@@ -7,13 +7,13 @@ import viaduct.api.ViaductTenantUsageException
 import viaduct.api.context.ExecutionContext
 import viaduct.api.internal.InternalContext
 import viaduct.api.internal.ObjectBase
-import viaduct.api.mocks.MockGlobalIDCodec
 import viaduct.api.mocks.MockInternalContext
 import viaduct.api.mocks.executionContext
 import viaduct.codegen.km.getterName
 import viaduct.engine.api.EngineObject
 import viaduct.engine.api.ViaductSchema as ViaductGraphQLSchema
 import viaduct.graphql.schema.ViaductSchema
+import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 import viaduct.tenant.codegen.bytecode.config.ViaductBaseTypeMapper
 import viaduct.tenant.codegen.bytecode.config.cfg
 
@@ -57,7 +57,7 @@ private suspend fun Exerciser.exerciseBuilderRoundtrip(
     val builder = builderCtor.newInstance(
         MockInternalContext(
             schema,
-            MockGlobalIDCodec,
+            GlobalIDCodecDefault,
             reflectionLoaderForClassResolver(classResolver)
         ).executionContext
     )

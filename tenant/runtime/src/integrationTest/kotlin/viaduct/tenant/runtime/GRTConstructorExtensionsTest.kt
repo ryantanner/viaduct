@@ -11,11 +11,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import viaduct.api.ViaductTenantUsageException
 import viaduct.api.internal.ObjectBase
-import viaduct.api.mocks.MockGlobalIDCodec
 import viaduct.api.mocks.MockInternalContext
 import viaduct.api.mocks.MockReflectionLoader
+import viaduct.api.mocks.testGlobalId
 import viaduct.engine.api.UnsetSelectionException
 import viaduct.engine.api.mocks.mkEngineObjectData
+import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 import viaduct.tenant.runtime.globalid.CreateUserInput
 import viaduct.tenant.runtime.globalid.GlobalIdFeatureAppTest
 import viaduct.tenant.runtime.globalid.Mutation_CreateUser_Arguments
@@ -29,7 +30,7 @@ class GRTConstructorExtensionsTest {
     val schema = GlobalIdFeatureAppTest.schema
     val internalContext = MockInternalContext(
         GlobalIdFeatureAppTest.schema,
-        MockGlobalIDCodec,
+        GlobalIDCodecDefault,
         MockReflectionLoader(User.Reflection)
     )
     val userType = schema.schema.getObjectType("User")
@@ -61,7 +62,7 @@ class GRTConstructorExtensionsTest {
     @Test
     fun `toObjectGRT - success with User type`() {
         val data = mapOf(
-            "id" to "User:user123", // MockGlobalIDCodec expects "TypeName:internalId" format
+            "id" to User.Reflection.testGlobalId("user123"), // GlobalIDCodecDefault uses Base64-encoded format
             "name" to "John Doe",
         )
         val gqlType = schema.schema.getObjectType("User")
@@ -75,7 +76,7 @@ class GRTConstructorExtensionsTest {
     @Test
     fun `toInputLikeGRT - success with CreateUserInput type`() {
         val data = mapOf(
-            "id" to "User:user123",
+            "id" to User.Reflection.testGlobalId("user123"),
             "name" to "John Doe",
             "email" to "john@example.com"
         )
@@ -88,7 +89,7 @@ class GRTConstructorExtensionsTest {
     fun `toInputLikeGRT - success with Mutation_CreateUser_Arguments type`() {
         val data = mapOf(
             "input" to mapOf(
-                "id" to "User:user123",
+                "id" to User.Reflection.testGlobalId("user123"),
                 "name" to "John Doe",
                 "email" to "john@example.com"
             )
@@ -100,7 +101,7 @@ class GRTConstructorExtensionsTest {
     @Test
     fun `toInputLikeGRT - success with Query_User_Arguments type`() {
         val data = mapOf(
-            "id" to "User:user123"
+            "id" to User.Reflection.testGlobalId("user123")
         )
         val args = data.toInputLikeGRT(internalContext, Query_User_Arguments::class)
         assertInstanceOf(Query_User_Arguments::class.java, args)
@@ -109,7 +110,7 @@ class GRTConstructorExtensionsTest {
     @Test
     fun `toObjectGRT - success with User type and can access provided fields`() {
         val data = mapOf(
-            "id" to "User:user123", // MockGlobalIDCodec expects "TypeName:internalId" format
+            "id" to User.Reflection.testGlobalId("user123"), // GlobalIDCodecDefault uses Base64-encoded format
             "name" to "John Doe"
             // Intentionally not providing email to test UnsetSelectionException
         )
