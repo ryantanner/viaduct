@@ -2,6 +2,7 @@ package viaduct.engine.api
 
 import graphql.language.FragmentDefinition
 import graphql.schema.GraphQLObjectType
+import viaduct.service.api.spi.GlobalIDCodec
 
 /**
  * Request-scoped execution context used to pass contextual elements to tenant API implementations
@@ -25,11 +26,8 @@ interface EngineExecutionContext {
      * The GlobalIDCodec shared across all tenant-API implementations in this Viaduct instance.
      * This ensures that GlobalIDs serialized by one tenant module can be correctly deserialized
      * by another tenant module.
-     *
-     * Type: viaduct.service.api.spi.GlobalIDCodec
-     * (Untyped here to avoid circular dependency between engine.api and service.api)
      */
-    val globalIDCodec: Any
+    val globalIDCodec: GlobalIDCodec
 
     // Request-scoped: Per-request context set by Viaduct Service Engineers
     val requestContext: Any?

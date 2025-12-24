@@ -9,7 +9,6 @@ import viaduct.engine.api.RequiredSelectionSet
 import viaduct.engine.api.ResolverMetadata
 import viaduct.engine.api.TenantModuleBootstrapper
 import viaduct.engine.api.ViaductSchema
-import viaduct.service.api.spi.GlobalIDCodec
 
 /**
  * ViaductNodeResolverModuleBootstrapper is responsible for defining and bootstrapping system level Query.node/s field resolvers.
@@ -89,11 +88,7 @@ class ViaductQueryNodeResolverModuleBootstrapper : TenantModuleBootstrapper {
             context: EngineExecutionContext
         ): NodeReference {
             require(globalId is String) { "Expected GlobalID \"$globalId\" to be a string. This should never occur." }
-            // TODO: EngineExecutionContext.globalIDCodec is typed as Any to avoid circular dependency.
-            //  This will be fixed in a future PR by making engine/api depend on service/api.
-            val codec = context.globalIDCodec as? GlobalIDCodec
-                ?: error("EngineExecutionContext.globalIDCodec must be a GlobalIDCodec, got: ${context.globalIDCodec::class}")
-            val (typeName, _) = codec.deserialize(globalId)
+            val (typeName, _) = context.globalIDCodec.deserialize(globalId)
 
             val graphQLObjectType = context.fullSchema.schema.getObjectType(typeName)
             requireNotNull(graphQLObjectType) { "Expected GlobalId \"$globalId\" with type name '$typeName' to match a named object type in the schema" }

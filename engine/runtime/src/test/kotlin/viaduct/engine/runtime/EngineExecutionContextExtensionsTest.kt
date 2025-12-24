@@ -22,6 +22,7 @@ import viaduct.engine.runtime.EngineExecutionContextExtensions.resolverInstrumen
 import viaduct.engine.runtime.EngineExecutionContextExtensions.setExecutionHandle
 import viaduct.engine.runtime.execution.ExecutionTestHelpers
 import viaduct.engine.runtime.mocks.ContextMocks
+import viaduct.service.api.spi.GlobalIDCodec
 
 class EngineExecutionContextExtensionsTest {
     private val testSchema = ExecutionTestHelpers.createSchema(
@@ -219,7 +220,7 @@ class EngineExecutionContextExtensionsTest {
             override val activeSchema: ViaductSchema get() = mockk()
             override val rawSelectionSetFactory get() = mockk<viaduct.engine.api.RawSelectionSet.Factory>()
             override val rawSelectionsLoaderFactory get() = mockk<viaduct.engine.api.RawSelectionsLoader.Factory>()
-            override val globalIDCodec: Any get() = mockk<Any>()
+            override val globalIDCodec: GlobalIDCodec get() = mockk<GlobalIDCodec>()
             override val requestContext: Any? get() = null
             override val engine get() = mockk<viaduct.engine.api.Engine>()
             override val executionHandle: EngineExecutionContext.ExecutionHandle? get() = null
