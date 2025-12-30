@@ -19,10 +19,8 @@ import viaduct.api.types.NodeCompositeOutput
 import viaduct.api.types.NodeObject
 import viaduct.api.types.Object
 import viaduct.api.types.Query
-import viaduct.engine.api.EngineExecutionContext
 import viaduct.engine.api.NodeEngineObjectData
 import viaduct.engine.api.NodeReference
-import viaduct.engine.api.RawSelectionSet
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.api.mocks.MockSchema
 import viaduct.service.api.spi.GlobalIDCodec
@@ -56,13 +54,6 @@ class MockNodeEngineObjectData(
         if (selection == "id") {
             return id
         }
-        throw UnsupportedOperationException()
-    }
-
-    override suspend fun resolveData(
-        selections: RawSelectionSet,
-        context: EngineExecutionContext
-    ): Boolean {
         throw UnsupportedOperationException()
     }
 }

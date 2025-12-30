@@ -1,4 +1,8 @@
-package viaduct.engine.api
+package viaduct.engine.runtime
+
+import viaduct.engine.api.EngineExecutionContext
+import viaduct.engine.api.EngineObjectData
+import viaduct.engine.api.RawSelectionSet
 
 /**
  * An EngineObjectData that is not fully resolved until [resolveData] is called.
