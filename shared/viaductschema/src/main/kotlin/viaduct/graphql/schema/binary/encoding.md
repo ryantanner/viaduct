@@ -59,13 +59,14 @@ Two mechanisms are used based on circumstances to represent the empty list (sinc
 The file is organized into sequential sections, each aligned to 4-byte boundaries:
 
 1. Header (metadata about all other sections)
-2. Identifiers (sorted ASCII strings with type markers)
-3. Source Locations (sorted UTF-8 strings)
-4. Simple Constants (kind-code-prefixed UTF-8 strings)
-5. Compound Constants (lists and input objects)
-6. Type Expressions (deduplicated type references)
-7. Root Types (query, mutation, subscription)
-8. Definitions (directives and type definitions, interleaved by name)
+2. Identifiers (sorted ASCII strings)
+3. Definition Stubs (identifier index + kind code for each definition)
+4. Source Locations (sorted UTF-8 strings)
+5. Simple Constants (kind-code-prefixed UTF-8 strings)
+6. Compound Constants (lists and input objects)
+7. Type Expressions (deduplicated type references)
+8. Root Types (query, mutation, subscription)
+9. Definitions (directives and type definitions, interleaved by name)
 
 Each section (except the header) begins with a 4-byte magic number for validation. These magic numbers are included in the byte size counts reported in the header but are NOT included in any item counts.
 
@@ -75,6 +76,7 @@ For validation and error detection, each section begins with a unique 32-bit mag
 | Section              | Magic Number | ASCII Mnemonic |
 |---------------------|--------------|----------------|
 | Identifiers         | `0x49444E54` | "IDNT"         |
+| Definition Stubs    | `0x53545542` | "STUB"         |
 | Source Locations    | `0x534C4F43` | "SLOC"         |
 | Simple Constants    | `0x53434F4E` | "SCON"         |
 | Compound Constants  | `0x43434F4E` | "CCON"         |
@@ -161,7 +163,7 @@ This compositional structure means the format is built from ~5 primitives rather
   - Bits 8-15: Major version
   - Bits 16-31: Unused (must be zero)
 
-**Current Version** - `0x00000001` (major=0, minor=1)
+**Current Version** - `0x00000002` (major=0, minor=2)
 
 ---
 
@@ -177,23 +179,24 @@ All values are signed 32-bit little-endian integers:
 Offset  Field                           Description
 ------  -----                           -----------
 0x00    Magic Number                    Always 0xA75F2B1C
-0x04    File Version                    Current: 0x00000001
+0x04    File Version                    Current: 0x00000002
 0x08    Max String Length               Maximum length in bytes of any identifier, source location, or simple constant string
 0x0C    Identifier Count                Number of identifiers
 0x10    Identifier Section Bytes        Size of identifiers section in bytes (including 4-byte magic number)
-0x14    Source Location Count           Number of source locations + 1 (includes null placeholder)
-0x18    Source Location Section Bytes   Size of source locations section in bytes (including 4-byte magic number)
-0x1C    TypeExpr Section Bytes          Size of type expressions section in bytes (including 4-byte magic number)
-0x20    TypeExpr Count                  Number of type expressions
-0x24    Directive Count                 Number of directive definitions
-0x28    TypeDef Count                   Number of type definitions
-0x2C    Simple Constants Count          Number of simple constants + 1 (includes null placeholder)
-0x30    Simple Constants Section Bytes  Size of simple constants section in bytes (including 4-byte magic number)
-0x34    Compound Constants Count        Number of compound constants + 1 (includes EMPTY_LIST_MARKER)
-0x38    Compound Constants Section Bytes Size of compound constants section in bytes (including 4-byte magic number)
+0x14    Definition Stub Count           Number of definition stubs (directive count + type def count)
+0x18    Source Location Count           Number of source locations + 1 (includes null placeholder)
+0x1C    Source Location Section Bytes   Size of source locations section in bytes (including 4-byte magic number)
+0x20    TypeExpr Section Bytes          Size of type expressions section in bytes (including 4-byte magic number)
+0x24    TypeExpr Count                  Number of type expressions
+0x28    Directive Count                 Number of directive definitions
+0x2C    TypeDef Count                   Number of type definitions
+0x30    Simple Constants Count          Number of simple constants + 1 (includes null placeholder)
+0x34    Simple Constants Section Bytes  Size of simple constants section in bytes (including 4-byte magic number)
+0x38    Compound Constants Count        Number of compound constants + 1 (includes EMPTY_LIST_MARKER)
+0x3C    Compound Constants Section Bytes Size of compound constants section in bytes (including 4-byte magic number)
 ```
 
-**Total Header Size**: 60 bytes (15 words)
+**Total Header Size**: 64 bytes (16 words)
 
 ---
 
@@ -203,7 +206,6 @@ The identifiers section contains all GraphQL identifiers used in the schema: typ
 - Sorted lexicographically
 - Encoded as ASCII (7-bit characters only)
 - Null-terminated
-- Optionally marked with their definition kind
 
 ### Encoding
 
@@ -212,25 +214,7 @@ The section begins with the magic number `0x49444E54` ("IDNT"), followed by iden
 Each identifier is encoded as:
 
 1. ASCII characters (bytes with values 0-127)
-2. Terminator byte:
-   - `0x00`: Plain identifier (field name, argument name, etc.)
-   - `0x80-0xFF`: Definition marker (high bit set)
-
-### Definition Markers
-
-When an identifier names a type or directive, the terminator byte's high nibble (bits 4-7) indicates the kind:
-
-| Marker | Value  | Kind       | Description                    |
-|--------|--------|------------|--------------------------------|
-| `K_DIRECTIVE` | `0x80` | Directive  | Directive definition           |
-| `K_ENUM`      | `0x90` | Enum       | Enumeration type               |
-| `K_INPUT`     | `0xA0` | Input      | Input object type              |
-| `K_INTERFACE` | `0xB0` | Interface  | Interface type                 |
-| `K_OBJECT`    | `0xC0` | Object     | Object type                    |
-| `K_SCALAR`    | `0xD0` | Scalar     | Scalar type                    |
-| `K_UNION`     | `0xE0` | Union      | Union type                     |
-
-The low nibble (bits 0-3) of definition markers is unused and must be zero.
+2. Null terminator (`0x00`)
 
 ### Properties
 
@@ -242,17 +226,69 @@ The low nibble (bits 0-3) of definition markers is unused and must be zero.
 ### Example
 
 ```
-Identifier      Bytes                   Index
-----------      -----                   -----
-"User"          55 73 65 72 C0          0      (Object type)
-"firstName"     66 69 72 73 74 4E 61 6D 65 00   1      (field name)
-"id"            69 64 00                2      (field name)
-"skip"          73 6B 69 70 80          3      (Directive)
+Identifier      Bytes                           Index
+----------      -----                           -----
+"User"          55 73 65 72 00                  0
+"firstName"     66 69 72 73 74 4E 61 6D 65 00   1
+"id"            69 64 00                        2
+"skip"          73 6B 69 70 00                  3
 ```
 
 ---
 
-## Section 3: Source Locations
+## Section 3: Definition Stubs
+
+The definition stubs section provides kind information for type and directive definitions. This section contains one entry per definition (directive or type definition), allowing the decoder to create "shell" objects for each definition before reading the full definitions section.
+
+### Encoding
+
+The section begins with the magic number `0x53545542` ("STUB"), followed by definition stub entries:
+
+Each definition stub is a single 32-bit word (StubRefPlus) encoding:
+
+```
+Bits    Field               Description
+----    -----               -----------
+0-19    Identifier Index    Index into identifiers section
+20-23   Unused              Reserved (must be zero)
+24-31   Kind Code           Definition kind (see table below)
+```
+
+### Kind Codes
+
+The kind code (bits 24-31) indicates the type of definition:
+
+| Code          | Value  | Kind       | Description           |
+|---------------|--------|------------|-----------------------|
+| `K_DIRECTIVE` | `0x80` | Directive  | Directive definition  |
+| `K_ENUM`      | `0x90` | Enum       | Enumeration type      |
+| `K_INPUT`     | `0xA0` | Input      | Input object type     |
+| `K_INTERFACE` | `0xB0` | Interface  | Interface type        |
+| `K_OBJECT`    | `0xC0` | Object     | Object type           |
+| `K_SCALAR`    | `0xD0` | Scalar     | Scalar type           |
+| `K_UNION`     | `0xE0` | Union      | Union type            |
+
+### Properties
+
+- **Count**: Number of stubs = directive count + type def count (from header)
+- **No Padding**: Naturally aligned (word-sized entries)
+
+Note: The encoder writes stubs in identifier-sorted order, but the decoder does not depend on this ordering.
+
+### Example
+
+Given identifiers from Section 2:
+```
+Stub Entry      Word (hex)      Identifier Index    Kind Code   Meaning
+----------      ----------      ----------------    ---------   -------
+0               0x80000003      3                   0x80        Directive "skip"
+1               0xD0000002      2                   0xD0        Scalar "id"
+2               0xC0000000      0                   0xC0        Object "User"
+```
+
+---
+
+## Section 4: Source Locations
 
 Source locations track where schema elements were defined in the original SDL. This section contains unique `SourceLocation.sourceName` values.
 
@@ -271,10 +307,11 @@ Each source location string:
 
 ### Properties
 
-- **Sorted**: Strings in lexicographic order (after null placeholder)
 - **UTF-8**: Full Unicode support (unlike ASCII-only identifiers)
 - **Indexed**: Referenced by zero-based index (0 = null)
 - **Padded**: Section padded with `0x00` bytes to 4-byte boundary
+
+Note: The encoder writes source locations in lexicographic order for deterministic output, but the decoder does not depend on this ordering.
 
 ### Special Cases
 
@@ -283,7 +320,7 @@ Each source location string:
 
 ---
 
-## Section 4: Simple Constants
+## Section 5: Simple Constants
 
 Simple constants represent scalar and enum constant values as kind-code-prefixed UTF-8 strings. These appear in default values and directive arguments.
 
@@ -297,7 +334,7 @@ Each simple constant is encoded as:
 3. **Null terminator**: `0x00` byte
 
 - **Entry 0**: Null value (`K_NULL_VALUE` + `0x00`)
-- **Entry 1+**: Sorted kind-code-prefixed UTF-8 strings
+- **Entry 1+**: Kind-code-prefixed UTF-8 strings
 
 ### Kind Codes
 
@@ -326,12 +363,13 @@ After the kind code, values are represented as:
 
 ### Properties
 
-- **Sorted**: Kind-code-prefixed strings in lexicographic order (after null)
 - **Deduplicated**: Each unique kind+content combination appears once
 - **Self-describing**: Kind code allows decoding without type information
 - **UTF-8**: Full Unicode support for content
 - **Indexed**: Part of combined constants index space (see below)
 - **Padded**: Section padded with `0x00` bytes to 4-byte boundary
+
+Note: The encoder writes simple constants in lexicographic order (by kind-code-prefixed string) for deterministic output, but the decoder does not depend on this ordering.
 
 ### Special Cases
 
@@ -340,7 +378,7 @@ After the kind code, values are represented as:
 
 ---
 
-## Section 5: Compound Constants
+## Section 6: Compound Constants
 
 Compound constants represent list and input object constant values. This section shares an index space with simple constants.
 
@@ -353,11 +391,11 @@ Constants (both simple and compound) share a unified index space:
 
 **Entry N** (first compound constant): Special `EMPTY_LIST_MARKER` (`-1`) representing both empty lists and empty input objects.
 
-### Encoding
+### Structure
 
-The section begins with the magic number `0x43434F4E` ("CCON"), followed by the `EMPTY_LIST_MARKER` and compound constants.
+The section begins with the magic number `0x43434F4E` ("CCON"), followed by the `EMPTY_LIST_MARKER` followed by encoded compound constants.
 
-### List Constants
+### Encoding List Constants
 
 Lists like `[1, 2, 3]` are encoded as sequences of constant references:
 
@@ -376,7 +414,7 @@ n       Last Element Reference      Constant index + END_OF_LIST_BIT (bit 31 set
 
 Empty lists use the `EMPTY_LIST_MARKER` at index N.
 
-### Input Object Constants
+### Encoding Input Object Constants
 
 Input objects like `{name: "Alice", age: 42}` are encoded as sequences of field-value pairs:
 
@@ -399,19 +437,17 @@ Word        Field                   Description
 
 Empty input objects use the `EMPTY_LIST_MARKER` at index N.
 
-### No Forward References
-
-Constants are ordered by "depth" (nesting level). A constant at index `i` can only reference constants with indices `< i`. This allows single-pass decoding.
-
 ### Properties
 
 - **No Padding**: Naturally aligned (word-sized entries)
 - **Type-Agnostic**: Same physical representation can represent different types (e.g., `[123]` as `[Int]` or `[String]`)
-- **Self-Contained**: No forward references
+- **No Forward References**: A constant at index `i` can only reference constants with indices `< i`. This allows single-pass decoding
+
+Note: The encoder writes compound constants in a manner that ensures deterministic output, but the decoder does not depend on any aspect of this ordering _other_ than the fact that it contains no forward references.
 
 ---
 
-## Section 6: Type Expressions
+## Section 7: Type Expressions
 
 Type expressions describe the types of fields and arguments (e.g., `String`, `[Int]!`, `[[User!]]`). The section deduplicates type expressions - each unique type expression appears once.
 
@@ -482,15 +518,16 @@ Where `d` is the list depth. Bit 0 (LSB) is the outermost wrapper.
 
 ### Properties
 
-- **Sorted**: By usage frequency (most common first)
 - **Deduplicated**: Each unique type expression appears once
 - **Indexed**: Referenced by zero-based index
 - **No Padding**: Naturally aligned (4 or 8 bytes each)
 
+Note: The encoder may order type expressions by usage frequency for determinstic output, but the decoder accesses them only by index and does not depend on any particular ordering.
+
 ---
 
 
-## Section 7: Root Types
+## Section 8: Root Types
 
 The root types section identifies the query, mutation, and subscription root types. This is a fixed-size section of exactly 4 words (16 bytes).
 
@@ -522,9 +559,9 @@ Each word contains either:
 
 ---
 
-## Section 8: Definitions
+## Section 9: Definitions
 
-The definitions section encodes both directive definitions and type definitions. Directive definitions appear first (in alphabetical order by name), followed by type definitions in alphabetical order by name.
+The definitions section encodes both directive definitions and type definitions. Each definition begins with a name reference word that identifies which definition is being encoded, allowing the decoder to match definition content with the corresponding stub regardless of ordering.
 
 The section begins with the magic number `0x44454653` ("DEFS"), followed by definitions.
 
@@ -535,7 +572,7 @@ Each definition begins with a **Name Reference Word**:
 - **Bits 0-19**: Identifier index for the definition's name
 - **Bits 20-31**: Unused (must be zero)
 
-This name reference allows the decoder to look up the corresponding definition stub (created during identifier section decoding) regardless of the order in which definitions appear.
+This name reference allows the decoder to look up the corresponding definition stub (created during definition stubs section decoding) regardless of the order in which definitions appear.
 
 ### Directive Definitions
 
@@ -865,6 +902,11 @@ EnumValueRefPlus(nameIdx, hasAppliedDirectives, hasNext)
     → bit 29: 0
     → bit 30: hasAppliedDirectives
     → bit 31: !hasNext
+
+StubRefPlus(identifierIdx, kindCode)
+    → bits 0-19: identifierIdx
+    → bits 20-23: 0 (unused)
+    → bits 24-31: kindCode
 ```
 
 ---
@@ -874,7 +916,9 @@ EnumValueRefPlus(nameIdx, hasAppliedDirectives, hasNext)
 The format is designed for efficient three-phase decoding:
 
 ### Phase 1: Shell Creation
-Read identifiers section to discover all type and directive names. Create empty "shell" objects for each definition.
+1. Read identifiers section to get all identifier strings
+2. Read definition stubs section to discover all type and directive names with their kinds
+3. Create empty "shell" objects for each definition
 
 ### Phase 2: Structure Building
 1. Read type expressions section (can reference shells by name)
@@ -887,7 +931,7 @@ Read identifiers section to discover all type and directive names. Create empty 
 ### Phase 3: Constant Resolution
 1. Read simple constants section
 2. Read compound constants section (can reference simple constants and earlier compound constants)
-3. Resolve all stored constant references from passes 2
+3. Resolve all stored constant references from Phase 2
 
 This strategy handles the circular references between types and type expressions, and respects the no-forward-references constraint for constants.
 
@@ -953,7 +997,7 @@ The file format maintains numerous invariants documented in `bschema-invariants.
 1. **Structural Invariants**: Correct counts, sizes, alignment
 2. **Reference Invariants**: All indices in bounds, point to correct types
 3. **Encoding Invariants**: Unused bits zero, correct flag usage
-4. **Ordering Invariants**: Sorted sections, no forward references in constants
+4. **Ordering Invariants**: No forward references in compound constants
 5. **Semantic Invariants**: GraphQL schema validity (separate from format validity)
 
 These invariants help detect:
@@ -986,15 +1030,26 @@ directive @deprecated(reason: String!) on FIELD_DEFINITION
 ```
 Index   String          Terminator
 -----   ------          ----------
-0       "ID"            0xD0 (K_SCALAR)
-1       "Query"         0xC0 (K_OBJECT)
-2       "String"        0xD0 (K_SCALAR)
-3       "User"          0xC0 (K_OBJECT)
-4       "deprecated"    0x80 (K_DIRECTIVE)
-5       "id"            0x00 (plain)
-6       "name"          0x00 (plain)
-7       "reason"        0x00 (plain)
-8       "user"          0x00 (plain)
+0       "ID"            0x00
+1       "Query"         0x00
+2       "String"        0x00
+3       "User"          0x00
+4       "deprecated"    0x00
+5       "id"            0x00
+6       "name"          0x00
+7       "reason"        0x00
+8       "user"          0x00
+```
+
+### Definition Stubs Section
+```
+Entry   Identifier Index    Kind Code       Definition
+-----   ----------------    ---------       ----------
+0       0                   0xD0            Scalar "ID"
+1       1                   0xC0            Object "Query"
+2       2                   0xD0            Scalar "String"
+3       3                   0xC0            Object "User"
+4       4                   0x80            Directive "deprecated"
 ```
 
 ### Source Locations Section

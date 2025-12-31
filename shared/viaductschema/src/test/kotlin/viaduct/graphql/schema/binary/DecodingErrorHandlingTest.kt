@@ -318,7 +318,55 @@ class DecodingErrorHandlingTest {
     }
 
     @Test
-    fun `Invalid kind code in identifiers section throws InvalidFileFormatException`() {
+    fun `Invalid kind code in definition stubs section throws InvalidFileFormatException`() {
+        val baos = ByteArrayOutputStream()
+        val out = BOutputStream(baos)
+
+        // Write valid header
+        // Note: definitionStubCount must equal directiveCount + typeDefCount
+        // We use typeDefCount=1 to allow one definition stub
+        out.writeInt(MAGIC_NUMBER)
+        out.writeInt(FILE_VERSION)
+        out.writeInt(100) // maxStringLen
+        out.writeInt(1) // identifierCount
+        out.writeInt(13) // identifierBytes (magic + "testName\0" + padding)
+        out.writeInt(1) // definitionStubCount
+        out.writeInt(1) // sourceLocationCount
+        out.writeInt(4) // sourceLocationBytes
+        out.writeInt(0) // typeExprSectionBytes
+        out.writeInt(0) // typeExprCount
+        out.writeInt(0) // directiveCount
+        out.writeInt(1) // typeDefCount (matches definitionStubCount)
+        out.writeInt(0) // simpleConstantCount
+        out.writeInt(0) // simpleConstantBytes
+        out.writeInt(0) // compoundConstantCount
+        out.writeInt(0) // compoundConstantBytes
+
+        // Write identifiers section
+        out.writeInt(MAGIC_IDENTIFIERS)
+        for (c in "testName") {
+            out.write(c.code)
+        }
+        out.write(0) // null terminator
+        out.pad()
+
+        // Write definition stubs section with INVALID kind code
+        out.writeInt(MAGIC_DEFINITION_STUBS)
+        // StubRefPlus format: bits 0-19 = identifier index, bits 24-31 = kind code
+        // 0xFF is an invalid kind code (not K_DIRECTIVE, K_ENUM, etc.)
+        out.writeInt(0 or (0xFF shl 24)) // identifier index 0, invalid kind code 0xFF
+
+        out.close()
+
+        val input = ByteArrayInputStream(baos.toByteArray())
+        val exception = assertThrows<InvalidFileFormatException> {
+            readBSchema(input)
+        }
+        assertMessageContains("Invalid kind code", exception)
+    }
+
+    @Test
+    fun `Invalid definition stubs section magic throws InvalidFileFormatException`() {
         val baos = ByteArrayOutputStream()
         val out = BOutputStream(baos)
 
@@ -326,8 +374,9 @@ class DecodingErrorHandlingTest {
         out.writeInt(MAGIC_NUMBER)
         out.writeInt(FILE_VERSION)
         out.writeInt(100) // maxStringLen
-        out.writeInt(1) // identifierCount
-        out.writeInt(10) // identifierBytes (approximate)
+        out.writeInt(0) // identifierCount
+        out.writeInt(4) // identifierBytes (magic only)
+        out.writeInt(0) // definitionStubCount
         out.writeInt(1) // sourceLocationCount
         out.writeInt(4) // sourceLocationBytes
         out.writeInt(0) // typeExprSectionBytes
@@ -339,14 +388,12 @@ class DecodingErrorHandlingTest {
         out.writeInt(0) // compoundConstantCount
         out.writeInt(0) // compoundConstantBytes
 
-        // Write identifiers section magic
+        // Write identifiers section (empty)
         out.writeInt(MAGIC_IDENTIFIERS)
+        out.pad()
 
-        // Write identifier with INVALID kind code
-        for (c in "testName") {
-            out.write(c.code)
-        }
-        out.write(0xFF) // Invalid kind code (not 0, K_DIRECTIVE, K_ENUM, etc.)
+        // Write WRONG magic for definition stubs section
+        out.writeInt(0xBAD5708B.toInt())
 
         out.close()
 
@@ -354,7 +401,7 @@ class DecodingErrorHandlingTest {
         val exception = assertThrows<InvalidFileFormatException> {
             readBSchema(input)
         }
-        assertMessageContains("Unexpected kind code", exception)
+        assertMessageContains("definition stubs", exception)
     }
 
     @Test
@@ -367,7 +414,8 @@ class DecodingErrorHandlingTest {
         out.writeInt(FILE_VERSION)
         out.writeInt(100) // maxStringLen
         out.writeInt(0) // identifierCount
-        out.writeInt(0) // identifierBytes
+        out.writeInt(4) // identifierBytes (magic only)
+        out.writeInt(0) // definitionStubCount
         out.writeInt(1) // sourceLocationCount
         out.writeInt(4) // sourceLocationBytes
         out.writeInt(0) // typeExprSectionBytes
@@ -379,9 +427,12 @@ class DecodingErrorHandlingTest {
         out.writeInt(0) // compoundConstantCount
         out.writeInt(0) // compoundConstantBytes
 
-        // Write identifiers section magic (empty)
+        // Write identifiers section (empty)
         out.writeInt(MAGIC_IDENTIFIERS)
         out.pad()
+
+        // Write definition stubs section (empty)
+        out.writeInt(MAGIC_DEFINITION_STUBS)
 
         // Write WRONG magic for source locations section
         out.writeInt(0xBADBAD00.toInt())
@@ -405,7 +456,8 @@ class DecodingErrorHandlingTest {
         out.writeInt(FILE_VERSION)
         out.writeInt(100) // maxStringLen
         out.writeInt(0) // identifierCount
-        out.writeInt(0) // identifierBytes
+        out.writeInt(4) // identifierBytes (magic only)
+        out.writeInt(0) // definitionStubCount
         out.writeInt(1) // sourceLocationCount
         out.writeInt(4) // sourceLocationBytes
         out.writeInt(0) // typeExprSectionBytes
@@ -420,6 +472,9 @@ class DecodingErrorHandlingTest {
         // Write identifiers section (empty)
         out.writeInt(MAGIC_IDENTIFIERS)
         out.pad()
+
+        // Write definition stubs section (empty)
+        out.writeInt(MAGIC_DEFINITION_STUBS)
 
         // Write source locations section (minimal)
         out.writeInt(MAGIC_SOURCE_LOCATIONS)

@@ -63,14 +63,21 @@ Gradle (from `projects/viaduct/oss`):
 ./gradlew :core:shared:shared-viaductschema:run --args="mmdiff -p $HOME/repos/treehouse/projects/viaduct/modules"
 ```
 
-**Benchmarks**
+**Benchmark**
 
-Bazel:
+To run the full benchmark from Bazel:
 ```bash
 BENCHMARK_SCHEMA_SIZE=5000 bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema
 ``
-To run only specific benchmarks, add a regex filter:
+and from Gradle:
+Gradle:
+```bash
+BENCHMARK_SCHEMA_SIZE=5000 ./gradlew :core:shared:shared-viaductschema:jmh
+```
 
+**Partial Benchmarks**
+
+To run only specific benchmarks, add a regex filter:
 ```bash
 # Only ViaductSchemaBenchmark
 BENCHMARK_SCHEMA_SIZE=5000 bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema -- "ViaductSchemaBenchmark"
@@ -83,16 +90,9 @@ BENCHMARK_SCHEMA_SIZE=5000 bazel run //projects/viaduct/oss/shared/viaductschema
 ```
 
 To list available benchmarks without running them:
-
 ```bash
 bazel run //projects/viaduct/oss/shared/viaductschema/src/jmh/kotlin/viaduct/graphql/schema:schema -- -l
 ```
-
-Gradle:
-```bash
-BENCHMARK_SCHEMA_SIZE=5000 ./gradlew :core:shared:shared-viaductschema:jmh
-```
-
 
 ## Required Test Coverage
 

@@ -205,7 +205,7 @@ class BOutputStreamTest {
         val tenCharIdentifier = "0123456789" // exactly 10 characters
 
         val exception = assertThrows(IllegalStateException::class.java) {
-            out.writeIdentifier(tenCharIdentifier, null, null)
+            out.writeIdentifier(tenCharIdentifier)
         }
         assertTrue(exception.message!!.contains("exceeds buffer capacity")) {
             "Expected message to contain 'exceeds buffer capacity' but was: ${exception.message}"

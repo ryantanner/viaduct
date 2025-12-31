@@ -5,6 +5,14 @@ import graphql.language.NullValue
 import graphql.language.Value
 import viaduct.graphql.schema.ViaductSchema
 
+/**
+ * Represents a definition stub for the Definition Stubs section.
+ *
+ * @property identifierIndex Index into the identifier table for the definition name
+ * @property kindCode The kind code (K_DIRECTIVE, K_ENUM, etc.)
+ */
+internal data class DefinitionStub(val identifierIndex: Int, val kindCode: Int)
+
 internal class SchemaInfo(
     val inputSchema: ViaductSchema,
     private val constantsEncoderBuilder: ConstantsEncoder.Builder
@@ -26,6 +34,35 @@ internal class SchemaInfo(
                 put(it.key, idx++)
             }
         }
+    }
+
+    /**
+     * Returns definition stubs for all definitions (directives + types) in identifier-sorted order.
+     * Each stub contains the identifier index and kind code.
+     */
+    val definitionStubs: List<DefinitionStub> by lazy {
+        val stubs = mutableListOf<DefinitionStub>()
+
+        // Collect all definitions with their names and kind codes
+        for (directive in inputSchema.directives.values) {
+            stubs.add(DefinitionStub(identifierIndex(directive.name), K_DIRECTIVE))
+        }
+        for (typeDef in inputSchema.types.values) {
+            val kindCode = when (typeDef) {
+                is ViaductSchema.Enum -> K_ENUM
+                is ViaductSchema.Input -> K_INPUT
+                is ViaductSchema.Interface -> K_INTERFACE
+                is ViaductSchema.Object -> K_OBJECT
+                is ViaductSchema.Scalar -> K_SCALAR
+                is ViaductSchema.Union -> K_UNION
+                else -> throw IllegalArgumentException("Unknown type-def kind ($typeDef).")
+            }
+            stubs.add(DefinitionStub(identifierIndex(typeDef.name), kindCode))
+        }
+
+        // Sort by identifier index (which corresponds to identifier-sorted order)
+        stubs.sortBy { it.identifierIndex }
+        stubs
     }
 
     var maxIdentifierOrSourceNameLen = 0
@@ -57,7 +94,7 @@ internal class SchemaInfo(
     private val typeExprMap = mutableMapOf<ViaductSchema.TypeExpr, Int>()
 
     init {
-        // Account for section magic number (4 bytes) and null placeholder (1 byte) in identifiers
+        // Account for section magic number (4 bytes) in identifiers section
         identifierBytes = WORD_SIZE
 
         // Account for section magic number (4 bytes) and null placeholder (1 byte) in source locations

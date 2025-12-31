@@ -38,12 +38,12 @@ fun readBSchema(input: InputStream): ViaductSchema {
  * @param indexedDefs Indexed array of all definitions (directives and type definitions) in file order
  */
 internal class IdentifiersDecoder(
-    val identifiers: Array<String>,
+    private val identifiers: IdentifierTable,
     val indexedDefs: Array<BSchema.TopLevelDef>
 ) {
     companion object {
         /**
-         * Reads the identifiers section from the binary stream and creates stub definitions.
+         * Reads the identifiers section and definition stubs from the binary stream.
          *
          * @param data The input stream positioned at the start of the identifiers section
          * @param header The decoded header containing counts
@@ -55,17 +55,17 @@ internal class IdentifiersDecoder(
             header: HeaderSection,
             result: BSchema
         ): IdentifiersDecoder {
+            // Read Identifiers section
             data.validateMagicNumber(MAGIC_IDENTIFIERS, "identifiers")
+            val identifierTable = SortedArrayIdentifierTable.read(data, header.identifierCount)
+            data.skipPadding()
 
-            val indexedDefs = Array(header.directiveCount + header.typeDefCount) {
-                null as BSchema.TopLevelDef?
-            } as Array<BSchema.TopLevelDef>
-            var defIndex = 0
-
-            val identifiers = Array(header.identifierCount) {
-                val name = data.readIdentifier()
-                when (val kindCode = data.read()) { // Read terminator
-                    0 -> null // "Regular" identifier (eg, field name), not a definition
+            // Read Definition Stubs section
+            data.validateMagicNumber(MAGIC_DEFINITION_STUBS, "definition stubs")
+            val indexedDefs = Array(header.definitionStubCount) { defIdx ->
+                val stubWord = StubRefPlus(data.readInt())
+                val name = identifierTable.keyAt(stubWord.getIdentifierIndex())
+                when (val kindCode = stubWord.getKindCode()) {
                     K_DIRECTIVE -> result.makeDirective(name)
                     K_ENUM -> result.addTypeDef<BSchema.Enum>(name)
                     K_INPUT -> result.addTypeDef<BSchema.Input>(name)
@@ -73,20 +73,16 @@ internal class IdentifiersDecoder(
                     K_OBJECT -> result.addTypeDef<BSchema.Object>(name)
                     K_SCALAR -> result.addTypeDef<BSchema.Scalar>(name)
                     K_UNION -> result.addTypeDef<BSchema.Union>(name)
-                    else -> throw InvalidFileFormatException("Unexpected kind code ($kindCode)")
-                }?.let {
-                    indexedDefs[defIndex++] = it
+                    else -> throw InvalidFileFormatException("Invalid kind code in definition stub ($kindCode)")
                 }
-                name
             }
-            data.skipPadding()
 
-            return IdentifiersDecoder(identifiers, indexedDefs)
+            return IdentifiersDecoder(identifierTable, indexedDefs)
         }
     }
 
     /** Get identifier by index (with IDX_MASK applied) */
-    fun get(index: Int): String = identifiers[index and IDX_MASK]
+    fun get(index: Int): String = identifiers.keyAt(index and IDX_MASK)
 
     /**
      * Get identifier by index unless identifier is [UNDEFINED_ROOT_MAKER],
@@ -151,7 +147,7 @@ internal class TypeExpressionsDecoder(
         }
         typeExprs = Array(header.typeExprCount) {
             val firstWord = TexprWordOne(data.readInt())
-            val typeDefName = identifiers.identifiers[firstWord.typeIndex() and IDX_MASK]
+            val typeDefName = identifiers.get(firstWord.typeIndex())
             val typeDef: BSchema.TypeDef = result.findType(typeDefName)
             BSchema.TypeExpr(
                 typeDef,

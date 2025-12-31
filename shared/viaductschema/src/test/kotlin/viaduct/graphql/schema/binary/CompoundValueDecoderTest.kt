@@ -66,6 +66,7 @@ class CompoundValueDecoderTest {
                 maxStringLen = 1024,
                 identifierCount = 0,
                 identifierBytes = 0,
+                definitionStubCount = 0,
                 sourceLocationCount = 0,
                 sourceLocationBytes = 0,
                 typeExprSectionBytes = 0,
@@ -83,7 +84,8 @@ class CompoundValueDecoderTest {
             BInputStream(input, 1024).use { data ->
                 @Suppress("UNCHECKED_CAST")
                 val emptyDefs = emptyArray<BSchema.TopLevelDef?>() as Array<BSchema.TopLevelDef>
-                val identifiers = IdentifiersDecoder(sortedNames.toTypedArray(), emptyDefs)
+                val identifierTable = SortedArrayIdentifierTable.fromStrings(sortedNames)
+                val identifiers = IdentifiersDecoder(identifierTable, emptyDefs)
                 decoder = ConstantsDecoder.fromFile(data, header, identifiers)
             }
         }

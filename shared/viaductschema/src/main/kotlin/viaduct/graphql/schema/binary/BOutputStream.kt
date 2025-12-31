@@ -5,10 +5,15 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
-import viaduct.graphql.schema.ViaductSchema
 
 private const val BUF_SIZE = 128 * 1024
 
+/**
+ * Buffered binary output stream for writing schema files.
+ *
+ * Provides efficient writing of integers, strings, and identifiers
+ * with automatic buffer management and word alignment tracking.
+ */
 internal class BOutputStream(
     private val output: OutputStream,
     /** Buffer size, defaults to BUF_SIZE. Exposed for testing. */
@@ -44,32 +49,18 @@ internal class BOutputStream(
         assureCapacity(2 * WORD_SIZE).putLong(l)
     }
 
-    fun writeIdentifier(
-        s: String,
-        typeDef: ViaductSchema.TypeDef?,
-        directive: ViaductSchema.Directive?
-    ) {
-        assureCapacity(1 + s.length)
-        for (c in s) buf.put(c.toInt().toByte())
-        if (typeDef == null && directive == null) {
-            buf.put(0)
-        } else if (directive != null) {
-            buf.put(K_DIRECTIVE.toByte())
-        } else {
-            buf.put(
-                when (val td = typeDef!!) {
-                    is ViaductSchema.Enum -> K_ENUM
-                    is ViaductSchema.Input -> K_INPUT
-                    is ViaductSchema.Interface -> K_INTERFACE
-                    is ViaductSchema.Scalar -> K_SCALAR
-                    is ViaductSchema.Object -> K_OBJECT
-                    is ViaductSchema.Union -> K_UNION
-                    else -> throw IllegalArgumentException("Unknown GRT ($td).")
-                }.toByte()
-            )
-        }
+    /**
+     * Writes a null-terminated ASCII identifier string.
+     */
+    fun writeIdentifier(s: String) {
+        assureCapacity(s.length + 1)
+        for (c in s) buf.put(c.code.toByte())
+        buf.put(0) // Null terminator
     }
 
+    /**
+     * Writes a null-terminated UTF-8 string.
+     */
     fun writeUTF8String(s: String) {
         val bytes = s.toByteArray(StandardCharsets.UTF_8)
         assureCapacity(bytes.size + 1)

@@ -5,6 +5,7 @@ internal class HeaderSection(
     val maxStringLen: Int,
     val identifierCount: Int,
     val identifierBytes: Int,
+    val definitionStubCount: Int,
     val sourceLocationCount: Int,
     val sourceLocationBytes: Int,
     val typeExprSectionBytes: Int,
@@ -24,6 +25,7 @@ internal class HeaderSection(
         out.writeInt(maxStringLen)
         out.writeInt(identifierCount)
         out.writeInt(identifierBytes)
+        out.writeInt(definitionStubCount)
         out.writeInt(sourceLocationCount)
         out.writeInt(sourceLocationBytes)
         out.writeInt(typeExprSectionBytes)
@@ -40,21 +42,26 @@ internal class HeaderSection(
         fun from(
             schemaInfo: SchemaInfo,
             constantsEncoder: ConstantsEncoder
-        ) = HeaderSection(
-            maxStringLen = schemaInfo.maxIdentifierOrSourceNameLen,
-            identifierCount = schemaInfo.identifiers.size,
-            identifierBytes = schemaInfo.identifierBytes,
-            sourceLocationCount = schemaInfo.sourceNameCount,
-            sourceLocationBytes = schemaInfo.sourceNameBytes,
-            typeExprSectionBytes = WORD_SIZE + schemaInfo.typeExprs.keys.sumOf { TexprWordOne.typeExprByteSize(it) },
-            typeExprCount = schemaInfo.typeExprs.size,
-            directiveCount = schemaInfo.inputSchema.directives.values.size,
-            typeDefCount = schemaInfo.inputSchema.types.values.size,
-            simpleConstantCount = constantsEncoder.simpleConstantsCount,
-            simpleConstantBytes = constantsEncoder.simpleConstantsBytes,
-            compoundConstantCount = constantsEncoder.compoundConstantsCount,
-            compoundConstantBytes = constantsEncoder.compoundConstantsBytes,
-        )
+        ): HeaderSection {
+            val directiveCount = schemaInfo.inputSchema.directives.values.size
+            val typeDefCount = schemaInfo.inputSchema.types.values.size
+            return HeaderSection(
+                maxStringLen = schemaInfo.maxIdentifierOrSourceNameLen,
+                identifierCount = schemaInfo.identifiers.size,
+                identifierBytes = schemaInfo.identifierBytes,
+                definitionStubCount = directiveCount + typeDefCount,
+                sourceLocationCount = schemaInfo.sourceNameCount,
+                sourceLocationBytes = schemaInfo.sourceNameBytes,
+                typeExprSectionBytes = WORD_SIZE + schemaInfo.typeExprs.keys.sumOf { TexprWordOne.typeExprByteSize(it) },
+                typeExprCount = schemaInfo.typeExprs.size,
+                directiveCount = directiveCount,
+                typeDefCount = typeDefCount,
+                simpleConstantCount = constantsEncoder.simpleConstantsCount,
+                simpleConstantBytes = constantsEncoder.simpleConstantsBytes,
+                compoundConstantCount = constantsEncoder.compoundConstantsCount,
+                compoundConstantBytes = constantsEncoder.compoundConstantsBytes,
+            )
+        }
 
         fun decode(data: BInputStream) =
             HeaderSection(
@@ -63,6 +70,7 @@ internal class HeaderSection(
                 maxStringLen = data.readInt(),
                 identifierCount = data.readInt(),
                 identifierBytes = data.readInt(),
+                definitionStubCount = data.readInt(),
                 sourceLocationCount = data.readInt(),
                 sourceLocationBytes = data.readInt(),
                 typeExprSectionBytes = data.readInt(),
@@ -87,6 +95,11 @@ internal class HeaderSection(
                 if (maxStringLen > MAX_STRING_LEN) {
                     throw InvalidFileFormatException(
                         "Max identifier length ($maxStringLen) exceeds limit ($MAX_STRING_LEN)."
+                    )
+                }
+                if (definitionStubCount != directiveCount + typeDefCount) {
+                    throw InvalidFileFormatException(
+                        "Definition stub count mismatch: definitionStubCount=$definitionStubCount but directiveCount=$directiveCount + typeDefCount=$typeDefCount"
                     )
                 }
             }

@@ -174,3 +174,22 @@ internal value class EnumValueRefPlus(val word: Int) {
     /** For list elements, does this element have a next element (bit 31 is 0). */
     inline fun hasNext() = 0 <= word
 }
+
+/**
+ * A RefPlus for a definition stub in the Definition Stubs section.
+ * Contains an identifier index (bits 0-19) and kind code (bits 24-31).
+ * Bits 20-23 are unused and must be zero.
+ */
+@JvmInline
+internal value class StubRefPlus(val word: Int) {
+    constructor(
+        identifierIndex: Int,
+        kindCode: Int
+    ) : this(identifierIndex or (kindCode shl 24))
+
+    /** Retrieve the identifier index from this value. */
+    inline fun getIdentifierIndex() = word and IDX_MASK
+
+    /** Retrieve the kind code from this value. */
+    inline fun getKindCode() = (word ushr 24) and 0xFF
+}

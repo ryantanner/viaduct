@@ -8,20 +8,17 @@ import viaduct.utils.collections.BitVector
 
 internal const val MAX_STRING_LEN = 65536
 
-/** Size of a word in bytes. */
-internal const val WORD_SIZE = 4
-
 /** Mask for word alignment. */
 internal const val WORD_ALIGN_MASK = WORD_SIZE - 1
 
 /** Number of 32-bit words that make up the header section. */
-internal const val HEADER_SIZE_IN_WORDS = 15
+internal const val HEADER_SIZE_IN_WORDS = 16
 
 /** Magic number identifying binary schema files. */
 internal const val MAGIC_NUMBER: Int = 0xA75F2B1C.toInt()
 
 /** File format version using semantic versioning (major.minor in bytes 1.0). */
-internal const val FILE_VERSION: Int = 0x00000001
+internal const val FILE_VERSION: Int = 0x00000002
 
 /**
  * File version unused bits mask (bits 16-31 unused).
@@ -53,8 +50,11 @@ internal const val MAGIC_ROOT_TYPES: Int = 0x524F4F54
 /** Magic number for Definitions section ("DEFS" in ASCII). */
 internal const val MAGIC_DEFINITIONS: Int = 0x44454653
 
+/** Magic number for Definition Stubs section ("STUB" in ASCII). */
+internal const val MAGIC_DEFINITION_STUBS: Int = 0x53545542
+
 //
-// Identifier-terminator related constants
+// Definition stub kind codes (used in Definition Stubs section)
 
 internal const val K_DIRECTIVE: Int = 0b1000 shl 4
 internal const val K_ENUM: Int = 0b1001 shl 4

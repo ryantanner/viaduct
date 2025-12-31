@@ -6,6 +6,15 @@ import java.nio.charset.StandardCharsets
 
 private const val LEN = 128 * 1024
 
+/** Word size for alignment. */
+const val WORD_SIZE = 4
+
+/**
+ * Buffered binary input stream for reading schema files.
+ *
+ * Provides efficient reading of integers, strings, and identifiers
+ * with automatic buffer management and word alignment tracking.
+ */
 internal class BInputStream(
     private val input: InputStream,
     /** Max length _including_ trailing delimiter. */
@@ -14,10 +23,11 @@ internal class BInputStream(
     private val bufLen: Int = LEN
 ) : Closeable {
     init {
-        if (maxStringLength < 0) {
-            throw IllegalArgumentException("maxStringLength must be at least $0 ($maxStringLength).")
-        } else if (bufLen < maxStringLength) {
-            throw IllegalArgumentException("maxStringLength may not be larger than bufLen ($maxStringLength > $bufLen).")
+        require(maxStringLength >= 0) {
+            "maxStringLength must be at least 0 ($maxStringLength)."
+        }
+        require(bufLen >= maxStringLength) {
+            "maxStringLength may not be larger than bufLen ($maxStringLength > $bufLen)."
         }
     }
 
@@ -74,19 +84,19 @@ internal class BInputStream(
     }
 
     /**
-     * Reads the next identifier but does _not_ consume the byte
-     * terminating the identifier.  This allows the reading code
-     * to read the metadata contain in that terminating byte.
+     * Reads the next null-terminated identifier string.
+     *
+     * The null terminator byte is consumed but not included in the result.
      */
     fun readIdentifier(): String {
         if (lim < (pos + 11)) refill() // Need 11 bytes: 10 for fast path + 1 for terminator check
         var len = 0
-        while (0 < buf[pos + len] && len < 10) len++
-        if (0 < buf[pos + len]) {
+        while (buf[pos + len] != 0.toByte() && len < 10) len++
+        if (buf[pos + len] != 0.toByte()) {
             if (lim < (pos + maxStringLength)) refill()
             do {
                 len++
-            } while (0 < buf[pos + len])
+            } while (buf[pos + len] != 0.toByte())
         }
         // encoding.md says that identifiers are from the ASCII, not Latin-1
         // character set, so one might expect `US_ASCII` here.  However,
@@ -94,14 +104,15 @@ internal class BInputStream(
         // that bit 7 is zero -- this check is overhead -- and our code elsewhere
         // ensures that bit 7 is zero, so we're using the cheaper latin-1 encoder
         val result = String(buf, pos, len, StandardCharsets.ISO_8859_1)
-        pos += len
-        mOffset += len
+        pos += len + 1 // Skip past the null terminator
+        mOffset += len + 1
         return result
     }
 
-    /*
-     * Reads the entire string and (unlike [readIdentifier] consumes the
-     * terminating byte.
+    /**
+     * Reads the next null-terminated UTF-8 string.
+     *
+     * The null terminator byte is consumed but not included in the result.
      */
     fun readUTF8String(): String {
         if (lim < (pos + 21)) refill() // Need 21 bytes: 20 for fast path + 1 for terminator check
@@ -130,8 +141,10 @@ internal class BInputStream(
         sectionName: String
     ) {
         val actual = readInt()
-        require(expected == actual) {
-            "Invalid magic number for $sectionName section: expected 0x${expected.toString(16)}, got 0x${actual.toString(16)}"
+        if (expected != actual) {
+            throw InvalidFileFormatException(
+                "Invalid magic number for $sectionName section: expected 0x${expected.toString(16)}, got 0x${actual.toString(16)}"
+            )
         }
     }
 

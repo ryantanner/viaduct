@@ -17,12 +17,16 @@ internal class SchemaEncoder(
             .from(schemaInfo, constantsEncoder)
             .encode(out)
 
-        // Write Identifiers section (inlined logic)
+        // Write Identifiers section
         out.writeInt(MAGIC_IDENTIFIERS)
-        for (s in schemaInfo.identifiers) {
-            out.writeIdentifier(s, schemaInfo.inputSchema.types[s], schemaInfo.inputSchema.directives[s])
-        }
+        SortedArrayIdentifierTable.write(schemaInfo.identifiers.asIterable(), out)
         out.pad()
+
+        // Write Definition Stubs section
+        out.writeInt(MAGIC_DEFINITION_STUBS)
+        for (stub in schemaInfo.definitionStubs) {
+            out.writeInt(StubRefPlus(stub.identifierIndex, stub.kindCode).word)
+        }
 
         // Write Source Locations section (inlined logic)
         out.writeInt(MAGIC_SOURCE_LOCATIONS)
