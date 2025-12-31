@@ -104,10 +104,9 @@ fun interface ErrorReporter {
             return map
         }
 
-        override fun toString(): String {
-            return listOfNotNull(fieldName, parentType, operationName, isFrameworkError, resolvers)
+        override fun toString(): String =
+            listOfNotNull(fieldName, parentType, operationName, isFrameworkError, resolvers)
                 .joinToString(separator = ", ", prefix = "{", postfix = "}")
-        }
 
         companion object {
             val EMPTY = Metadata()

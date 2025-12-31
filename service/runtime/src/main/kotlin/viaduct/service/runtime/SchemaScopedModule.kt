@@ -18,7 +18,6 @@ import viaduct.engine.runtime.DispatcherRegistry
 import viaduct.engine.runtime.tenantloading.DispatcherRegistryFactory
 import viaduct.engine.runtime.tenantloading.ExecutorValidator
 import viaduct.service.api.SchemaId
-import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.TenantAPIBootstrapper as BaseTenantAPIBootstrapper
 import viaduct.utils.slf4j.logger
 
@@ -98,7 +97,6 @@ internal class SchemaScopedModule(
         checkerExecutorFactory: CheckerExecutorFactory,
         schema: ViaductSchema,
         tenantBootstrapper: BaseTenantAPIBootstrapper<TenantModuleBootstrapper>,
-        @Suppress("UNUSED_PARAMETER") flagManager: FlagManager,
         resolverInstrumentation: ViaductResolverInstrumentation
     ): DispatcherRegistry {
         log.info("Creating DispatcherRegistry for Viaduct Modern")

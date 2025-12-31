@@ -20,7 +20,9 @@ interface TenantAPIBootstrapper<T> {
      */
     suspend fun tenantModuleBootstrappers(): Iterable<T>
 
-    private class Flatten<T>(val items: Iterable<TenantAPIBootstrapper<T>>) : TenantAPIBootstrapper<T> {
+    private class Flatten<T>(
+        val items: Iterable<TenantAPIBootstrapper<T>>
+    ) : TenantAPIBootstrapper<T> {
         override suspend fun tenantModuleBootstrappers(): Iterable<T> = items.flatMap { it.tenantModuleBootstrappers() }
     }
 

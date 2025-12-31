@@ -74,7 +74,9 @@ class ResolverErrorBuilderTest {
 
     @Test
     fun `test builder can selectively handle exceptions`() {
-        class CustomException(message: String) : RuntimeException(message)
+        class CustomException(
+            message: String
+        ) : RuntimeException(message)
 
         val selectiveBuilder = ResolverErrorBuilder { throwable, _ ->
             when (throwable) {
@@ -119,7 +121,8 @@ class ResolverErrorBuilderTest {
     fun `test builder with ErrorBuilder helper`() {
         val builderUsingHelper = ResolverErrorBuilder { throwable, metadata ->
             listOf(
-                ErrorBuilder.newError(metadata)
+                ErrorBuilder
+                    .newError(metadata)
                     .message("Error: ${throwable.message}")
                     .extension("errorType", "INTERNAL_ERROR")
                     .extension("exceptionClass", throwable::class.simpleName)

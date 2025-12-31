@@ -9,7 +9,8 @@ import viaduct.graphql.SourceLocation
 class ErrorBuilderTest {
     @Test
     fun `test build error with message only`() {
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Test error")
             .build()
 
@@ -22,7 +23,8 @@ class ErrorBuilderTest {
     @Test
     fun `test build error with all fields`() {
         val location = SourceLocation(line = 10, column = 5)
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("User not found")
             .path(listOf("user", "profile", 0))
             .location(location)
@@ -42,7 +44,8 @@ class ErrorBuilderTest {
     fun `test build error with multiple locations`() {
         val location1 = SourceLocation(line = 1, column = 1)
         val location2 = SourceLocation(line = 5, column = 10)
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Multiple errors")
             .locations(listOf(location1, location2))
             .build()
@@ -59,7 +62,8 @@ class ErrorBuilderTest {
             "field" to "email",
             "code" to 400
         )
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Validation error")
             .extensions(extensions)
             .build()
@@ -71,7 +75,8 @@ class ErrorBuilderTest {
 
     @Test
     fun `test build error with combined extension methods`() {
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Error")
             .extensions(mapOf("key1" to "value1"))
             .extension("key2", "value2")
@@ -86,7 +91,8 @@ class ErrorBuilderTest {
 
     @Test
     fun `test builder method chaining returns same instance`() {
-        val builder = ErrorBuilder.newError()
+        val builder = ErrorBuilder
+            .newError()
         val result1 = builder.message("Test")
         val result2 = result1.path(listOf("field"))
         val result3 = result2.extension("key", "value")
@@ -104,7 +110,8 @@ class ErrorBuilderTest {
             sourceLocation = sourceLocation
         )
 
-        val error = ErrorBuilder.newError(metadata)
+        val error = ErrorBuilder
+            .newError(metadata)
             .message("Error with metadata")
             .build()
 
@@ -116,7 +123,8 @@ class ErrorBuilderTest {
     @Test
     fun `test newError with empty Metadata`() {
         val metadata = ErrorReporter.Metadata.EMPTY
-        val error = ErrorBuilder.newError(metadata)
+        val error = ErrorBuilder
+            .newError(metadata)
             .message("Error with empty metadata")
             .build()
 
@@ -127,7 +135,8 @@ class ErrorBuilderTest {
 
     @Test
     fun `test extension overwrites previous value for same key`() {
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Test")
             .extension("key", "value1")
             .extension("key", "value2")
@@ -142,7 +151,8 @@ class ErrorBuilderTest {
         val location2 = SourceLocation(2, 2)
         val location3 = SourceLocation(3, 3)
 
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Test")
             .locations(listOf(location1, location2))
             .location(location3)
@@ -154,7 +164,8 @@ class ErrorBuilderTest {
 
     @Test
     fun `test empty extensions are null in result`() {
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Test")
             .build()
 
@@ -163,7 +174,8 @@ class ErrorBuilderTest {
 
     @Test
     fun `test extensions with one entry are not null`() {
-        val error = ErrorBuilder.newError()
+        val error = ErrorBuilder
+            .newError()
             .message("Test")
             .extension("key", "value")
             .build()

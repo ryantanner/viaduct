@@ -45,32 +45,28 @@ class ErrorBuilder private constructor() {
         return this
     }
 
-    fun build(): GraphQLError {
-        return GraphQLError(
+    fun build(): GraphQLError =
+        GraphQLError(
             message = message,
             path = path,
             locations = locations,
             extensions = if (extensions.isEmpty()) null else extensions.toMap()
         )
-    }
 
     companion object {
         /**
          * Creates a new error builder.
          */
-        fun newError(): ErrorBuilder {
-            return ErrorBuilder()
-        }
+        fun newError(): ErrorBuilder = ErrorBuilder()
 
         /**
          * Creates a new error builder with context from ErrorReporter.Metadata.
          * Automatically populates path and location from the metadata.
          */
-        fun newError(metadata: ErrorReporter.Metadata): ErrorBuilder {
-            return ErrorBuilder().apply {
+        fun newError(metadata: ErrorReporter.Metadata): ErrorBuilder =
+            ErrorBuilder().apply {
                 metadata.executionPath?.let { path(it) }
                 metadata.sourceLocation?.let { location(it) }
             }
-        }
     }
 }

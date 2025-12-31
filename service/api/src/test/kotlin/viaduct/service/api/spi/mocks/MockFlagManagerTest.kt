@@ -37,6 +37,6 @@ class MockFlagManagerTest {
                 assert(flagMgr.isEnabled(flag) == enabledFlags.contains(flag))
             }
         }
-}
 
-fun Arb.Companion.flag(): Arb<Flag> = Arb.of(Flags.values().toList())
+    private fun Arb.Companion.flag(): Arb<Flag> = Arb.of(Flags.values().toList())
+}
