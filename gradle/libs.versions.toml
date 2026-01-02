@@ -36,7 +36,7 @@ micrometer = "1.10.8"
 
 # Plugins
 ktlintPluginVersion = "12.1.2"
-ktlintVersion = "1.4.1"
+ktlintVersion = "1.2.1"
 detekt = "1.23.7"
 jacoco = "0.8.12"
 dokka = "2.0.0"
