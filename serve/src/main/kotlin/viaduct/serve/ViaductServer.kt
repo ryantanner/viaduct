@@ -9,8 +9,10 @@ import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.application.install
+import io.ktor.server.engine.ApplicationEngine
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.netty.NettyApplicationEngine
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.receiveText
@@ -55,7 +57,7 @@ class ViaductServer(
     private val objectMapper: ObjectMapper = jacksonObjectMapper()
 
     private var viaduct: Viaduct? = null
-    private var server: io.ktor.server.engine.EmbeddedServer<*, *>? = null
+    private var server: ApplicationEngine? = null
     var actualPort: Int = 0
         private set
 
@@ -71,8 +73,8 @@ class ViaductServer(
         logger.info("Starting Viaduct Development Server...")
 
         try {
-            // Discover and instantiate ViaductServerProvider
-            logger.info("Discovering ViaductServerProvider...")
+            // Discover and instantiate ViaductProvider
+            logger.info("Discovering ViaductProvider...")
             val provider = FactoryDiscovery.discoverProvider(packagePrefix)
             logger.info("Found provider: {}", provider::class.qualifiedName)
 
@@ -85,16 +87,27 @@ class ViaductServer(
             val loggerRef = logger
             val mapperRef = objectMapper
 
-            // Start the server
-            server = embeddedServer(Netty, port = port, host = host) {
+            // Start the server - embeddedServer returns different types in Ktor 2.x vs 3.x
+            // In Ktor 2.x: returns ApplicationEngine directly
+            // In Ktor 3.x: returns EmbeddedServer<TEngine, TConfig> with .engine property
+            val embeddedServer = embeddedServer(Netty, port = port, host = host) {
                 configureApplication(loggerRef, mapperRef)
             }
 
             // Start server without blocking initially
-            server!!.start(wait = false)
+            embeddedServer.start(wait = false)
 
-            // Get the actual bound port from the resolved connectors
-            val engine = server!!.engine as io.ktor.server.netty.NettyApplicationEngine
+            // Get the engine - handle both Ktor 2.x and 3.x
+            val engine: NettyApplicationEngine = try {
+                // Ktor 3.x: EmbeddedServer has .engine property
+                val engineProperty = embeddedServer::class.members.find { it.name == "engine" }
+                engineProperty?.call(embeddedServer) as? NettyApplicationEngine
+                    ?: embeddedServer as NettyApplicationEngine
+            } catch (e: Exception) {
+                // Ktor 2.x: embeddedServer IS the engine
+                embeddedServer as NettyApplicationEngine
+            }
+            server = engine
             val portFuture: CompletableFuture<Int> = CoroutineScope(Dispatchers.IO).future {
                 engine.resolvedConnectors().first().port
             }
@@ -110,7 +123,7 @@ class ViaductServer(
             loggerRef.info("")
             loggerRef.info("TIP: For automatic reload on code changes, use: ./gradlew --continuous :yourapp:serve")
 
-            // Add shutdown hook
+            // Add shutdown hook for graceful shutdown on SIGINT/SIGTERM
             Runtime.getRuntime().addShutdownHook(
                 Thread {
                     server?.let {
@@ -120,8 +133,16 @@ class ViaductServer(
                 }
             )
 
-            // Wait for the server to finish
-            Thread.currentThread().join()
+            // Block the main thread until interrupted
+            // The shutdown hook will stop the server on SIGINT/SIGTERM
+            try {
+                while (true) {
+                    Thread.sleep(Long.MAX_VALUE)
+                }
+            } catch (e: InterruptedException) {
+                // Expected when shutdown is triggered
+                Thread.currentThread().interrupt()
+            }
         } catch (e: Exception) {
             handleStartupError(e)
             throw e
@@ -252,7 +273,7 @@ class ViaductServer(
         logger.error("  Option 2: Create a @ViaductServerConfiguration provider with DI")
         logger.error("  ─────────────────────────────────────────────────────────────────────────────")
         logger.error("    @ViaductServerConfiguration")
-        logger.error("    class MyViaductProvider : ViaductServerProvider {")
+        logger.error("    class MyViaductProvider : ViaductProvider {")
         logger.error("        override fun getViaduct(): Viaduct {")
         logger.error("            // Use your DI framework (Micronaut, Guice, etc.) to create Viaduct")
         logger.error("            return myDiContainer.getBean(Viaduct::class.java)")

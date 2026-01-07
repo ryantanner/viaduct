@@ -1,7 +1,7 @@
 package viaduct.serve.fixtures
 
+import viaduct.serve.ViaductProvider
 import viaduct.serve.ViaductServerConfiguration
-import viaduct.serve.ViaductServerProvider
 import viaduct.service.BasicViaductFactory
 import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
@@ -12,7 +12,7 @@ import viaduct.service.api.Viaduct
  * Uses BasicViaductFactory with the test fixtures package prefix.
  */
 @ViaductServerConfiguration
-class ValidTestProvider : ViaductServerProvider {
+class ValidTestProvider : ViaductProvider {
     override fun getViaduct(): Viaduct {
         // Create a minimal Viaduct using BasicViaductFactory
         // This will discover any @Resolver annotated test resolvers
@@ -27,14 +27,12 @@ class ValidTestProvider : ViaductServerProvider {
 /**
  * Test fixture: Provider without annotation (should be ignored).
  */
-class ProviderWithoutAnnotation : ViaductServerProvider {
-    override fun getViaduct(): Viaduct {
-        throw NotImplementedError("Test provider - should not be called")
-    }
+class ProviderWithoutAnnotation : ViaductProvider {
+    override fun getViaduct(): Viaduct = throw NotImplementedError("Test provider - should not be called")
 }
 
 /**
- * Test fixture: Annotated class that doesn't implement ViaductServerProvider.
+ * Test fixture: Annotated class that doesn't implement ViaductProvider.
  */
 @ViaductServerConfiguration
 class AnnotatedNonProvider {
@@ -46,8 +44,8 @@ class AnnotatedNonProvider {
  * This should be skipped during discovery with a warning.
  */
 @ViaductServerConfiguration
-class ProviderWithoutNoArgConstructor(private val param: String) : ViaductServerProvider {
-    override fun getViaduct(): Viaduct {
-        throw NotImplementedError("Test provider - should not be called")
-    }
+class ProviderWithoutNoArgConstructor(
+    private val param: String
+) : ViaductProvider {
+    override fun getViaduct(): Viaduct = throw NotImplementedError("Test provider - should not be called")
 }
