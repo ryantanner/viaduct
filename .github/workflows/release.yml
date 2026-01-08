@@ -64,6 +64,9 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Install Python dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
         with:
