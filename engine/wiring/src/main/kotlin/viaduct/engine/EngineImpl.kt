@@ -139,6 +139,7 @@ class EngineImpl(
         flagManager,
         this,
         config.globalIDCodec,
+        meterRegistry,
     )
 
     @Deprecated("Airbnb use only")

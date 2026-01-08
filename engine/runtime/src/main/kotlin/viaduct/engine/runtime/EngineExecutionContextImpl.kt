@@ -5,6 +5,7 @@ import graphql.language.FragmentDefinition
 import graphql.schema.DataFetchingEnvironment
 import graphql.schema.GraphQLObjectType
 import graphql.util.FpKit
+import io.micrometer.core.instrument.MeterRegistry
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 import viaduct.engine.api.Engine
@@ -37,6 +38,7 @@ class EngineExecutionContextFactory(
     private val flagManager: FlagManager,
     private val engine: Engine,
     private val globalIDCodec: GlobalIDCodec,
+    private val meterRegistry: MeterRegistry?,
 ) {
     // Constructing this is expensive, so do it just once per schema-version
     private val rawSelectionSetFactory: RawSelectionSet.Factory = RawSelectionSetFactoryImpl(fullSchema)
@@ -63,6 +65,7 @@ class EngineExecutionContextFactory(
             engine,
             globalIDCodec,
             flagManager,
+            meterRegistry,
         )
     }
 }
@@ -103,6 +106,7 @@ class EngineExecutionContextImpl(
     override val engine: Engine,
     override val globalIDCodec: GlobalIDCodec,
     private val flagManager: FlagManager,
+    private val meterRegistry: MeterRegistry?,
     var dataFetchingEnvironment: DataFetchingEnvironment? = null,
     override val activeSchema: ViaductSchema = fullSchema,
     internal val fieldScopeSupplier: Supplier<out EngineExecutionContext.FieldExecutionScope> = FpKit.intraThreadMemoize { FieldExecutionScopeImpl() },
@@ -110,6 +114,8 @@ class EngineExecutionContextImpl(
 ) : EngineExecutionContext {
     companion object {
         private val log by logger()
+
+        const val SUBQUERY_EXECUTION_METER_NAME = "viaduct.subquery.execution"
     }
 
     // Backing field for executionHandle - mutable internally, but exposed as val on interface
@@ -150,11 +156,14 @@ class EngineExecutionContextImpl(
         val useHandlePath = flagManager.isEnabled(Flags.ENABLE_SUBQUERY_EXECUTION_VIA_HANDLE) && handle != null
 
         if (useHandlePath) {
-            return engine.executeSelectionSet(handle!!, selectionSet, options)
+            return executeWithMetrics("handle") {
+                engine.executeSelectionSet(handle!!, selectionSet, options)
+            }
         }
 
         // Legacy fallback doesn't support targetResult
         if (options.targetResult != null) {
+            incrementSubqueryExecutionCounter("legacy", success = false)
             throw SubqueryExecutionException(
                 "targetResult option requires executionHandle and ENABLE_SUBQUERY_EXECUTION_VIA_HANDLE flag"
             )
@@ -165,10 +174,37 @@ class EngineExecutionContextImpl(
             resolverId
         )
 
-        return when (options.operationType) {
-            Engine.OperationType.QUERY -> rawSelectionsLoaderFactory.forQuery(resolverId).load(selectionSet)
-            Engine.OperationType.MUTATION -> rawSelectionsLoaderFactory.forMutation(resolverId).load(selectionSet)
+        return executeWithMetrics("legacy") {
+            when (options.operationType) {
+                Engine.OperationType.QUERY -> rawSelectionsLoaderFactory.forQuery(resolverId).load(selectionSet)
+                Engine.OperationType.MUTATION -> rawSelectionsLoaderFactory.forMutation(resolverId).load(selectionSet)
+            }
         }
+    }
+
+    private suspend inline fun executeWithMetrics(
+        path: String,
+        block: () -> EngineObjectData
+    ): EngineObjectData {
+        return try {
+            block().also { incrementSubqueryExecutionCounter(path, success = true) }
+        } catch (e: Exception) {
+            incrementSubqueryExecutionCounter(path, success = false)
+            throw e
+        }
+    }
+
+    private fun incrementSubqueryExecutionCounter(
+        path: String,
+        success: Boolean
+    ) {
+        meterRegistry?.counter(
+            SUBQUERY_EXECUTION_METER_NAME,
+            "path",
+            path,
+            "success",
+            success.toString()
+        )?.increment()
     }
 
     /**
@@ -229,6 +265,7 @@ class EngineExecutionContextImpl(
             engine = this.engine,
             globalIDCodec = this.globalIDCodec,
             flagManager = this.flagManager,
+            meterRegistry = this.meterRegistry,
             dataFetchingEnvironment = dataFetchingEnvironment,
             fieldScopeSupplier = fieldScopeSupplier,
             executionHandle = this._executionHandle,

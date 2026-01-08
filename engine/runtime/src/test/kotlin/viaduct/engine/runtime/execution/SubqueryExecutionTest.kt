@@ -1,15 +1,20 @@
 package viaduct.engine.runtime.execution
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.util.Collections
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
+import viaduct.engine.EngineConfiguration
 import viaduct.engine.api.EngineObjectData
 import viaduct.engine.api.mocks.MockTenantModuleBootstrapper
+import viaduct.engine.api.mocks.featureTestDefault
 import viaduct.engine.api.mocks.fetchAs
 import viaduct.engine.api.mocks.getAs
 import viaduct.engine.api.mocks.mkEngineObjectData
 import viaduct.engine.api.mocks.runFeatureTest
+import viaduct.engine.runtime.EngineExecutionContextImpl
 
 /**
  * Test harness for subquery execution via ExecutionHandle.
@@ -1078,6 +1083,70 @@ class SubqueryExecutionTest {
                     }
                     """
                 )
+        }
+    }
+
+    @Test
+    fun `subquery execution emits metric for handle path`() {
+        val meterRegistry = SimpleMeterRegistry()
+        val engineConfig = EngineConfiguration.featureTestDefault.copy(
+            meterRegistry = meterRegistry
+        )
+
+        MockTenantModuleBootstrapper(
+            """
+            extend type Query {
+                rootValue: Int
+                container: Container
+            }
+
+            type Container {
+                derivedFromQuery: Int
+            }
+            """.trimIndent()
+        ) {
+            fieldWithValue("Query" to "rootValue", 42)
+
+            field("Query" to "container") {
+                resolver {
+                    fn { _, _, _, _, _ ->
+                        mkEngineObjectData(
+                            schema.schema.getObjectType("Container"),
+                            mapOf()
+                        )
+                    }
+                }
+            }
+
+            field("Container" to "derivedFromQuery") {
+                resolver {
+                    fn { _, _, _, _, ctx ->
+                        val rss = ctx.rawSelectionSetFactory
+                            .rawSelectionSet("Query", "rootValue", emptyMap())
+                        val queryResult = ctx.query(
+                            resolverId = "Container.derivedFromQuery",
+                            selectionSet = rss
+                        )
+                        queryResult.fetchAs<Int>("rootValue") * 2
+                    }
+                }
+            }
+        }.runFeatureTest(engineConfig = engineConfig) {
+            runQuery("{ container { derivedFromQuery } }")
+                .assertJson("""{"data": {"container": {"derivedFromQuery": 84}}}""")
+
+            val counter = meterRegistry.find(EngineExecutionContextImpl.SUBQUERY_EXECUTION_METER_NAME)
+                .tag("path", "handle")
+                .tag("success", "true")
+                .counter()
+            assertNotNull(counter, "Expected subquery execution counter with path=handle, success=true to be present")
+            assertEquals(1.0, counter.count(), "Expected exactly one successful subquery execution via handle path")
+
+            val failureCounter = meterRegistry.find(EngineExecutionContextImpl.SUBQUERY_EXECUTION_METER_NAME)
+                .tag("path", "handle")
+                .tag("success", "false")
+                .counter()
+            assertTrue(failureCounter == null || failureCounter.count() == 0.0, "Expected no failed subquery executions")
         }
     }
 }
