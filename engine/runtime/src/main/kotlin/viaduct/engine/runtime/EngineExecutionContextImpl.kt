@@ -9,17 +9,21 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 import viaduct.engine.api.Engine
 import viaduct.engine.api.EngineExecutionContext
+import viaduct.engine.api.EngineObjectData
+import viaduct.engine.api.ExecuteSelectionSetOptions
 import viaduct.engine.api.FieldResolverExecutor
 import viaduct.engine.api.FragmentLoader
 import viaduct.engine.api.NodeResolverExecutor
 import viaduct.engine.api.RawSelectionSet
 import viaduct.engine.api.RawSelectionsLoader
 import viaduct.engine.api.ResolutionPolicy
+import viaduct.engine.api.SubqueryExecutionException
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.runtime.select.RawSelectionSetFactoryImpl
 import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.FlagManager.Flags
 import viaduct.service.api.spi.GlobalIDCodec
+import viaduct.utils.slf4j.logger
 
 /**
  * Factory for creating an engine-execution context.
@@ -58,6 +62,7 @@ class EngineExecutionContextFactory(
             flagManager.isEnabled(Flags.EXECUTE_ACCESS_CHECKS),
             engine,
             globalIDCodec,
+            flagManager,
         )
     }
 }
@@ -97,11 +102,16 @@ class EngineExecutionContextImpl(
     val executeAccessChecksInModstrat: Boolean,
     override val engine: Engine,
     override val globalIDCodec: GlobalIDCodec,
+    private val flagManager: FlagManager,
     var dataFetchingEnvironment: DataFetchingEnvironment? = null,
     override val activeSchema: ViaductSchema = fullSchema,
     internal val fieldScopeSupplier: Supplier<out EngineExecutionContext.FieldExecutionScope> = FpKit.intraThreadMemoize { FieldExecutionScopeImpl() },
     executionHandle: EngineExecutionContext.ExecutionHandle? = null,
 ) : EngineExecutionContext {
+    companion object {
+        private val log by logger()
+    }
+
     // Backing field for executionHandle - mutable internally, but exposed as val on interface
     @Suppress("PropertyName")
     internal var _executionHandle: EngineExecutionContext.ExecutionHandle? = executionHandle
@@ -129,6 +139,36 @@ class EngineExecutionContextImpl(
 
     override fun hasModernNodeResolver(typeName: String): Boolean {
         return dispatcherRegistry.getNodeResolverDispatcher(typeName) != null
+    }
+
+    override suspend fun executeSelectionSet(
+        resolverId: String,
+        selectionSet: RawSelectionSet,
+        options: ExecuteSelectionSetOptions,
+    ): EngineObjectData {
+        val handle = executionHandle
+        val useHandlePath = flagManager.isEnabled(Flags.ENABLE_SUBQUERY_EXECUTION_VIA_HANDLE) && handle != null
+
+        if (useHandlePath) {
+            return engine.executeSelectionSet(handle!!, selectionSet, options)
+        }
+
+        // Legacy fallback doesn't support targetResult
+        if (options.targetResult != null) {
+            throw SubqueryExecutionException(
+                "targetResult option requires executionHandle and ENABLE_SUBQUERY_EXECUTION_VIA_HANDLE flag"
+            )
+        }
+
+        log.debug(
+            "Falling back to legacy rawSelectionsLoader path for resolverId={}",
+            resolverId
+        )
+
+        return when (options.operationType) {
+            Engine.OperationType.QUERY -> rawSelectionsLoaderFactory.forQuery(resolverId).load(selectionSet)
+            Engine.OperationType.MUTATION -> rawSelectionsLoaderFactory.forMutation(resolverId).load(selectionSet)
+        }
     }
 
     /**
@@ -188,6 +228,7 @@ class EngineExecutionContextImpl(
             executeAccessChecksInModstrat = executeAccessChecksInModstrat,
             engine = this.engine,
             globalIDCodec = this.globalIDCodec,
+            flagManager = this.flagManager,
             dataFetchingEnvironment = dataFetchingEnvironment,
             fieldScopeSupplier = fieldScopeSupplier,
             executionHandle = this._executionHandle,

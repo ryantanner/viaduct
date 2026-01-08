@@ -42,6 +42,8 @@ import viaduct.engine.api.CheckerResult
 import viaduct.engine.api.Coordinate
 import viaduct.engine.api.EngineExecutionContext
 import viaduct.engine.api.EngineObjectData
+import viaduct.engine.api.ExecuteSelectionSetOptions
+import viaduct.engine.api.RawSelectionSet
 import viaduct.engine.api.RequiredSelectionSet
 import viaduct.engine.api.RequiredSelectionSetRegistry
 import viaduct.engine.api.TemporaryBypassAccessCheck
@@ -382,3 +384,37 @@ object CheckerDispatchers {
             ): CheckerResult = CheckerResult.Success
         }
 }
+
+/**
+ * Test-only extension to execute a Query selection set.
+ *
+ * This is a convenience wrapper for tests that previously used the deprecated
+ * `EngineExecutionContext.query()` method. For production code, use
+ * [EngineExecutionContext.executeSelectionSet] directly.
+ */
+suspend fun EngineExecutionContext.query(
+    resolverId: String,
+    selectionSet: RawSelectionSet
+): EngineObjectData =
+    executeSelectionSet(
+        resolverId,
+        selectionSet,
+        ExecuteSelectionSetOptions.DEFAULT
+    )
+
+/**
+ * Test-only extension to execute a Mutation selection set.
+ *
+ * This is a convenience wrapper for tests that previously used the deprecated
+ * `EngineExecutionContext.mutation()` method. For production code, use
+ * [EngineExecutionContext.executeSelectionSet] directly.
+ */
+suspend fun EngineExecutionContext.mutation(
+    resolverId: String,
+    selectionSet: RawSelectionSet
+): EngineObjectData =
+    executeSelectionSet(
+        resolverId,
+        selectionSet,
+        ExecuteSelectionSetOptions.MUTATION
+    )
