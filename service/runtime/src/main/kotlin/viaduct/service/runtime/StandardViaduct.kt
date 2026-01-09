@@ -468,6 +468,10 @@ class StandardViaduct
          *
          * @return GraphQL instance of the engine
          */
+        @Deprecated(
+            message = "Airbnb use only. For temporary use during migration to Engine API from graphql-java GraphQL.",
+            level = DeprecationLevel.WARNING
+        )
         @Suppress("DEPRECATION")
         fun getEngine(schemaId: SchemaId): GraphQL =
             (
@@ -479,6 +483,10 @@ class StandardViaduct
          * Creates an instance of EngineExecutionContext. This should be called exactly once
          * per request and set in the graphql-java execution input's local context.
          */
+        @Deprecated(
+            message = "Airbnb use only. Internal API for direct engine access.",
+            level = DeprecationLevel.WARNING
+        )
         fun mkEngineExecutionContext(
             schemaId: SchemaId,
             requestContext: Any?
