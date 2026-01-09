@@ -44,6 +44,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Verify Gradle wrapper
         run: |
