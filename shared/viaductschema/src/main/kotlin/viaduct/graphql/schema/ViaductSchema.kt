@@ -11,6 +11,19 @@ interface ViaductSchema {
     val mutationTypeDef: Object?
     val subscriptionTypeDef: Object?
 
+    /**
+     * Returns true if the schema has a custom schema definition, meaning:
+     * - Any of the root types (query/mutation/subscription) have non-standard names
+     */
+    val hasCustomSchema: Boolean
+        get() {
+            // Check for non-standard root type names
+            if (queryTypeDef != null && queryTypeDef?.name != "Query") return true
+            if (mutationTypeDef != null && mutationTypeDef?.name != "Mutation") return true
+            if (subscriptionTypeDef != null && subscriptionTypeDef?.name != "Subscription") return true
+            return false
+        }
+
     /** For testing. */
     object Empty : ViaductSchema {
         override val types = emptyMap<String, TypeDef>()

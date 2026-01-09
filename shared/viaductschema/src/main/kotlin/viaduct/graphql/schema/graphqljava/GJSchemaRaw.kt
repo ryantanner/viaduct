@@ -288,7 +288,13 @@ class GJSchemaRaw private constructor(
                 val mutationTypeDef = rootDef(result, schemaDef, mutationTypeName, "Mutation")
                 val subscriptionTypeDef = rootDef(result, schemaDef, subscriptionTypeName, "Subscription")
 
-                GJSchemaRaw(result, directives, queryTypeDef, mutationTypeDef, subscriptionTypeDef)
+                GJSchemaRaw(
+                    result,
+                    directives,
+                    queryTypeDef,
+                    mutationTypeDef,
+                    subscriptionTypeDef
+                )
             }
 
         private fun rootDef(

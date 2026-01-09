@@ -13,7 +13,18 @@ import viaduct.tenant.codegen.bytecode.config.isNode
 import viaduct.tenant.codegen.bytecode.config.kmType
 
 @TestingApi
-fun KotlinGRTFilesBuilder.objectKotlinGen(typeDef: ViaductSchema.Object) = STContents(objectSTGroup, ObjectModelImpl(typeDef, pkg, reflectedTypeGen(typeDef), baseTypeMapper))
+fun KotlinGRTFilesBuilder.objectKotlinGen(typeDef: ViaductSchema.Object) =
+    STContents(
+        objectSTGroup,
+        ObjectModelImpl(
+            typeDef,
+            pkg,
+            reflectedTypeGen(typeDef),
+            baseTypeMapper,
+            isQueryType = typeDef.isQueryType(),
+            isMutationType = typeDef.isMutationType()
+        )
+    )
 
 private interface ObjectModel {
     /** Package into which code will be generated. */
@@ -117,7 +128,9 @@ private class ObjectModelImpl(
     private val typeDef: ViaductSchema.Object,
     override val pkg: String,
     reflectedType: STContents,
-    baseTypeMapper: viaduct.tenant.codegen.bytecode.config.BaseTypeMapper
+    baseTypeMapper: viaduct.tenant.codegen.bytecode.config.BaseTypeMapper,
+    private val isQueryType: Boolean,
+    private val isMutationType: Boolean
 ) : ObjectModel {
     override val className get() = typeDef.name
 
@@ -129,8 +142,8 @@ private class ObjectModelImpl(
             result.add("$pkg.${s.name}")
         }
         if (typeDef.isNode) result.add(cfg.NODE_OBJECT_GRT.toString())
-        if (typeDef.name == "Query") result.add(cfg.QUERY_OBJECT_GRT.toString())
-        if (typeDef.name == "Mutation") result.add(cfg.MUTATION_OBJECT_GRT.toString())
+        if (isQueryType) result.add(cfg.QUERY_OBJECT_GRT.toString())
+        if (isMutationType) result.add(cfg.MUTATION_OBJECT_GRT.toString())
         result.joinToString(",")
     }
 
