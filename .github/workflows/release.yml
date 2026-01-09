@@ -121,7 +121,7 @@ jobs:
         if: ${{ !inputs.publish_snapshot }}
         run: |
           echo "## Changelog\n\n" > ${{ github.workspace }}-CHANGELOG.txt
-          python3 ./.github/scripts/generate_changelog.py "v${{ inputs.previous_release_version }}" "v${{ inputs.release_version }}" >> ${{ github.workspace }}-CHANGELOG.txt
+          python3 ./.github/scripts/generate_changelog.py "v${{ inputs.previous_release_version }}" "HEAD" >> ${{ github.workspace }}-CHANGELOG.txt
           cat ${{ github.workspace }}-CHANGELOG.txt
       - name: Create Draft Release
         id: create_release
