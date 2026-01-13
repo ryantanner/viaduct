@@ -253,8 +253,6 @@ internal class BSchema(
         override val possibleObjectTypes: Set<Object>
     }
 
-    sealed interface CompositeOutput : ViaductSchema.CompositeOutput, TypeDef
-
     sealed class TypeDefImpl(
         override val owner: BSchema,
         override val name: String,
@@ -375,7 +373,7 @@ internal class BSchema(
     class Union(
         owner: BSchema,
         name: String
-    ) : ViaductSchema.Union, CompositeOutput, HasExtensionsImpl<Union, Object>(owner, name) {
+    ) : ViaductSchema.Union, HasExtensionsImpl<Union, Object>(owner, name) {
         override fun toString() = describe()
 
         override var possibleObjectTypes: Set<Object> = emptySet<BSchema.Object>()
@@ -432,7 +430,7 @@ internal class BSchema(
     class Interface(
         owner: BSchema,
         name: String
-    ) : ViaductSchema.Interface, CompositeOutput, Record(owner, name) {
+    ) : ViaductSchema.Interface, Record(owner, name) {
         override var possibleObjectTypes = emptySet<Object>()
             internal set(value) {
                 owner.checkMutation()
@@ -487,7 +485,7 @@ internal class BSchema(
     class Object(
         owner: BSchema,
         name: String
-    ) : CompositeOutput, ViaductSchema.Object, Record(owner, name) {
+    ) : ViaductSchema.Object, Record(owner, name) {
         override val possibleObjectTypes = setOf(this)
 
         override var unions = emptyList<Union>()

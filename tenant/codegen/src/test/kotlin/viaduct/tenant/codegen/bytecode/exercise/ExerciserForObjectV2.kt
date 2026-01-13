@@ -41,8 +41,8 @@ private suspend fun Exerciser.exerciseBuilderRoundtrip(
     val objClazz = classResolver.mainClassFor(expected.name)
     val objCtor = objClazz.constructors.firstOrNull {
         it.parameterCount == 2 &&
-            it.parameterTypes[0] == InternalContext::class.java
-        it.parameterTypes[1] == EngineObject::class.java
+            it.parameterTypes[0] == InternalContext::class.java &&
+            it.parameterTypes[1] == EngineObject::class.java
     }
     check.isNotNull(objCtor, "OBJECT_CONSTRUCTOR")
     objCtor ?: return
@@ -126,7 +126,7 @@ private suspend fun Exerciser.exerciseBuilderRoundtrip(
                     listDepth(actValue),
                     "OBJECT_GETTER_LIST_DEPTH:$fName"
                 )
-            } else if (field.type.baseTypeDef is ViaductSchema.CompositeOutput) {
+            } else if (field.type.baseTypeDef.isComposite) {
                 check.isEqualTo(
                     (expValue as ObjectBase).engineObject,
                     (actValue as ObjectBase).engineObject,

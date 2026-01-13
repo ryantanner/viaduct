@@ -16,7 +16,7 @@ The ViaductSchema library includes comprehensive contract-based testing infrastr
 The "contract tests" help ensure that a `ViaductSchema` implementation obeys the "contact" expected of such implementations.  All `ViaductSchema` implementations must extend and pass:
 
 1. **`ViaductSchemaContract`**: Validates core schema behavior (type lookup, directive handling, root types, etc.)
-2. **`ViaductSchemaSubtypeContract`**: Validates type hierarchy relationships (Record, CompositeOutput, etc.)
+2. **`ViaductSchemaSubtypeContract`**: Validates type hierarchy relationships (Record, etc.)
 
 ### Writing Contract Tests
 
@@ -104,7 +104,7 @@ Verify Kotlin type relationships are properly maintained:
 val schema: ViaductSchema = createSchema(sdl)
 val obj = schema.types["User"] as ViaductSchema.Object
 assertTrue(obj is ViaductSchema.Record)  // Object is also Record
-assertTrue(obj is ViaductSchema.CompositeOutput)  // Object is also CompositeOutput
+assertTrue(obj.isComposite)  // Object is a compound output type
 ```
 
 ### 2. Edge Cases

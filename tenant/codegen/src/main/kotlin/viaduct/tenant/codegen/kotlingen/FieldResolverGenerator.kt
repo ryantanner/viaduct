@@ -121,7 +121,7 @@ private class ResolverModelImpl(
             "viaduct.api.types.Arguments.NoArguments"
         }
     private val grtOutputName: String =
-        if (field.type.baseTypeDef is ViaductSchema.CompositeOutput) {
+        if (field.type.baseTypeDef.isComposite) {
             "$grtPackage.${field.type.baseTypeDef.name}"
         } else {
             "viaduct.api.types.CompositeOutput.NotComposite"

@@ -108,7 +108,7 @@ private class ReflectedTypeModelImpl(
     override val name: String = def.name
     override val grtFqName: String = "$pkg.$name"
     override val reflectedTypeFqName: String = "$pkg.${def.name}.${cfg.REFLECTION_NAME}"
-    override val typeHasFieldsObject: Boolean = def is ViaductSchema.CompositeOutput || def is ViaductSchema.Record
+    override val typeHasFieldsObject: Boolean = def is ViaductSchema.Union || def is ViaductSchema.Record
     override val fields: List<ReflectedFieldModel>
         get() {
             val defFields = ((def as? ViaductSchema.Record)?.fields ?: emptyList())

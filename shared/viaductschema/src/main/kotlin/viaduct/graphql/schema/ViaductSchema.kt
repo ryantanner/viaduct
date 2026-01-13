@@ -109,7 +109,7 @@ interface ViaductSchema {
         val directives: Collection<ViaductSchema.AppliedDirective>
 
         interface Conditional : Selection {
-            val condition: CompositeOutput
+            val condition: TypeDef
         }
 
         interface Field : Selection {
@@ -128,6 +128,18 @@ interface ViaductSchema {
 
         val isSimple
             get() = (this == SCALAR || this == ENUM)
+
+        /** True for object, interface, and union types. */
+        val isComposite
+            get() = (this == OBJECT || this == INTERFACE || this == UNION)
+
+        /** True for input types. */
+        val isInput
+            get() = (this == INPUT)
+
+        /** True for output types (object, interface, union, scalar, enum). */
+        val isOutput
+            get() = (this != INPUT)
     }
 
     interface Directive : HasArgs {
@@ -220,7 +232,6 @@ interface ViaductSchema {
     }
 
     interface HasExtensionsWithSupers<D : Record, M : Field> :
-        CompositeOutput,
         Record,
         HasExtensions<D, M> {
         override val extensions: Collection<ExtensionWithSupers<D, M>>
@@ -249,6 +260,18 @@ interface ViaductSchema {
         /** True for scalar and enumeration types. */
         val isSimple: Boolean
             get() = kind.isSimple
+
+        /** True for object, interface, and union types. */
+        val isComposite: Boolean
+            get() = kind.isComposite
+
+        /** True for input types. */
+        val isInput: Boolean
+            get() = kind.isInput
+
+        /** True for output types (object, interface, union, scalar, enum). */
+        val isOutput: Boolean
+            get() = kind.isOutput
 
         /** Returns a _nullable_ type-expr for this def. */
         fun asTypeExpr(): TypeExpr
@@ -288,12 +311,8 @@ interface ViaductSchema {
         override fun describe() = "Enum<$name>"
     }
 
-    /** Tagging interface for Object, Interface, and Union, i.e.,
-     *  anything that can be a supertype of an object-value type. */
-    interface CompositeOutput : TypeDef
-
     interface Union :
-        CompositeOutput,
+        TypeDef,
         HasExtensions<Union, Object> {
         override val kind get() = TypeDefKind.UNION
         override val extensions: Collection<Extension<Union, Object>>
@@ -324,14 +343,14 @@ interface ViaductSchema {
             get() =
                 when {
                     hasDefault -> defaultValue
-                    type.isNullable && this.containingDef !is CompositeOutput -> null
+                    type.isNullable && (containingDef as? TypeDef)?.isOutput != true -> null
                     else -> throw NoSuchElementException("No default value for ${this.describe()}")
                 }
 
         /** Returns true iff [effectiveDefaultValue] would _not_ throw an exception. */
         val hasEffectiveDefault
             get() =
-                hasDefault || (type.isNullable && this.containingDef !is CompositeOutput)
+                hasDefault || (type.isNullable && (containingDef as? TypeDef)?.isOutput != true)
     }
 
     interface Arg : HasDefaultValue

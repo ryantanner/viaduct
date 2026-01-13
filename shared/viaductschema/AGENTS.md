@@ -60,10 +60,7 @@ Def (base for all definitions)
 ├── TypeDef (all type definitions)
 │   ├── Scalar
 │   ├── Enum
-│   ├── CompositeOutput
-│   │   ├── Interface
-│   │   ├── Object
-│   │   └── Union
+│   ├── Union
 │   └── Record (types with fields)
 │       ├── Input
 │       ├── Interface
@@ -75,6 +72,8 @@ Def (base for all definitions)
     ├── FieldArg
     └── DirectiveArg
 ```
+
+TypeDef also has predicates `isSimple`, `isComposite`, `isInput`, and `isOutput` for categorizing types.
 
 ### Type Expressions
 

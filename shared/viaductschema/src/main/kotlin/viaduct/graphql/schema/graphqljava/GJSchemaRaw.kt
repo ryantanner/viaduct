@@ -523,10 +523,6 @@ class GJSchemaRaw private constructor(
         override val possibleObjectTypes: Set<Object> get() = setOf<Object>()
     }
 
-    sealed interface CompositeOutput :
-        ViaductSchema.CompositeOutput,
-        TypeDef
-
     class Union internal constructor(
         registry: TypeDefinitionRegistry,
         override val def: UnionTypeDefinition,
@@ -534,8 +530,7 @@ class GJSchemaRaw private constructor(
         protected override val typeMap: RawTypeMap,
         valueConverter: ValueConverter
     ) : TypeDefImpl(),
-    ViaductSchema.Union,
-        CompositeOutput {
+        ViaductSchema.Union {
         override val name = def.name
         override val possibleObjectTypes by lazy { extensions.flatMap { it.members }.toSet() }
         override val extensions by lazy {
@@ -691,8 +686,7 @@ class GJSchemaRaw private constructor(
         memberNames: Iterable<String>,
         valueConverter: ValueConverter
     ) : ImplementingType(registry, def, typeMap, valueConverter),
-    ViaductSchema.Interface,
-        CompositeOutput {
+        ViaductSchema.Interface {
         override val name = def.name
         override val fields by lazy { extensions.flatMap { it.members } }
         override val possibleObjectTypes by lazy { memberNames.map { typeMap[it] as Object }.toSet() }
@@ -732,8 +726,7 @@ class GJSchemaRaw private constructor(
         unionNames: Iterable<String>,
         valueConverter: ValueConverter
     ) : ImplementingType(registry, def, typeMap, valueConverter),
-    ViaductSchema.Object,
-        CompositeOutput {
+        ViaductSchema.Object {
         override val name = def.name
         override val fields by lazy { extensions.flatMap { it.members } }
         val extensionDefinitions get() = extensionDefs
