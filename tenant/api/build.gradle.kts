@@ -33,6 +33,8 @@ dependencies {
 
     /** Test fixtures - External dependencies **/
     testFixturesApi(libs.junit)
+    testFixturesImplementation(libs.io.mockk.jvm)
+    testFixturesRuntimeOnly(libs.kotlin.reflect)
 
     /** Test dependencies - Viaduct **/
     testImplementation(testFixtures(libs.viaduct.shared.mapping))

@@ -200,6 +200,7 @@ class MockMutationFieldExecutionContext<Q : Query, A : Arguments, O : CompositeO
 @Suppress("DIFFERENT_NAMES_FOR_THE_SAME_PARAMETER_IN_SUPERTYPES")
 class MockNodeExecutionContext<T : NodeObject>(
     override val id: GlobalID<T>,
+    override val requestContext: Any? = null,
     private val selectionsValue: SelectionSet<T>,
     internalContext: InternalContext,
     queryResults: PrebakedResults<Query> = EmptyPrebakedResults<Query>(),
