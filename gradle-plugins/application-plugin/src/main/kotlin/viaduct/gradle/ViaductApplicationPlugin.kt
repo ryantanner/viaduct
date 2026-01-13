@@ -88,6 +88,7 @@ abstract class ViaductApplicationPlugin : Plugin<Project> {
         val pluginClasspath = files(ViaductPluginCommon.getClassPathElements(this@ViaductApplicationPlugin::class.java))
 
         val generateGRTClassesTask = tasks.register<GenerateGRTClassFilesTask>("generateViaductGRTClassFiles") {
+            buildFlags.putAll(ViaductPluginCommon.DEFAULT_BUILD_FLAGS)
             grtClassesDirectory.set(grtClassesDirectory())
             schemaFiles.setFrom(assembleCentralSchemaTask.flatMap { it.outputDirectory.map { dir -> dir.asFileTree.matching { include("**/*.graphqls") }.files } })
             grtPackageName.set(appExt.grtPackageName)
