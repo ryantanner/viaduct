@@ -5,6 +5,7 @@ plugins {
     `java-test-fixtures`
     id("conventions.kotlin-static-analysis")
     id("conventions.dokka")
+    id("conventions.bcv-api")
     id("jacoco-integration-base")
 }
 
