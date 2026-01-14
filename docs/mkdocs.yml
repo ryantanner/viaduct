@@ -1,0 +1,144 @@
+site_name: Viaduct
+site_url: https://viaduct.airbnb.tech/
+site_description: A modern multi-tenant GraphQL server
+site_author: Airbnb, Inc.
+copyright: 'Copyright &copy; 2025 Airbnb, Inc. | <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>'
+
+repo_url: https://github.com/airbnb/viaduct
+repo_name: airbnb/viaduct
+edit_uri: edit/master/docs/docs/
+
+theme:
+  name: material
+  custom_dir: overrides
+  logo: assets/images/logo-only-white.svg
+  favicon: assets/images/favicon.ico
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/brand.css
+  - kdoc-service-styles.css
+  - kdoc-styles.css
+
+plugins:
+  - search
+  - blog:
+      blog_dir: blog
+  - macros:
+      module_name: plugins/code_snippets
+      on_error_fail: true
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - def_list
+  - footnotes
+  - meta
+  - tables
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting_started/index.md
+    - Setup:
+      - getting_started/setup/index.md
+      - Clone Existing Tenant: getting_started/setup/clone/index.md
+      - From Scratch: getting_started/setup/from_scratch/index.md
+    - Tour: getting_started/tour/index.md
+    - Star Wars Tutorial:
+      - getting_started/starwars/index.md
+      - Mutations: getting_started/starwars/mutations/index.md
+    - Extending: getting_started/extending/index.md
+  - Developers:
+    - developers/index.md
+    - Resolvers:
+      - developers/resolvers/index.md
+      - Resolver Annotation: developers/resolvers/resolver_annotation.md
+      - Node Resolvers: developers/resolvers/node_resolvers.md
+      - Field Resolvers: developers/resolvers/field_resolvers.md
+      - Batch Resolution: developers/resolvers/batch_resolution.md
+      - Mutations: developers/resolvers/mutations.md
+      - Node References: developers/resolvers/node_references.md
+    - Generated Code: developers/generated_code/index.md
+    - Global IDs: developers/globalids/index.md
+    - Scopes: developers/scopes/index.md
+    - Schema Reference: developers/schema_reference/index.md
+    - Serve: developers/serve/index.md
+  - Service Engineers:
+    - service_engineers/index.md
+    - Schema Extensions: service_engineers/schema_extensions/index.md
+    - Multi-tenancy: service_engineers/multi_tenancy/index.md
+    - Observability:
+      - service_engineers/observability/index.md
+      - Error Handling: service_engineers/observability/error_handling.md
+  - Contributors: contributors/index.md
+  - Roadmap: roadmap/index.md
+  - Blog: blog/index.md
+  - Community: community/index.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/airbnb/viaduct
+      name: GitHub
+    - icon: fontawesome/solid/comments
+      link: https://github.com/airbnb/viaduct/discussions
+      name: Discussions
+    - icon: fontawesome/solid/scale-balanced
+      link: https://airbnb.tech/uncategorized/code-of-conduct/
+      name: Code of Conduct
+  analytics:
+    provider: google
+    property: G-79P40SMGG8
+  privacy_policy: https://www.airbnb.com/help/article/3175

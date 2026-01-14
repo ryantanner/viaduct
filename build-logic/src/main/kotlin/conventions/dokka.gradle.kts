@@ -35,7 +35,7 @@ dokka {
         failOnWarning.set(true)
         suppressObviousFunctions.set(true)
         suppressInheritedMembers.set(true)
-        outputDirectory.set(repoRootProject.dir("docs/static/apis/" + project.name))
+        outputDirectory.set(repoRootProject.dir("docs/docs/apis/" + project.name))
     }
 
     dokkaPublications.javadoc {

@@ -1,0 +1,14 @@
+authors:
+  adammiskiewicz:
+    name: Adam Miskiewicz
+    description: Principal Software Engineer
+    avatar: assets/images/authors/adammiskiewicz.png
+  aileenchen:
+    name: Aileen Chen
+    description: Staff Software Engineer
+    avatar: assets/images/authors/aileenchen.png
+  raymiestata:
+    name: Raymie Stata
+    description: tbd
+    avatar: assets/images/authors/raymiestata.png
+

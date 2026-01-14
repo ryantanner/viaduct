@@ -36,7 +36,7 @@ dependencies {
 
 dokka {
     dokkaPublications.html {
-        outputDirectory.set(repoRoot().dir("docs/static/apis/"))
+        outputDirectory.set(repoRoot().dir("docs/docs/apis/"))
         includes.from(layout.projectDirectory.file("module.md"))
     }
     pluginsConfiguration.html {

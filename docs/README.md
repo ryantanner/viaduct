@@ -4,131 +4,51 @@ This readme documents how to develop and deploy viaduct.airbnb.tech.
 
 ## Stack
 
-This is a Hugo/Docsy site. See the [Docsy documentation](https://www.docsy.dev/docs/getting-started/) for more information.
+This site is built with [MkDocs](https://www.mkdocs.org/) using the [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) theme, which matches Airbnb's internal techdocs platform.
 
-Ensure you have followed the [Docsy prerequisites](https://www.docsy.dev/docs/get-started/docsy-as-module/installation-prerequisites/).
+### Prerequisites
 
-### Customizations
+Install MkDocs and required dependencies:
 
-#### Shortcodes
-
-There are a few custom shortcodes in the `layouts/shortcodes` directory:
-
-
-There are a few custom shortcodes in the `layouts/_shortcodes` directory:
-
-* `github`: Embeds a GitHub file in the documentation.
-    ```markdown
-    {{< github file="tenant/api/src/main/kotlin/viaduct/api/TenantModule.kt" maxHeight=1000 >}}
-    {{< github "tenant/api/src/main/kotlin/viaduct/api/TenantModule.kt" branch="jsmith--test" >}}
-    ```
-  Both named and positional parameters are supported.
-  Parameters:
-  * `file`: The URL of the GitHub file to embed. Optionally append a line range, e.g. `#L10-L20` to embed only those lines.
-  * `maxHeight`: The maximum height of the embedded file. Defaults to 500px.
-* `kdoc`: Embeds a KDoc link in the documentation. CI will verify that the link is valid. Currently only supports linking to classes, not functions or packages.
-    ```markdown
-    {{< kdoc viaduct.engine.api.execution.ResolverErrorReporter >}}
-    ```
-  returns:
-    ```
-    <a class="kdoc-link" href="$BASE_URL/apis/service/service/service-api/viaduct.service.api/-execution-input/"><code>ExecutionInput</code></a>
-    ```
-    ```markdown
-    {{< kdoc viaduct.api.Resolver "@resolver" >}
-    ```
-  returns:
-    ```
-    <a class="kdoc-link" href="http://localhost:1313/apis/tenant-api/tenant-api/viaduct.api/-resolver/"><code>@resolver</code></a>
-    ```
-  Parameters:
-  * First: The fully qualified name of the KDoc to link to.
-  * Second: Display name (optional). Defaults to the class name. Must be wrapped in quotes if it contains special characters like `@`.
-
-#### `codetag` shortcode
-
-Code tags works along the source code, in any part of the source code you need to add a comment with the format :
-
-```kotlin
-//tag::NAME[LINES] Comment
+```bash
+pip install -r requirements.txt
 ```
 
-Where NAME is the tag name that will be used in the documentation to reference the code snippet.
-And LINES that is the amount of lines to include in the snippet, after this comment. If not specified will take 10 lines of code.
-Comment is optional and can be used to describe the code snippet usage for developers.
+Or manually:
 
-Example:
-
-In your code
-
-```kotlin
-//tag::VIADUCT_CONFIG_1[5] This is shown in service documentation
+```bash
+pip install mkdocs mkdocs-material mkdocs-macros-plugin
 ```
-
-In the hugo service documentation
-
-```md
-{{< codetag path="demoapp/starwars/src/main/kotlin/viaduct/demoapp/starwars/config/ViaductConfig.kt" tag="VIADUCT_CONFIG_1" >}}
-```
-
-Where path is the path to the source code.
-
-This will show the code in the document and also shows a link to the full file in GitHub.
-
-> There is an optional `lang` parameter to specify the language for syntax highlighting. Default it is `kotlin`.
-
-> There is an optional `count` parameter to specify the amount of lines to show.
-
-#### `codefile` shortcode
-
-Code file works simpler, it is just a code snippet of the whole file or a range of lines. No need to modify the source code.
-
-```md
-{{< codefile path="demoapp/starwars/src/main/kotlin/viaduct/demoapp/starwars/config/ViaductConfig.kt" start="1" end="10">}}
-```
-
-If no start or end is specified, the whole file is included.
-
-Where path is the path to the source code.
-
-This will show the code in the document and also shows a link to the full file in GitHub.
-
-> There is an optional `lang` parameter to specify the language for syntax highlighting. Default it is `kotlin`.
-
-### Sidebar Nav/Table of Contents
-
-A forked version of `sidebar-tree.html` is used to support non-clickable section headers in the sidebar navigation. To create a non-clickable section header, create a `_index.md` file in the directory with the desired title and set `toc_subsection: true` in the frontmatter. Do not include any content in the file as it will not be rendered.
-
-See `content/docs/developers/_index.md` for an example.
 
 ### Development
 
-To run the site locally, you need:
-
-Hugo extended version 0.146+ (see [Hugo installation instructions](https://gohugo.io/getting-started/installing/))
-
-Then, run:
+To run the site locally:
 
 ```bash
-GOFLAGS=-mod=mod hugo serve
+mkdocs serve
 ```
 
-Then open `http://localhost:1313` in your browser. If another process is bound to port 1313, hugo picks a random port and it will print the URL in the terminal.
+Then open `http://localhost:8000` in your browser. MkDocs will automatically reload when you make changes.
 
 ### Deployment
 
-This site is deployed via AWS S3 and Cloudfront from a CI job internal
-to Airbnb. Manual deploy steps:
+This site is deployed via AWS S3 and Cloudfront from a CI job internal to Airbnb. Manual deploy steps:
 
 ```bash
 cd $VIADUCT_REPO
 cd docs
-hugo build --gc --minify --cleanDestinationDir
+
+# Build the MkDocs site
+mkdocs build
+
+# Generate Dokka API documentation
 cd ../
 ./gradlew :core:tenant:tenant-api:dokkaGenerate
 ./gradlew :core:service:dokkaGenerate
+
+# Deploy to S3
 cd docs
-aws s3 sync public/ s3://viaduct-airbnb-tech
+aws s3 sync site/ s3://viaduct-airbnb-tech
 ```
 
 ## Dokka
@@ -144,7 +64,7 @@ These are generated via Gradle:
 ./gradlew :core:service:dokkaGenerate
 ```
 
-That task outputs HTML files to `docs/static/apis` and from there they are automatically included in the Hugo build.
+That task outputs HTML files to `docs/docs/apis/` and from there they are automatically included in the MkDocs build.
 
 ### Dokka module documentation
 
@@ -152,30 +72,108 @@ https://kotlinlang.org/docs/dokka-module-and-package-docs.html
 
 Create a `module.md` file in the top-level of a module that is opted-in to Dokka. For example, `engine/api/module.md`. See link above for specific Markdown syntax.
 
-### Bring Viaduct code into Docs
+## Directory Structure
 
-Source code snippets can be embedded in the documentation using custom Hugo mounts.
-
-To see, edit, or add new source codes to the documentation, check the file `hugo.yaml` in the root of this repository. It contains Hugo mounts that map source code files from the Viaduct repository into the Hugo site.
-
-There is a section like this
-
-```yaml
-  mounts:
-    # Mount the Viaduct code for embedding snippets in the docs.
-    - source: ../demoapps
-      target: assets/demoapps
-      includeFiles:
-        - "**/*.kt"
-        - "**/*.graphqls"
-      excludeFiles:
-        - "**/build/**"
-        - "**/.gradle/**"
-        - "**/.idea/**"
-        - "**/out/**"
-        - "**/.DS_Store"
+```
+docs/
+├── mkdocs.yml          # MkDocs configuration
+├── requirements.txt    # Python dependencies
+├── plugins/            # Custom MkDocs macros
+│   └── code_snippets.py
+└── docs/               # Documentation content
+    ├── index.md        # Homepage
+    ├── about/          # About section
+    ├── getting_started/# Getting started guides
+    ├── developers/     # Developer documentation
+    ├── service_engineers/
+    ├── contributors/
+    ├── tutorials/
+    ├── blog/
+    └── roadmap/
 ```
 
-> It is important that the `source` and the target names are the same. In the previous example "demoapps" is used as the source and "demoapps" is used in the target.
+## Writing Documentation
 
-Once a source code file is mounted, it can be referenced in the documentation using the `codetag` or `codefile` shortcodes.
+### Admonitions
+
+Use MkDocs admonition syntax for callouts:
+
+```markdown
+!!! info
+    This is an informational note.
+
+!!! warning
+    This is a warning.
+
+!!! note "Custom Title"
+    This is a note with a custom title.
+```
+
+### Code Blocks
+
+Use fenced code blocks with language specifiers:
+
+```markdown
+```kotlin
+fun main() {
+    println("Hello, World!")
+}
+```
+
+```graphql
+type Query {
+    greeting: String
+}
+```
+```
+
+### Linking to Other Pages
+
+Use relative paths for internal links:
+
+```markdown
+[Getting Started](getting_started/index.md)
+[Resolvers](developers/resolvers/index.md)
+```
+
+### Embedding Code Snippets
+
+The site includes custom macros for embedding code from the Viaduct repository:
+
+#### codetag - Extract Tagged Code Snippets
+
+Embeds code snippets marked with tags in source files:
+
+```markdown
+{{ codetag("demoapps/starwars/config/ViaductConfig.kt", "VIADUCT_CONFIG_1", lang="kotlin") }}
+```
+
+In the source file, mark the code with a tag comment:
+```kotlin
+// tag::VIADUCT_CONFIG_1[5] This is shown in service documentation
+val config = ViaductConfig(...)
+```
+
+#### codefile - Embed Entire Files or Line Ranges
+
+Embeds entire files or specific line ranges:
+
+```markdown
+{{ codefile("tenant/api/src/main/kotlin/MyClass.kt", start=10, end=20, lang="kotlin") }}
+```
+
+#### github - Embed GitHub Files
+
+Embeds files from GitHub with links:
+
+```markdown
+{{ github("tenant/api/TenantModule.kt#L10-L20") }}
+```
+
+### Publishing to Both Internal and External Sites
+
+This MkDocs setup allows publishing the same markdown content to both:
+- **viaduct.airbnb.tech** (public website)
+- **Airbnb internal techdocs** (internal documentation)
+
+The markdown files are standard and compatible with both MkDocs (for the public site) and Airbnb's internal techdocs system.

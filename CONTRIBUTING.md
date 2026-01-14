@@ -10,7 +10,7 @@ Please use the discussion board for support questions.
 
 # Ground Rules
 
-* Adhere to our [code of conduct](https://airbnb.io/codeofconduct).
+* Adhere to our [code of conduct](https://airbnb.tech/uncategorized/code-of-conduct/).
 * Changes must be adequately documented and tested.
 * Pull requests must use our PR template (excluding screenshot section).
 * We welcome contributions ranging from tutorials to documentation improvements to bug reports and feature requests. We also welcome contributions to Viaduct itself.
