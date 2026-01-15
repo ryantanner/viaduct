@@ -304,4 +304,4 @@ extend type Mutation {
 - [Global IDs](../globalids/index.md) — Working with `@idOf` and the Node interface
 - [Scopes](../scopes/index.md) — Advanced scope configuration with `@scope`
 - [Service Engineers: Schema Extensions](../../service_engineers/schema_extensions/index.md) — Defining application-wide custom directives and types
-- [Getting Started: Custom Directives](../../getting_started/starwars/directives/index.md) — Examples from the Star Wars demo
+- [Getting Started: Custom Directives](../../../getting_started/starwars/directives/index.md) — Examples from the Star Wars demo

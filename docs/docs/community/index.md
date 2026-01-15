@@ -1,5 +1,8 @@
 ---
 title: Community
+hide:
+- navigation
+- toc
 ---
 
 # Join the Viaduct community

@@ -117,7 +117,7 @@ This naming convention:
 
 ## Creating Multiple Tenants
 
-When creating new tenants, follow the standard directory structure and conventions outlined above. For detailed guidance on implementing resolvers, schemas, and build configuration, see the [Star Wars Tutorial](../../getting_started/starwars/index.md), which provides comprehensive examples of:
+When creating new tenants, follow the standard directory structure and conventions outlined above. For detailed guidance on implementing resolvers, schemas, and build configuration, see the [Star Wars Tutorial](../../../getting_started/starwars/index.md), which provides comprehensive examples of:
 
 - Query resolvers, node resolvers, and field resolvers
 - Batch resolution patterns for efficient data loading

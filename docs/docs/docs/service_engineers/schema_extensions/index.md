@@ -50,4 +50,4 @@ Your `schemabase/` files extend and complement these built-in components with ap
 
 - [Developers: Schema Reference](../../developers/schema_reference/index.md) — Viaduct's built-in schema components
 - [Developers: Resolvers](../../developers/resolvers/index.md) — Implementing resolvers for your schema
-- [Getting Started: Custom Directives](../../getting_started/starwars/directives/index.md) — Examples of using Viaduct's built-in directives
+- [Getting Started: Custom Directives](../../../getting_started/starwars/directives/index.md) — Examples of using Viaduct's built-in directives
