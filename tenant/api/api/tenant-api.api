@@ -28,10 +28,6 @@ public final class viaduct/api/TenantModule$DefaultImpls {
 	public static fun getPackageName (Lviaduct/api/TenantModule;)Ljava/lang/String;
 }
 
-public abstract interface class viaduct/api/ValueMapper {
-	public abstract fun convert (Ljava/lang/Object;Lgraphql/schema/GraphQLObjectType;)Lviaduct/api/types/Object;
-}
-
 public abstract interface annotation class viaduct/api/Variable : java/lang/annotation/Annotation {
 	public static final field Companion Lviaduct/api/Variable$Companion;
 	public static final field UNSET_STRING_VALUE Ljava/lang/String;
