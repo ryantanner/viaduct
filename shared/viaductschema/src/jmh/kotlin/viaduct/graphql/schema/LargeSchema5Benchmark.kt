@@ -17,8 +17,8 @@ import org.openjdk.jmh.annotations.State
 import org.openjdk.jmh.annotations.TearDown
 import org.openjdk.jmh.annotations.Warmup
 import org.openjdk.jmh.infra.Blackhole
-import viaduct.graphql.schema.binary.readBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.graphqljava.toGraphQLSchema
 
 /**
@@ -61,9 +61,9 @@ open class LargeSchema5Benchmark {
     }
 
     @Benchmark
-    fun readLargeSchema5TextSDLToGJSchemaRaw(bh: Blackhole) {
+    fun readLargeSchema5TextSDLToViaductSchema(bh: Blackhole) {
         val data = benchmarkData ?: return
-        val rawSchema = GJSchemaRaw.fromFiles(listOf(data.textSchemaFile))
+        val rawSchema = ViaductSchema.fromTypeDefinitionRegistry(listOf(data.textSchemaFile))
         bh.consume(rawSchema)
     }
 
@@ -78,14 +78,14 @@ open class LargeSchema5Benchmark {
     @Benchmark
     fun readLargeSchema5BinToViaductSchema(bh: Blackhole) {
         val data = benchmarkData ?: return
-        val schema: ViaductSchema = readBSchema(ByteArrayInputStream(data.binarySchemaBytes))
+        val schema: ViaductSchema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(data.binarySchemaBytes))
         bh.consume(schema)
     }
 
     @Benchmark
     fun readLargeSchema5BinToGraphQLSchema(bh: Blackhole) {
         val data = benchmarkData ?: return
-        val viaductSchema: ViaductSchema = readBSchema(ByteArrayInputStream(data.binarySchemaBytes))
+        val viaductSchema: ViaductSchema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(data.binarySchemaBytes))
         val scalarsNeeded = viaductSchema.types.values
             .filterIsInstance<ViaductSchema.Scalar>()
             .filter { it.name !in setOf("String", "Boolean") }

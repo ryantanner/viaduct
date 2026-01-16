@@ -5,7 +5,7 @@ import io.kotest.property.Arb
 import io.kotest.property.checkAll
 import viaduct.arbitrary.common.Config
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 
 private val minimalSdl = """
     type Query {
@@ -35,7 +35,7 @@ internal fun mkGJSchema(
 internal fun mkViaductSchema(
     sdl: String,
     includeMinimal: Boolean = true
-): ViaductSchema = GJSchema.fromSchema(mkGJSchema(sdl, includeMinimal))
+): ViaductSchema = ViaductSchema.fromGraphQLSchema(mkGJSchema(sdl, includeMinimal))
 
 internal fun mkConfig(
     enull: Double = 0.0,

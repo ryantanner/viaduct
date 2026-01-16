@@ -21,7 +21,7 @@ import viaduct.graphql.schema.ViaductSchema
  *  [equals] and [hashCode] are based on value equality, not on
  *  reference equality.
  */
-interface ValueConverter {
+internal interface ValueConverter {
     /** Default implementation calls [convert] on [valueWithState.value] if
      *  [valueWithState.isNotSet] is false, otherwise returns null.
      */
@@ -76,14 +76,6 @@ interface ValueConverter {
                         type.baseTypeDef.name == "ID" -> StringValue::class.java
                         else -> throw IllegalArgumentException("Bad type for default (${type.baseTypeDef}).")
                     }
-            }
-
-        val standard =
-            object : ValueConverter {
-                override fun convert(
-                    type: ViaductSchema.TypeExpr<*>,
-                    value: Value<*>
-                ): Any? = standardValueMapper(type, value)
             }
     }
 }

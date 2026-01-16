@@ -1,6 +1,5 @@
 package viaduct.gradle.common
 
-import java.io.FileOutputStream
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -13,8 +12,9 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectory
 import viaduct.gradle.ViaductPluginCommon
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.tenant.codegen.cli.ViaductGenerator
 
 /**
@@ -83,10 +83,8 @@ abstract class ViaductTenantTaskBase : DefaultTask() {
 
         // Generate binary schema file
         val binarySchemaFile = temporaryDir.resolve("schema.bgql")
-        writeBSchema(
-            GJSchema.fromFiles(allSchemaFiles),
-            FileOutputStream(binarySchemaFile)
-        )
+        ViaductSchema.fromGraphQLSchema(allSchemaFiles)
+            .toBinaryFile(binarySchemaFile)
 
         // Build arguments for code generation
         val baseArgs = mutableListOf(

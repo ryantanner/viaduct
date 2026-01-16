@@ -26,9 +26,9 @@ import org.openjdk.jmh.infra.Blackhole
 import viaduct.arbitrary.common.Config
 import viaduct.arbitrary.graphql.SchemaSize
 import viaduct.arbitrary.graphql.graphQLSchema
-import viaduct.graphql.schema.binary.readBSchema
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.graphqljava.toGraphQLSchema
 
 @State(Scope.Benchmark)
@@ -63,9 +63,9 @@ open class ViaductSchemaBenchmark {
         textSchemaFile.writeText(schemaSdl)
 
         // Parse the text schema to get a ViaductSchema, then write binary version
-        val viaductSchema = GJSchemaRaw.fromFiles(listOf(textSchemaFile))
+        val viaductSchema = ViaductSchema.fromTypeDefinitionRegistry(listOf(textSchemaFile))
         val binaryOut = ByteArrayOutputStream()
-        writeBSchema(viaductSchema, binaryOut)
+        viaductSchema.toBinaryFile(binaryOut)
         binarySchemaBytes = binaryOut.toByteArray()
         binarySchemaFile.writeBytes(binarySchemaBytes)
 
@@ -87,8 +87,8 @@ open class ViaductSchemaBenchmark {
     }
 
     @Benchmark
-    fun readTestSchemaTextSDLToGJSchemaRaw(bh: Blackhole) {
-        val rawSchema = GJSchemaRaw.fromFiles(listOf(textSchemaFile))
+    fun readTestSchemaTextSDLToViaductSchema(bh: Blackhole) {
+        val rawSchema = ViaductSchema.fromTypeDefinitionRegistry(listOf(textSchemaFile))
         bh.consume(rawSchema)
     }
 
@@ -101,7 +101,7 @@ open class ViaductSchemaBenchmark {
 
     @Benchmark
     fun readTestSchemaBinSDLToViaductSchema(bh: Blackhole) {
-        val schema: ViaductSchema = readBSchema(ByteArrayInputStream(binarySchemaBytes))
+        val schema: ViaductSchema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(binarySchemaBytes))
         bh.consume(schema)
     }
 
@@ -113,7 +113,7 @@ open class ViaductSchemaBenchmark {
      */
     @Benchmark
     fun readBinarySchemaToGraphQLSchema(bh: Blackhole) {
-        val viaductSchema: ViaductSchema = readBSchema(ByteArrayInputStream(binarySchemaBytes))
+        val viaductSchema: ViaductSchema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(binarySchemaBytes))
         // Compute scalars needed (excluding String and Boolean which are always added)
         val scalarsNeeded = viaductSchema.types.values
             .filterIsInstance<ViaductSchema.Scalar>()

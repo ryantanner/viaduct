@@ -10,7 +10,7 @@ import viaduct.codegen.km.KmClassFilesBuilder
 import viaduct.codegen.utils.JavaBinaryName
 import viaduct.codegen.utils.KmName
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.mkSchema
 import viaduct.tenant.codegen.bytecode.util.assertKotlinTypeString
 import viaduct.tenant.codegen.bytecode.util.field
@@ -26,7 +26,7 @@ class ViaductSchemaExtensionsTest {
         schemaFile.parentFile.mkdirs()
         schemaFile.createNewFile()
         schemaFile.writeText(schemaText)
-        return GJSchema.fromFiles(listOf(schemaFile))
+        return ViaductSchema.fromTypeDefinitionRegistry(listOf(schemaFile))
     }
 
     @Test

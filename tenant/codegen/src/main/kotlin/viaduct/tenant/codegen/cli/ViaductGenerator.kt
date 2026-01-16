@@ -8,9 +8,9 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.split
 import com.github.ajalt.clikt.parameters.types.file
 import java.io.File
-import java.io.FileInputStream
-import viaduct.graphql.schema.binary.readBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.tenant.codegen.bytecode.config.cfg
 import viaduct.tenant.codegen.bytecode.config.cfg.BUILD_TIME_MODULE_EXTRACTOR
 import viaduct.tenant.codegen.kotlingen.Args
@@ -63,9 +63,9 @@ class ViaductGenerator : CliktCommand() {
         }
 
         val schema = if (shouldUseBinarySchema(flagFile)) {
-            readBSchema(FileInputStream(binarySchemaFile))
+            ViaductSchema.fromBinaryFile(binarySchemaFile)
         } else {
-            GJSchemaRaw.fromFiles(schemaFiles)
+            ViaductSchema.fromTypeDefinitionRegistry(schemaFiles)
         }
         // TODO(jimmy): Remove this global mutable state, see https://docs.google.com/document/d/18FKs13huMY3JyslnO11_V_WtYPcSA7Xb_vNQAf79yP0/edit?tab=t.0#heading=h.a24h0oe8myl2
         cfg.moduleExtractor = if (!tenantFromSourceNameRegex.isNullOrEmpty()) {

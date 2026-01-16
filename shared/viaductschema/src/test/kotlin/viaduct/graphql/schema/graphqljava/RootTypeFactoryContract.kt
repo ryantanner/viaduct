@@ -30,12 +30,7 @@ private val `schema def plus alternatives` = """
  *  correctly set the root type defs.
  */
 interface RootTypeFactoryContractForBoth {
-    fun makeSchema(
-        schema: String,
-        queryTypeName: String? = null,
-        mutationTypeName: String? = null,
-        subscriptionTypeName: String? = null
-    ): ViaductSchema
+    fun makeSchema(schema: String): ViaductSchema
 
     @Test
     fun `schema def works`() {
@@ -45,31 +40,6 @@ interface RootTypeFactoryContractForBoth {
                 assertSame(this.types["Bar"], this.mutationTypeDef)
                 assertSame(this.types["Baz"], this.subscriptionTypeDef)
             }
-    }
-
-    @Test
-    fun `parameters override schema def`() {
-        makeSchema(`schema def plus alternatives`, "AltFoo", "AltBar", "AltBaz")
-            .apply {
-                assertSame(this.types["AltFoo"], this.queryTypeDef)
-                assertSame(this.types["AltBar"], this.mutationTypeDef)
-                assertSame(this.types["AltBaz"], this.subscriptionTypeDef)
-            }
-    }
-
-    @Test
-    fun `non object type from parameters fail`() {
-        val check = InvariantChecker()
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def plus alternatives`, queryTypeName = "BadFoo")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def plus alternatives`, mutationTypeName = "BadBar")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def plus alternatives`, subscriptionTypeName = "BadBaz")
-        }
-        check.assertEmpty("\n")
     }
 }
 
@@ -130,69 +100,22 @@ interface RootTypeFactoryContractForRaw : RootTypeFactoryContractForBoth {
     }
 
     @Test
-    fun `parameters override defaults`() {
-        makeSchema(`defaults plus alternatives`, "Foo", "Bar", "Baz")
+    fun `schema def takes precedence over defaults`() {
+        makeSchema(`schema plus defaults plus alternatives`)
             .apply {
+                // schema def says query: Foo, so Foo is used instead of Query
                 assertSame(this.types["Foo"], this.queryTypeDef)
-                assertSame(this.types["Bar"], this.mutationTypeDef)
-                assertSame(this.types["Baz"], this.subscriptionTypeDef)
+                // schema def doesn't specify mutation/subscription, so defaults are used
+                assertSame(this.types["Mutation"], this.mutationTypeDef)
+                assertSame(this.types["Subscription"], this.subscriptionTypeDef)
             }
-    }
-
-    @Test
-    fun `no default parameters work`() {
-        makeSchema(
-            `defaults plus alternatives`,
-            GJSchemaRaw.NO_ROOT_TYPE_DEFAULT,
-            GJSchemaRaw.NO_ROOT_TYPE_DEFAULT,
-            GJSchemaRaw.NO_ROOT_TYPE_DEFAULT
-        ).apply {
-            assertNull(this.queryTypeDef)
-            assertNull(this.mutationTypeDef)
-            assertNull(this.subscriptionTypeDef)
-        }
-    }
-
-    @Test
-    fun `no default parameters with schema def works`() {
-        makeSchema(
-            `schema plus defaults plus alternatives`,
-            GJSchemaRaw.NO_ROOT_TYPE_DEFAULT,
-            GJSchemaRaw.NO_ROOT_TYPE_DEFAULT,
-            GJSchemaRaw.NO_ROOT_TYPE_DEFAULT
-        ).apply {
-            assertSame(this.types["Foo"], this.queryTypeDef)
-            assertNull(this.mutationTypeDef)
-            assertNull(this.subscriptionTypeDef)
-        }
     }
 
     @Test
     fun `missing names from schema def fail`() {
         val check = InvariantChecker()
         check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with missing names`, mutationTypeName = "AltBar", subscriptionTypeName = "AltBaz")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with missing names`, queryTypeName = "AltFoo", subscriptionTypeName = "AltBaz")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with missing names`, queryTypeName = "AltFoo", mutationTypeName = "AltBar")
-        }
-        check.assertEmpty("\n")
-    }
-
-    @Test
-    fun `missing names from parameters fail`() {
-        val check = InvariantChecker()
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def plus alternatives`, queryTypeName = "NotDefined")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def plus alternatives`, mutationTypeName = "NotDefined")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def plus alternatives`, subscriptionTypeName = "NotDefined")
+            makeSchema(`schema def with missing names`)
         }
         check.assertEmpty("\n")
     }
@@ -201,29 +124,21 @@ interface RootTypeFactoryContractForRaw : RootTypeFactoryContractForBoth {
     fun `non object type from schema def fail`() {
         val check = InvariantChecker()
         check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with non object types`, mutationTypeName = "AltBar", subscriptionTypeName = "AltBaz")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with non object types`, queryTypeName = "AltFoo", subscriptionTypeName = "AltBaz")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with non object types`, queryTypeName = "AltFoo", mutationTypeName = "AltBar")
+            makeSchema(`schema def with non object types`)
         }
         check.assertEmpty("\n")
     }
 
     @Test
-    fun `non object type from defaults fail`() {
-        val check = InvariantChecker()
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with non object types`, mutationTypeName = "AltBar", subscriptionTypeName = "AltBaz")
+    fun `no schema def and no defaults yields null root types`() {
+        val schema = """
+            type Foo { blank: String }
+            type Bar { blank: String }
+        """.trimIndent()
+        makeSchema(schema).apply {
+            assertNull(this.queryTypeDef)
+            assertNull(this.mutationTypeDef)
+            assertNull(this.subscriptionTypeDef)
         }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with non object types`, queryTypeName = "AltFoo", subscriptionTypeName = "AltBaz")
-        }
-        check.doesThrow<IllegalArgumentException>("") {
-            makeSchema(`schema def with non object types`, queryTypeName = "AltFoo", mutationTypeName = "AltBar")
-        }
-        check.assertEmpty("\n")
     }
 }

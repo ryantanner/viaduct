@@ -17,7 +17,7 @@ import viaduct.api.types.NodeCompositeOutput
 import viaduct.api.types.NodeObject
 import viaduct.api.types.Query
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 
 fun mkSchema(sdl: String): GraphQLSchema {
@@ -41,7 +41,7 @@ fun mockReflectionLoader(
 
 val GraphQLSchema.viaduct: ViaductSchema
     get() =
-        GJSchema.fromSchema(this)
+        ViaductSchema.fromGraphQLSchema(this)
 
 class MockType<T : GRT>(override val name: String, override val kcls: KClass<T>) : Type<T> {
     companion object {

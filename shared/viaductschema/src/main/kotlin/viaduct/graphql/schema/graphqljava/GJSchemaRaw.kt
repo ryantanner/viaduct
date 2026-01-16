@@ -48,7 +48,7 @@ private typealias RawTypeMap = Map<String, GJSchemaRaw.TypeDef>
  *  from the `language` to the `schema` classes, and this implementation avoids
  *  that cost.
  *
- *  This classes represents "real values" exactly the same as [GJSchema], so it
+ *  This class represents "real values" exactly the same as [GJSchema], so it
  *  can be a drop-in replacement.  See [GJSchema] for details on that representation.
  *
  *  The construction of the (query/mutation/subscription)TypeDef fields for this
@@ -58,25 +58,11 @@ private typealias RawTypeMap = Map<String, GJSchemaRaw.TypeDef>
  *  a valid schema, [GJSchema] can't be used for such a partial schema, but
  *  [GJSchemaRaw] can be.
  *
- *  This class will attempt to populate the root type using the
- *  `schema` definition ([graphql.language.SchemaDefinition]) found
- *  while parsing the schema.  However, it *only* looks at the base
- *  definition, it does not consider extensions.
- *
- *  The factory-functions for [GJSchemaRaw] take optional parameters
- *  for the names of the query, mutation, and subscription root types.
- *  These parameters are all nullable.  If they are not-null, the
- *  parameter overrides what is found in the `SchemaDefinition`.  For
- *  historical compatibility, if one of these parameters is null and
- *  there is no `SchemaDefinition`, the factory will use the
- *  "standard" name to populate the root type.  For example, if the
- *  `queryTypeName` parameter is null, then the factory will look for
- *  a type named "Query" and, if it exists, use that as the root query
- *  type.  It might be possible that this default behavior is
- *  undesired.  If so, the special value [NO_ROOT_TYPE_DEFAULT]
- *  passed as the value of (query/mutation/subscription)TypeName will
- *  use what's found in the `schema` definition and will use null if
- *  nothing is found there.
+ *  Root types are determined by first checking the `schema` definition
+ *  ([graphql.language.SchemaDefinition]) found while parsing the schema,
+ *  and falling back to the standard names ("Query", "Mutation", "Subscription")
+ *  if no schema definition exists or if it doesn't specify the root type.
+ *  Note that only the base schema definition is considered, not extensions.
  */
 @Suppress("ktlint:standard:indent")
 class GJSchemaRaw private constructor(
@@ -104,56 +90,22 @@ class GJSchemaRaw private constructor(
         /** Convert collection of .graphqls files into a schema
          *  bridge.  (This function doesn't require callers to
          *  have a direct dependency on graphql-java.) */
-        fun fromURLs(
-            inputFiles: List<URL>,
-            valueConverter: ValueConverter = ValueConverter.default,
-            queryTypeName: String? = null,
-            mutationTypeName: String? = null,
-            subscriptionTypeName: String? = null
-        ) = fromRegistry(
-            readTypesFromURLs(inputFiles),
-            valueConverter = valueConverter,
-            queryTypeName = queryTypeName,
-            mutationTypeName = mutationTypeName,
-            subscriptionTypeName = subscriptionTypeName
-        )
+        fun fromURLs(inputFiles: List<URL>,) = fromRegistry(readTypesFromURLs(inputFiles))
 
         fun fromFiles(
             inputFiles: List<File>,
             timer: Timer = Timer(),
-            valueConverter: ValueConverter = ValueConverter.default,
-            queryTypeName: String? = null,
-            mutationTypeName: String? = null,
-            subscriptionTypeName: String? = null,
         ): GJSchemaRaw {
             val typeDefRegistry = timer.time("readTypesFromFiles") { readTypesFromFiles(inputFiles) }
-            return fromRegistry(
-                typeDefRegistry,
-                timer,
-                valueConverter,
-                queryTypeName,
-                mutationTypeName,
-                subscriptionTypeName,
-            )
+            return fromRegistry(typeDefRegistry, timer)
         }
 
         fun fromSDL(
             sdl: String,
             timer: Timer = Timer(),
-            valueConverter: ValueConverter = ValueConverter.default,
-            queryTypeName: String? = null,
-            mutationTypeName: String? = null,
-            subscriptionTypeName: String? = null,
         ): GJSchemaRaw {
             val typeDefRegistry = timer.time("readTypes") { readTypes(sdl) }
-            return fromRegistry(
-                typeDefRegistry,
-                timer,
-                valueConverter,
-                queryTypeName,
-                mutationTypeName,
-                subscriptionTypeName,
-            )
+            return fromRegistry(typeDefRegistry, timer)
         }
 
         /** Convert a graphql-java TypeDefinitionRegistry into
@@ -161,10 +113,6 @@ class GJSchemaRaw private constructor(
         fun fromRegistry(
             registry: TypeDefinitionRegistry,
             timer: Timer = Timer(),
-            valueConverter: ValueConverter = ValueConverter.default,
-            queryTypeName: String? = null,
-            mutationTypeName: String? = null,
-            subscriptionTypeName: String? = null,
         ): GJSchemaRaw =
             timer.time("fromSchema") {
                 // graphql-java assumes these get created during language->schema translation
@@ -275,7 +223,7 @@ class GJSchemaRaw private constructor(
                 }
 
                 // Phase 2: Populate all TypeDefs and Directives using the decoder
-                val decoder = TypeDefinitionRegistryDecoder(registry, result, valueConverter)
+                val decoder = TypeDefinitionRegistryDecoder(registry, result, ValueConverter.default)
 
                 registry.getTypes(EnumTypeDefinition::class.java).forEach {
                     val enumDef = result[it.name] as Enum
@@ -311,9 +259,9 @@ class GJSchemaRaw private constructor(
                 }
 
                 val schemaDef = registry.schemaDefinition().orElse(null)
-                val queryTypeDef = rootDef(result, schemaDef, queryTypeName, "Query")
-                val mutationTypeDef = rootDef(result, schemaDef, mutationTypeName, "Mutation")
-                val subscriptionTypeDef = rootDef(result, schemaDef, subscriptionTypeName, "Subscription")
+                val queryTypeDef = rootDef(result, schemaDef, "Query")
+                val mutationTypeDef = rootDef(result, schemaDef, "Mutation")
+                val subscriptionTypeDef = rootDef(result, schemaDef, "Subscription")
 
                 GJSchemaRaw(
                     result,
@@ -327,10 +275,10 @@ class GJSchemaRaw private constructor(
         private fun rootDef(
             defs: Map<String, TypeDef>,
             schemaDef: SchemaDefinition?,
-            nameFromParam: String?,
             stdName: String
         ): Object? {
-            var nameFromSchema =
+            // First, check if SchemaDefinition specifies a custom name for this root type
+            val nameFromSchema =
                 schemaDef
                     ?.operationTypeDefinitions
                     ?.find { it.name == stdName.lowercase() }
@@ -339,16 +287,12 @@ class GJSchemaRaw private constructor(
             var result: TypeDef? = nameFromSchema?.let {
                 defs[nameFromSchema] ?: throw IllegalArgumentException("Type not found: $nameFromSchema")
             }
-            if (nameFromParam != null && nameFromParam != NO_ROOT_TYPE_DEFAULT) {
-                result = (defs[nameFromParam] ?: throw IllegalArgumentException("Type not found: $nameFromParam"))
-            }
-            if (result == null && nameFromParam != NO_ROOT_TYPE_DEFAULT) {
+            // Fall back to the standard name (Query, Mutation, Subscription) if not specified
+            if (result == null) {
                 result = defs[stdName]
             }
             if (result == null) return null
-            if (result !is Object) {
-                throw IllegalArgumentException("$stdName type ($nameFromParam) is not an object type.")
-            }
+            require(result is Object) { "$stdName type is not an object type." }
             return result
         }
 
@@ -376,11 +320,6 @@ class GJSchemaRaw private constructor(
             }
             return result
         }
-
-        /** Constant used to override default value for populating
-         *  the root-type definitions.  See KDoc for [GJSchemaRaw].
-         */
-        const val NO_ROOT_TYPE_DEFAULT = "!!none"
     }
 
     // Well-designed GraphQL schemas are both immutable and highly

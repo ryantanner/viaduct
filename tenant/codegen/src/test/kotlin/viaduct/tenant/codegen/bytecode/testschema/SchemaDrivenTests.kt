@@ -1,5 +1,6 @@
 package viaduct.tenant.codegen.bytecode.testschema
 
+import graphql.schema.idl.SchemaParser
 import graphql.schema.idl.UnExecutableSchemaGenerator
 import java.io.File
 import kotlin.test.assertTrue
@@ -7,7 +8,8 @@ import kotlinx.coroutines.test.runBlockingTest
 import org.junit.jupiter.api.Test
 import viaduct.codegen.utils.JavaName
 import viaduct.engine.api.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.ViaductSchema as ViaductGraphQLSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.graphqljava.readTypes
 import viaduct.graphql.utils.DefaultSchemaProvider
 import viaduct.invariants.InvariantChecker
@@ -47,8 +49,8 @@ class SchemaDrivenTests {
                 includeNodeQueries = DefaultSchemaProvider.IncludeNodeSchema.Never
             )
 
-            val schema = GJSchemaRaw.fromSDL(sdl)
-            val graphqlSchema = ViaductSchema(UnExecutableSchemaGenerator.makeUnExecutableSchema((readTypes(sdl))))
+            val schema = ViaductGraphQLSchema.fromTypeDefinitionRegistry(SchemaParser().parse(sdl))
+            val graphqlSchema = ViaductSchema(UnExecutableSchemaGenerator.makeUnExecutableSchema(readTypes(sdl)))
 
             val args = prepareCodeGenArgs(schema, "viaduct.api.grts")
             val builder = GRTClassFilesBuilder(args)
@@ -72,7 +74,7 @@ class SchemaDrivenTests {
         }
 
     private fun prepareCodeGenArgs(
-        schema: GJSchemaRaw,
+        schema: ViaductGraphQLSchema,
         pkgForGeneratedClasses: String
     ): CodeGenArgs =
         CodeGenArgs(
@@ -98,7 +100,7 @@ class SchemaDrivenTests {
             includeNodeQueries = DefaultSchemaProvider.IncludeNodeSchema.Never
         )
 
-        val schema = GJSchemaRaw.fromSDL(sdl)
+        val schema = ViaductGraphQLSchema.fromTypeDefinitionRegistry(SchemaParser().parse(sdl))
 
         val args = prepareCodeGenArgs(schema, "com.airbnb.viaduct.schema.generated")
 

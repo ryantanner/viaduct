@@ -7,8 +7,8 @@ import graphql.schema.idl.UnExecutableSchemaGenerator
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.zip.ZipInputStream
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.graphqljava.readTypesFromURLs
 
 /**
@@ -89,9 +89,9 @@ object LargeSchemaBenchmarkHelper {
         textSchemaFile.writeText(schemaSdl)
 
         // Parse the text schema to get a ViaductSchema, then write binary version
-        val viaductSchema = GJSchemaRaw.fromFiles(listOf(textSchemaFile))
+        val viaductSchema = ViaductSchema.fromTypeDefinitionRegistry(listOf(textSchemaFile))
         val binaryOut = ByteArrayOutputStream()
-        writeBSchema(viaductSchema, binaryOut)
+        viaductSchema.toBinaryFile(binaryOut)
         val binarySchemaBytes = binaryOut.toByteArray()
         binarySchemaFile.writeBytes(binarySchemaBytes)
 

@@ -1,6 +1,5 @@
 package viaduct.gradle.task
 
-import java.io.FileOutputStream
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -22,8 +21,9 @@ import resolverBasesDirectory
 import viaduct.gradle.ViaductApplicationExtension
 import viaduct.gradle.ViaductModuleExtension
 import viaduct.gradle.ViaductPluginCommon
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 
 @CacheableTask
 abstract class GenerateResolverBasesTask
@@ -68,10 +68,8 @@ abstract class GenerateResolverBasesTask
             flagFile.writeText(ViaductPluginCommon.buildFlagFileContent(buildFlags.get()))
 
             val binarySchemaFile = temporaryDir.resolve("schema.bgql")
-            writeBSchema(
-                GJSchema.fromFiles(centralSchemaFiles.files.toList()),
-                FileOutputStream(binarySchemaFile)
-            )
+            ViaductSchema.fromGraphQLSchema(centralSchemaFiles.files.toList())
+                .toBinaryFile(binarySchemaFile)
 
             execOperations.javaexec {
                 classpath = this@GenerateResolverBasesTask.classpath

@@ -44,7 +44,7 @@ import viaduct.graphql.schema.graphqljava.test.ValueConverterContract.Companion.
  *    every case of [ValueConverter] and its interaction with [GJSchema].
  */
 @TestingApi
-abstract class ValueConverterContract {
+internal abstract class ValueConverterContract {
     /** Subclasses initialize this with a GJSchema with a particular value converter to be tested. */
     lateinit var viaductExtendedSchema: ViaductSchema
 

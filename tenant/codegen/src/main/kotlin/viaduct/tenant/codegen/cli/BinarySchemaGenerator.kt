@@ -6,9 +6,9 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.split
 import com.github.ajalt.clikt.parameters.types.file
 import java.io.File
-import java.io.FileOutputStream
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 
 /**
  * CLI tool to serialize a list of schema files as binary viaduct schema
@@ -20,7 +20,7 @@ class BinarySchemaGenerator : CliktCommand() {
         .file(mustExist = false, canBeDir = false).required()
 
     override fun run() {
-        val schema = GJSchema.fromFiles(schemaFiles)
-        writeBSchema(schema, FileOutputStream(outputFile))
+        val schema = ViaductSchema.fromGraphQLSchema(schemaFiles)
+        schema.toBinaryFile(outputFile)
     }
 }

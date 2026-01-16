@@ -10,10 +10,9 @@ import com.github.ajalt.clikt.parameters.options.split
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import java.io.File
-import java.io.FileInputStream
-import viaduct.graphql.schema.binary.readBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
-import viaduct.graphql.schema.graphqljava.readTypesFromFiles
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.tenant.codegen.bytecode.CodeGenArgs
 import viaduct.tenant.codegen.bytecode.GRTClassFilesBuilderBase
 import viaduct.tenant.codegen.bytecode.config.ViaductBaseTypeMapper
@@ -78,15 +77,14 @@ class SchemaObjectsBytecode : CliktCommand() {
                 } else {
                     binarySchemaFile
                 }
-                readBSchema(FileInputStream(schemaFile!!))
+                ViaductSchema.fromBinaryFile(schemaFile!!)
             } else {
-                val schemaFiles = if (compilationSchema != null) {
+                val schemaFileList = if (compilationSchema != null) {
                     listOf(compilationSchema!!)
                 } else {
                     schemaFiles
                 }
-                val typeDefRegistry = timer.time("readTypesFromFiles") { readTypesFromFiles(schemaFiles) }
-                GJSchemaRaw.fromRegistry(typeDefRegistry, timer)
+                ViaductSchema.fromTypeDefinitionRegistry(schemaFileList, timer)
             }
         }.let {
             if (scopeSet.isNullOrEmpty()) {

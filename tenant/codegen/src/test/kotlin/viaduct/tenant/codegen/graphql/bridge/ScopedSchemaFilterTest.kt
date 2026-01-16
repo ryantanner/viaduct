@@ -4,7 +4,8 @@ import graphql.schema.idl.SchemaParser
 import io.mockk.unmockkAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.SchemaDiff
 
 class ScopedSchemaFilterTest {
@@ -79,7 +80,7 @@ class ScopedSchemaFilterTest {
         SchemaDiff(expectedScopedSchema, scopedSchema)
     }
 
-    private fun loadSchema(schema: String) = GJSchemaRaw.fromRegistry(SchemaParser().parse(schema))
+    private fun loadSchema(schema: String) = ViaductSchema.fromTypeDefinitionRegistry(SchemaParser().parse(schema))
 
     @AfterEach
     fun tearDown() {

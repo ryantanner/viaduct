@@ -7,11 +7,10 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.split
 import com.github.ajalt.clikt.parameters.types.file
 import java.io.File
-import java.io.FileInputStream
 import viaduct.apiannotations.TestingApi
-import viaduct.graphql.schema.binary.readBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
-import viaduct.graphql.schema.graphqljava.readTypesFromFiles
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.tenant.codegen.bytecode.config.ViaductBaseTypeMapper
 import viaduct.tenant.codegen.kotlingen.bytecode.KotlinCodeGenArgs
 import viaduct.tenant.codegen.kotlingen.bytecode.KotlinGRTFilesBuilder
@@ -55,10 +54,9 @@ class KotlinGRTsGenerator : CliktCommand() {
 
         val schema = timer.time("schemaFromFiles") {
             if (useBinarySchema) {
-                readBSchema(FileInputStream(binarySchemaFile))
+                ViaductSchema.fromBinaryFile(binarySchemaFile)
             } else {
-                val typeDefRegistry = timer.time("readTypesFromFiles") { readTypesFromFiles(schemaFiles) }
-                GJSchemaRaw.fromRegistry(typeDefRegistry, timer)
+                ViaductSchema.fromTypeDefinitionRegistry(schemaFiles, timer)
             }
         }
 

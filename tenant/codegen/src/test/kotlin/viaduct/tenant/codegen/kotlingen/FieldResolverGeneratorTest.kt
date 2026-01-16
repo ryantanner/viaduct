@@ -1,7 +1,6 @@
 package viaduct.tenant.codegen.kotlingen
 
 import graphql.schema.idl.SchemaParser
-import graphql.schema.idl.UnExecutableSchemaGenerator
 import java.io.File
 import kotlin.test.assertContains
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -9,7 +8,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.tenant.codegen.bytecode.config.ViaductBaseTypeMapper
 
 // This test suite is useful for inspecting the results of resolver generation.
@@ -18,8 +17,7 @@ import viaduct.tenant.codegen.bytecode.config.ViaductBaseTypeMapper
 class FieldResolverGeneratorTest {
     private fun mkSchema(sdl: String): ViaductSchema {
         val tdr = SchemaParser().parse(sdl)
-        val schema = UnExecutableSchemaGenerator.makeUnExecutableSchema(tdr)
-        return GJSchema.fromSchema(schema)
+        return ViaductSchema.fromTypeDefinitionRegistry(tdr)
     }
 
     private fun gen(

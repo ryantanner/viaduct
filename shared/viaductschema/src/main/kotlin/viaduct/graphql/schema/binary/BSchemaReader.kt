@@ -7,9 +7,9 @@ import viaduct.graphql.schema.ViaductSchema
  * Reads a binary-encoded schema from the input stream.
  *
  * @param input The input stream containing the binary schema data
- * @return A ViaductSchema representation of the binary schema
+ * @return A BSchema representation of the binary schema
  */
-fun readBSchema(input: InputStream): ViaductSchema {
+internal fun readBSchema(input: InputStream): BSchema {
     return BInputStream(input, MAX_STRING_LEN).use { data ->
         // Decode header first to get counts for pre-sizing
         val header = HeaderSection.decode(data)

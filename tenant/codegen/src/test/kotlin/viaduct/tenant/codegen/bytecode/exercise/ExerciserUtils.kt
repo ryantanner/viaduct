@@ -138,7 +138,7 @@ fun loadGraphQLSchemaAsGraphQLSchema(schemaResourcePath: String? = null): Viaduc
     }
     if (paths.isEmpty()) throw IllegalStateException("Could not find any graphqls files in the classpath")
 
-    return ViaductSchema(UnExecutableSchemaGenerator.makeUnExecutableSchema((readTypesFromURLs(paths))))
+    return ViaductSchema(UnExecutableSchemaGenerator.makeUnExecutableSchema(readTypesFromURLs(paths)))
 }
 
 fun reflectionLoaderForClassResolver(classResolver: ClassResolver): ReflectionLoader =

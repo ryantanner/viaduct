@@ -15,15 +15,14 @@ import org.junit.jupiter.api.TestInstance
 import viaduct.graphql.schema.graphqljava.test.ValueConverterContract
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class DefaultValueConverterTest : ValueConverterContract() {
+internal class DefaultValueConverterTest : ValueConverterContract() {
     @BeforeAll // @BeforeAll reports errors in a better format should any of this setup fail
     fun setup() {
         valueConverter = ValueConverter.default
 
         viaductExtendedSchema =
             GJSchema.fromRegistry(
-                readTypes(schema),
-                valueConverter = valueConverter
+                readTypes(schema)
             )
 
         defaultValues =

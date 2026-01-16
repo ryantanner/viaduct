@@ -10,7 +10,7 @@ import viaduct.codegen.km.setterName
 import viaduct.engine.api.EngineObjectDataBuilder
 import viaduct.engine.api.ViaductSchema
 import viaduct.graphql.schema.ViaductSchema as ViaductGraphQLSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.loaders.core.edges.EdgesQueryResponse
 import viaduct.schema.base.BuilderBase
 import viaduct.tenant.codegen.bytecode.config.BaseTypeMapper
@@ -36,7 +36,7 @@ fun ViaductGraphQLSchema.HasDefaultValue.createValueV2(
     classResolver: ClassResolver,
     schema: ViaductSchema,
     value2: Boolean = false,
-    baseTypeMapper: BaseTypeMapper = ViaductBaseTypeMapper(GJSchema.fromSchema(schema.schema)),
+    baseTypeMapper: BaseTypeMapper = ViaductBaseTypeMapper(ViaductGraphQLSchema.fromGraphQLSchema(schema.schema)),
     classLoader: ClassLoader = ClassLoader.getSystemClassLoader(),
 ): Any? = this.valueV2FromGenericValue(classResolver, schema, this.createGenericValue(value2, if (value2) 2 else 1, emptyList(), baseTypeMapper), classLoader = classLoader)
 

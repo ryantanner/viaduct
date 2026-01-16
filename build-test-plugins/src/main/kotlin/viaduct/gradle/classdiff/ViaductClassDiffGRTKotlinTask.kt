@@ -1,6 +1,5 @@
 package viaduct.gradle.classdiff
 
-import java.io.FileOutputStream
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -15,8 +14,9 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import viaduct.gradle.ViaductPluginCommon
 import viaduct.gradle.common.DefaultSchemaUtil
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.tenant.codegen.cli.KotlinGRTsGenerator
 
 /**
@@ -74,10 +74,8 @@ abstract class ViaductClassDiffGRTKotlinTask : DefaultTask() {
 
         // Generate binary schema file
         val binarySchemaFile = temporaryDir.resolve("schema.bgql")
-        writeBSchema(
-            GJSchema.fromFiles(allSchemaFiles),
-            FileOutputStream(binarySchemaFile)
-        )
+        ViaductSchema.fromGraphQLSchema(allSchemaFiles)
+            .toBinaryFile(binarySchemaFile)
 
         // Clean and prepare directories
         if (outputDir.exists()) {

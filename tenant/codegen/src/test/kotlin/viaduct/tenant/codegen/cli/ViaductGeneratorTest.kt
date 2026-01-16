@@ -1,18 +1,15 @@
 package viaduct.tenant.codegen.cli
 
-import graphql.schema.idl.TypeDefinitionRegistry
 import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.io.writeText
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,9 +19,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import viaduct.graphql.schema.binary.writeBSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
-import viaduct.graphql.schema.graphqljava.readTypesFromFiles
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.tenant.codegen.kotlingen.Args
 import viaduct.tenant.codegen.kotlingen.generateFieldResolvers
 import viaduct.tenant.codegen.kotlingen.generateNodeResolvers
@@ -65,7 +63,7 @@ class ViaductGeneratorTest {
                 }
             """.trimIndent()
         )
-        writeBSchema(GJSchemaRaw.fromSDL(sdl), FileOutputStream(binarySchemaFile))
+        ViaductSchema.fromGraphQLSchema(listOf(schemaFile)).toBinaryFile(binarySchemaFile)
         modernModuleGeneratedDir = File(tempDir, "modern_module_generated").apply { mkdirs() }
         metainfGeneratedDir = File(tempDir, "metainf_generated").apply { mkdirs() }
         resolverGeneratedDir = File(tempDir, "resolver_generated").apply { mkdirs() }
@@ -79,24 +77,17 @@ class ViaductGeneratorTest {
             writeText("com.test.prefix")
         }
 
-        mockkStatic("viaduct.graphql.schema.graphqljava.ReadFilesKt")
+        mockkStatic("viaduct.graphql.schema.graphqljava.extensions.FactoryKt")
         mockkStatic("viaduct.tenant.codegen.kotlingen.FieldResolverGeneratorKt")
         mockkStatic("viaduct.tenant.codegen.kotlingen.NodeResolverGeneratorKt")
         mockkStatic("viaduct.tenant.codegen.util.ZipUtil")
 
-        val mockTypeDefRegistry = mockk<TypeDefinitionRegistry>()
-        val mockSchema = mockk<GJSchemaRaw>()
+        val mockSchema = mockk<ViaductSchema>()
 
-        every { readTypesFromFiles(any()) } returns mockTypeDefRegistry
-        mockkObject(GJSchemaRaw.Companion)
         every {
-            GJSchemaRaw.fromRegistry(
-                registry = any(),
-                timer = any(),
-                valueConverter = any(),
-                queryTypeName = any(),
-                mutationTypeName = any(),
-                subscriptionTypeName = any()
+            ViaductSchema.fromTypeDefinitionRegistry(
+                inputFiles = any<List<File>>(),
+                timer = any()
             )
         } returns mockSchema
 
@@ -114,8 +105,8 @@ class ViaductGeneratorTest {
         val fieldResolverArgsSlot = slot<Args>()
         val nodeResolverArgsSlot = slot<Args>()
 
-        every { any<GJSchemaRaw>().generateFieldResolvers(capture(fieldResolverArgsSlot)) } just Runs
-        every { any<GJSchemaRaw>().generateNodeResolvers(capture(nodeResolverArgsSlot)) } just Runs
+        every { any<ViaductSchema>().generateFieldResolvers(capture(fieldResolverArgsSlot)) } just Runs
+        every { any<ViaductSchema>().generateNodeResolvers(capture(nodeResolverArgsSlot)) } just Runs
 
         ViaductGenerator().main(
             listOf("--tenant_pkg", "test_tenant") +
@@ -128,8 +119,8 @@ class ViaductGeneratorTest {
                 listOf("--tenant_package_prefix", "com.test")
         )
 
-        verify { any<GJSchemaRaw>().generateFieldResolvers(any()) }
-        verify { any<GJSchemaRaw>().generateNodeResolvers(any()) }
+        verify { any<ViaductSchema>().generateFieldResolvers(any()) }
+        verify { any<ViaductSchema>().generateNodeResolvers(any()) }
 
         with(fieldResolverArgsSlot.captured) {
             assertEquals("com.test.test.tenant", tenantPackage)
@@ -150,7 +141,7 @@ class ViaductGeneratorTest {
     @Test
     fun `test with tenant package prefix from file`() {
         val argsSlot = slot<Args>()
-        every { any<GJSchemaRaw>().generateFieldResolvers(capture(argsSlot)) } just Runs
+        every { any<ViaductSchema>().generateFieldResolvers(capture(argsSlot)) } just Runs
 
         ViaductGenerator().main(
             listOf("--tenant_pkg", "test_tenant") +
@@ -164,7 +155,7 @@ class ViaductGeneratorTest {
                 listOf("--tenant_package_prefix_in_file", tenantPackagePrefixFile.absolutePath)
         )
 
-        verify { any<GJSchemaRaw>().generateFieldResolvers(any()) }
+        verify { any<ViaductSchema>().generateFieldResolvers(any()) }
         with(argsSlot.captured) {
             assertEquals("com.test.prefix", tenantPackage)
             assertEquals("com.test.prefix", tenantPackagePrefix)
@@ -175,7 +166,7 @@ class ViaductGeneratorTest {
     @Test
     fun `test with feature app test flag`() {
         val argsSlot = slot<Args>()
-        every { any<GJSchemaRaw>().generateFieldResolvers(capture(argsSlot)) } just Runs
+        every { any<ViaductSchema>().generateFieldResolvers(capture(argsSlot)) } just Runs
 
         ViaductGenerator().main(
             listOf("--tenant_pkg", "test_tenant") +
@@ -189,7 +180,7 @@ class ViaductGeneratorTest {
                 listOf("--isFeatureAppTest")
         )
 
-        verify { any<GJSchemaRaw>().generateFieldResolvers(any()) }
+        verify { any<ViaductSchema>().generateFieldResolvers(any()) }
         with(argsSlot.captured) {
             assertTrue(isFeatureAppTest)
             assertEquals("com.test.test.tenant", grtPackage)
@@ -210,8 +201,8 @@ class ViaductGeneratorTest {
                 listOf("--tenant_from_source_name_regex", "test_regex")
         )
 
-        verify { any<GJSchemaRaw>().generateFieldResolvers(any()) }
-        verify { any<GJSchemaRaw>().generateNodeResolvers(any()) }
+        verify { any<ViaductSchema>().generateFieldResolvers(any()) }
+        verify { any<ViaductSchema>().generateNodeResolvers(any()) }
     }
 
     @Test
@@ -232,6 +223,53 @@ class ViaductGeneratorTest {
     }
 
     @Test
+    fun `test multiple schema files`() {
+        val schemaFile2 = File(tempDir, "schema2.graphql").apply {
+            createNewFile()
+            writeText("type Mutation { update: String }")
+        }
+        // Use a flag file with binary schema disabled to test the fromTypeDefinitionRegistry path
+        val noBinaryFlagFile = File(tempDir, "no_binary_flags.bzl").apply {
+            createNewFile()
+            writeText(
+                """
+                    viaduct_build_flags = {
+                        "enable_binary_schema": "False",
+                    }
+                """.trimIndent()
+            )
+        }
+        val filesSlot = slot<List<File>>()
+        every {
+            ViaductSchema.fromTypeDefinitionRegistry(
+                inputFiles = capture(filesSlot),
+                timer = any()
+            )
+        } returns mockk {
+            every { generateFieldResolvers(any()) } just Runs
+            every { generateNodeResolvers(any()) } just Runs
+        }
+
+        ViaductGenerator().main(
+            listOf("--tenant_pkg", "test_tenant") +
+                listOf("--modern_module_generated_directory", modernModuleGeneratedDir.absolutePath) +
+                listOf("--metainf_generated_directory", metainfGeneratedDir.absolutePath) +
+                listOf("--resolver_generated_directory", resolverGeneratedDir.absolutePath) +
+                listOf("--schema_files", "${schemaFile.absolutePath},${schemaFile2.absolutePath}") +
+                listOf("--binary_schema_file", binarySchemaFile.absolutePath) +
+                listOf("--flag_file", noBinaryFlagFile.absolutePath) +
+                listOf("--tenant_package_prefix", "com.test")
+        )
+
+        verify { ViaductSchema.fromTypeDefinitionRegistry(inputFiles = any<List<File>>(), timer = any()) }
+        with(filesSlot.captured) {
+            assertEquals(2, size)
+            assertTrue(contains(schemaFile))
+            assertTrue(contains(schemaFile2))
+        }
+    }
+
+    @Test
     fun `test regex pattern unquoting`() {
         ViaductGenerator().main(
             listOf("--tenant_pkg", "test_tenant") +
@@ -245,7 +283,7 @@ class ViaductGeneratorTest {
                 listOf("--tenant_from_source_name_regex", "\"quoted_regex\"")
         )
 
-        verify { any<GJSchemaRaw>().generateFieldResolvers(any()) }
-        verify { any<GJSchemaRaw>().generateNodeResolvers(any()) }
+        verify { any<ViaductSchema>().generateFieldResolvers(any()) }
+        verify { any<ViaductSchema>().generateNodeResolvers(any()) }
     }
 }

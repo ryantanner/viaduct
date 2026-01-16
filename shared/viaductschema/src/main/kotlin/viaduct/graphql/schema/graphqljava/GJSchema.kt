@@ -123,18 +123,14 @@ class GJSchema internal constructor(
          *  bridge.  (This function doesn't require callers to
          *  have a direct dependency on graphql-java.) */
 
-        fun fromURLs(
-            inputFiles: List<URL>,
-            valueConverter: ValueConverter = ValueConverter.default
-        ) = fromRegistry(readTypesFromURLs(inputFiles), valueConverter = valueConverter)
+        fun fromURLs(inputFiles: List<URL>,) = fromRegistry(readTypesFromURLs(inputFiles))
 
         fun fromFiles(
             inputFiles: List<File>,
             timer: Timer = Timer(),
-            valueConverter: ValueConverter = ValueConverter.default,
         ): GJSchema {
             val typeDefRegistry = timer.time("readTypesFromFiles") { readTypesFromFiles(inputFiles) }
-            return fromRegistry(typeDefRegistry, timer, valueConverter)
+            return fromRegistry(typeDefRegistry, timer)
         }
 
         /** Convert a graphql-java TypeDefinitionRegistry into
@@ -142,19 +138,15 @@ class GJSchema internal constructor(
         fun fromRegistry(
             registry: TypeDefinitionRegistry,
             timer: Timer = Timer(),
-            valueConverter: ValueConverter = ValueConverter.default,
         ): GJSchema {
             val unexecutableSchema =
                 timer.time("makeUnexecutableSchema") {
                     UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
                 }
-            return timer.time("fromSchema") { fromSchema(unexecutableSchema, valueConverter) }
+            return timer.time("fromSchema") { fromSchema(unexecutableSchema) }
         }
 
-        fun fromSchema(
-            schema: GraphQLSchema,
-            valueConverter: ValueConverter = ValueConverter.default
-        ): GJSchema {
+        fun fromSchema(schema: GraphQLSchema,): GJSchema {
             // Phase 1: Create all TypeDef and Directive shells (just underlying def and name)
             val types = mutableMapOf<String, TypeDef>()
             for (def in schema.allTypesAsList) {
@@ -173,7 +165,7 @@ class GJSchema internal constructor(
             val directives = schema.directives.associate { it.name to Directive(it, it.name) }
 
             // Phase 2: Create decoder and populate all types and directives
-            val decoder = GraphQLSchemaDecoder(schema, types, valueConverter)
+            val decoder = GraphQLSchemaDecoder(schema, types, ValueConverter.default)
 
             types.values.forEach { typeDef ->
                 when (typeDef) {
