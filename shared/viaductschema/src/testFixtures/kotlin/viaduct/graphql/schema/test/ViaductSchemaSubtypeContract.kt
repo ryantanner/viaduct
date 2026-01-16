@@ -69,8 +69,14 @@ abstract class ViaductSchemaSubtypeContract {
 
     @Test
     @EnabledIf("noMissingClasses")
-    fun `args of HasArgs are of the expected subtype`() {
-        assertIsSubtype(returnType("HasArgs.args").elementType(), "Arg") // args: Iterable<Args>
+    fun `args of Field are of the expected subtype`() {
+        assertIsSubtype(returnType("Field.args").elementType(), "Arg") // args: Iterable<Args>
+    }
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `args of Directive are of the expected subtype`() {
+        assertIsSubtype(returnType("Directive.args").elementType(), "Arg") // args: Iterable<Args>
     }
 
     // From BridgeSchema
@@ -110,16 +116,14 @@ abstract class ViaductSchemaSubtypeContract {
     fun `Def class hierarchy is correct`() {
         assertIsSubtype("Directive", "Def")
         assertIsSubtype("EnumValue", "Def")
-        assertIsSubtype("HasArgs", "Def")
+        assertIsSubtype("Field", "Def")
+        assertIsSubtype("Directive", "Def")
         assertIsSubtype("HasDefaultValue", "Def")
         assertIsSubtype("TypeDef", "Def")
 
         assertIsSubtype("DirectiveArg", "HasDefaultValue")
         assertIsSubtype("FieldArg", "HasDefaultValue")
         assertIsSubtype("Field", "HasDefaultValue")
-
-        assertIsSubtype("Directive", "HasArgs")
-        assertIsSubtype("Field", "HasArgs")
 
         assertIsSubtype("DirectiveArg", "Arg")
         assertIsSubtype("FieldArg", "Arg")
@@ -228,17 +232,17 @@ abstract class ViaductSchemaSubtypeContract {
             assertIsSubtype(it.returnType, "Field", nullable = isNullable)
         }
 
-        assertIsSubtype(returnType("Record.supers").elementType(), "Interface") // supers: Iterable<Interface>
-        assertIsSubtype(returnType("Record.unions").elementType(), "Union") // unions: Iterable<Unions>
+        assertIsSubtype(returnType("OutputRecord.supers").elementType(), "Interface") // supers: Iterable<Interface>
+        assertIsSubtype(returnType("Object.unions").elementType(), "Union") // unions: Iterable<Union>
     }
 
     @Test
     @EnabledIf("noMissingClasses")
-    fun `elements of Record_supers are of the expected subtype`() = assertIsSubtype(returnType("Record.supers").elementType(), "Interface") // supers: Iterable<Interface>
+    fun `elements of OutputRecord_supers are of the expected subtype`() = assertIsSubtype(returnType("OutputRecord.supers").elementType(), "Interface") // supers: Iterable<Interface>
 
     @Test
     @EnabledIf("noMissingClasses")
-    fun `elements of Record_unions are of the expected subtype`() = assertIsSubtype(returnType("Record.unions").elementType(), "Union") // unions: Iterable<Union>
+    fun `elements of Object_unions are of the expected subtype`() = assertIsSubtype(returnType("Object.unions").elementType(), "Union") // unions: Iterable<Union>
 
     // None from Scalar
 
@@ -275,11 +279,11 @@ abstract class ViaductSchemaSubtypeContract {
                 "Enum",
                 "EnumValue",
                 "Field",
-                "HasArgs",
                 "HasDefaultValue",
                 "Input",
                 "Interface",
                 "Object",
+                "OutputRecord",
                 "Record",
                 "Scalar",
                 "TypeDef",
@@ -290,9 +294,7 @@ abstract class ViaductSchemaSubtypeContract {
             listOf(
                 "AppliedDirective",
                 "Extension",
-                "ExtensionWithSupers",
-                "HasExtensions",
-                "HasExtensionsWithSupers"
+                "ExtensionWithSupers"
             )
 
         fun KType.elementType() =

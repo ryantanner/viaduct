@@ -73,7 +73,7 @@ private fun SchemaEncoder.encodeTypeDef(td: ViaductSchema.TypeDef) {
             if (td is ViaductSchema.Interface) {
                 encodeTypeDefsOrMarker(td.possibleObjectTypes)
             } else {
-                encodeTypeDefsOrMarker(td.unions)
+                encodeTypeDefsOrMarker((td as ViaductSchema.Object).unions)
             }
         }
 
@@ -84,16 +84,18 @@ private fun SchemaEncoder.encodeTypeDef(td: ViaductSchema.TypeDef) {
         }
 
         is ViaductSchema.Scalar -> {
-            val hasAppliedDirectives = td.appliedDirectives.isNotEmpty()
-            val refPlus = DefinitionRefPlus(
-                schemaInfo.sourceNameIndex(td.sourceLocation?.sourceName),
-                hasImplementedTypes = false,
-                hasAppliedDirectives = hasAppliedDirectives,
-                hasNext = false // Only one extension
-            )
-            out.writeInt(refPlus.word)
-            if (hasAppliedDirectives) {
-                encodeAppliedDirectives(td.appliedDirectives)
+            td.extensions.encode { ext, hasNext ->
+                val hasAppliedDirectives = ext.appliedDirectives.isNotEmpty()
+                val refPlus = DefinitionRefPlus(
+                    schemaInfo.sourceNameIndex(ext.sourceLocation?.sourceName),
+                    hasImplementedTypes = false,
+                    hasAppliedDirectives = hasAppliedDirectives,
+                    hasNext = hasNext
+                )
+                out.writeInt(refPlus.word)
+                if (hasAppliedDirectives) {
+                    encodeAppliedDirectives(ext.appliedDirectives)
+                }
             }
         }
 
@@ -204,7 +206,7 @@ private fun SchemaEncoder.filterAppliedDirectiveArguments(appliedDirective: Viad
  * Check if an argument can be omitted because the decoder will reconstruct the same value.
  */
 private fun canOmitArgument(
-    argDef: ViaductSchema.Arg,
+    argDef: ViaductSchema.HasDefaultValue,
     argValue: Any?
 ): Boolean {
     return when {
@@ -215,6 +217,17 @@ private fun canOmitArgument(
         // Otherwise, must encode explicitly
         else -> false
     }
+}
+
+/**
+ * Get the default value as a representation suitable for encoding, or null if no default.
+ */
+private fun ViaductSchema.HasDefaultValue.defaultValueRepr(): Any? {
+    if (!hasDefault) return null
+    // Handle explicit null default values - ViaductSchema returns Java null instead of NullValue
+    val value = defaultValue as? Value<*>
+        ?: NullValue.newNullValue().build()
+    return ValueStringConverter.valueToString(value)
 }
 
 /**
@@ -304,19 +317,11 @@ private fun SchemaEncoder.encodeArgs(
     allowOmitAppliedDirectiveArgs: Boolean = true
 ) {
     args.encode { arg, hasNext ->
-        val defaultValue = if (arg.hasDefault) {
-            // Handle explicit null default values - ViaductSchema returns Java null instead of NullValue
-            val value = arg.defaultValue as? Value<*>
-                ?: NullValue.newNullValue().build()
-            ValueStringConverter.valueToString(value)
-        } else {
-            null
-        }
         encodeInputLikeField(
             arg.name,
             arg.type,
             arg.hasDefault,
-            defaultValue,
+            arg.defaultValueRepr(),
             hasNext,
             arg.appliedDirectives,
             allowOmitAppliedDirectiveArgs
@@ -330,15 +335,7 @@ private fun SchemaEncoder.encodeArgs(
  */
 private fun SchemaEncoder.encodeInputFields(fields: Iterable<ViaductSchema.Field>) {
     fields.encode { field, hasNext ->
-        val defaultValue = if (field.hasDefault) {
-            // Handle explicit null default values - ViaductSchema returns Java null instead of NullValue
-            val value = field.defaultValue as? Value<*>
-                ?: NullValue.newNullValue().build()
-            ValueStringConverter.valueToString(value)
-        } else {
-            null
-        }
-        encodeInputLikeField(field.name, field.type, field.hasDefault, defaultValue, hasNext, field.appliedDirectives)
+        encodeInputLikeField(field.name, field.type, field.hasDefault, field.defaultValueRepr(), hasNext, field.appliedDirectives)
     }
 }
 

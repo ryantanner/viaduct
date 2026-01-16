@@ -281,9 +281,15 @@ class FilteredSchemaTest {
                     checkUnwrapping(unfilteredValue, values)
                 }
             }
-            is ViaductSchema.HasArgs -> {
+            is ViaductSchema.Field -> {
                 for (arg in filteredDef.args) {
-                    val unfilteredArg = (unfilteredDef as ViaductSchema.HasArgs).args.first { it.name == arg.name }
+                    val unfilteredArg = (unfilteredDef as ViaductSchema.Field).args.first { it.name == arg.name }
+                    checkUnwrapping(unfilteredArg, arg)
+                }
+            }
+            is ViaductSchema.Directive -> {
+                for (arg in filteredDef.args) {
+                    val unfilteredArg = (unfilteredDef as ViaductSchema.Directive).args.first { it.name == arg.name }
                     checkUnwrapping(unfilteredArg, arg)
                 }
             }
@@ -311,7 +317,7 @@ class EmptyTypesSchemaFilter : SchemaFilter {
     override fun includeEnumValue(enumValue: ViaductSchema.EnumValue) = true
 
     override fun includeSuper(
-        record: ViaductSchema.HasExtensionsWithSupers<*, *>,
+        record: ViaductSchema.OutputRecord,
         superInterface: ViaductSchema.Interface
     ) = true
 }
@@ -327,7 +333,7 @@ class SuffixSchemaFilter(
     override fun includeEnumValue(enumValue: ViaductSchema.EnumValue) = !enumValue.name.endsWith(suffixToFilter)
 
     override fun includeSuper(
-        record: ViaductSchema.HasExtensionsWithSupers<*, *>,
+        record: ViaductSchema.OutputRecord,
         superInterface: ViaductSchema.Interface
     ) = superInterface.name.endsWith(superSuffix)
 }

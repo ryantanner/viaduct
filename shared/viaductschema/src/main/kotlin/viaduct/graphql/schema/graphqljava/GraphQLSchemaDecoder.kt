@@ -148,17 +148,59 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Scalar ==========
 
-    data class ScalarExtensions(
-        val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        val sourceLocation: ViaductSchema.SourceLocation?
-    )
+    fun createScalarExtensions(scalarDef: GJSchema.Scalar): List<ViaductSchema.Extension<GJSchema.Scalar, Nothing>> {
+        val gjDef = scalarDef.def
+        // GraphQLScalarType from UnExecutableSchemaGenerator loses extension definitions
+        // (extensionDefinitions is always empty), but it merges all directives from both
+        // base and extensions into the scalar's appliedDirectives. So we create extensions
+        // from the language-level definitions if available, falling back to merged directives.
+        val langDefs = listOf(gjDef.definition) + gjDef.extensionDefinitions
+        return if (langDefs.all { it == null } || (gjDef.extensionDefinitions.isEmpty() && gjDef.definition == null)) {
+            // No language definitions available - create single extension with merged directives
+            listOf(
+                ViaductSchema.Extension.of(
+                    def = scalarDef,
+                    memberFactory = { _ -> emptyList() },
+                    isBase = true,
+                    appliedDirectives = decodeAppliedDirectives(gjDef),
+                    sourceLocation = null
+                )
+            )
+        } else {
+            // Have language definitions - but graphql-java loses extension definitions for scalars
+            // So we only have the base definition. Use its directives from the language AST,
+            // but get extension directives from the merged appliedDirectives.
+            val baseDirectives = gjDef.definition?.let { decodeAppliedDirectivesFromLang(it.directives) } ?: emptyList()
+            val allDirectives = decodeAppliedDirectives(gjDef)
+            // Extension directives are all directives that aren't in the base
+            val baseDirectiveSet = baseDirectives.map { it.name to it.arguments }.toSet()
+            val extensionDirectives = allDirectives.filterNot { (it.name to it.arguments) in baseDirectiveSet }
 
-    fun decodeScalarExtensions(scalar: GJSchema.Scalar): ScalarExtensions {
-        val gjDef = scalar.def
-        return ScalarExtensions(
-            decodeAppliedDirectives(gjDef),
-            decodeSourceLocation(gjDef.definition)
-        )
+            buildList {
+                // Base extension
+                add(
+                    ViaductSchema.Extension.of(
+                        def = scalarDef,
+                        memberFactory = { _ -> emptyList() },
+                        isBase = true,
+                        appliedDirectives = baseDirectives,
+                        sourceLocation = decodeSourceLocation(gjDef.definition)
+                    )
+                )
+                // If there are extension directives, create a synthetic extension for them
+                if (extensionDirectives.isNotEmpty()) {
+                    add(
+                        ViaductSchema.Extension.of(
+                            def = scalarDef,
+                            memberFactory = { _ -> emptyList() },
+                            isBase = false,
+                            appliedDirectives = extensionDirectives,
+                            sourceLocation = null
+                        )
+                    )
+                }
+            }
+        }
     }
 
     // ========== Enum ==========

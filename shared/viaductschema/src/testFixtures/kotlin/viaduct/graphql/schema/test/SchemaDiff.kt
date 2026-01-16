@@ -154,7 +154,7 @@ class SchemaDiff(
                     )
                 }
             }
-            if (expectedDef is ViaductSchema.HasExtensions<*, *>) {
+            if (expectedDef is ViaductSchema.TypeDef) {
                 cvt(expectedDef, actualDef) { exp, act ->
                     fun ViaductSchema.Extension<*, *>.memberKeys() =
                         this.members
@@ -164,21 +164,29 @@ class SchemaDiff(
                     sameNames(exp.extensions, act.extensions, "EXTENSION", ViaductSchema.Extension<*, *>::memberKeys)
                 }
             }
-            if (expectedDef is ViaductSchema.HasExtensionsWithSupers<*, *>) {
+            if (expectedDef is ViaductSchema.OutputRecord) {
                 cvt(expectedDef, actualDef) { exp, act ->
-                    fun ViaductSchema.Extension<*, *>.supersKeys() =
-                        this.members
+                    fun ViaductSchema.ExtensionWithSupers<*, *>.supersKeys() =
+                        this.supers
                             .map { it.name }
                             .sorted()
                             .joinToString("::")
-                    sameNames(exp.extensions, act.extensions, "EXTENSION", ViaductSchema.Extension<*, *>::supersKeys)
+                    sameNames(exp.extensions, act.extensions, "EXTENSION_SUPERS", ViaductSchema.ExtensionWithSupers<*, *>::supersKeys)
                 }
             }
             if (expectedDef is ViaductSchema.Record) {
                 cvt(expectedDef, actualDef) { exp, act ->
-                    sameNames(exp.supers, act.supers, "SUPER", ViaductSchema.Def::name)
-                    sameNames(exp.unions, act.unions, "UNION", ViaductSchema.Def::name)
                     visit(exp.fields, act.fields, "FIELD")
+                }
+            }
+            if (expectedDef is ViaductSchema.OutputRecord) {
+                cvt(expectedDef, actualDef) { exp, act ->
+                    sameNames(exp.supers, act.supers, "SUPER", ViaductSchema.Def::name)
+                }
+            }
+            if (expectedDef is ViaductSchema.Object) {
+                cvt(expectedDef, actualDef) { exp, act ->
+                    sameNames(exp.unions, act.unions, "UNION", ViaductSchema.Def::name)
                 }
             }
             when (expectedDef) {

@@ -103,16 +103,7 @@ internal class DefinitionsDecoder(
                 }
 
                 is BSchema.Scalar -> {
-                    // Scalars always have exactly one extension
-                    val refPlus = DefinitionRefPlus(data.readInt())
-                    require(!refPlus.hasNext()) {
-                        "Scalar type ${def.name} has multiple extensions (continuation bit not set)"
-                    }
-
-                    def.populate(
-                        appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives()),
-                        sourceLocation = sourceLocations.get(refPlus.getIndex())
-                    )
+                    def.populate(decodeScalarExtensionList(def))
                 }
 
                 is BSchema.Union -> {
@@ -345,6 +336,27 @@ internal class DefinitionsDecoder(
             } while (refPlus.hasNext())
         }
     }
+
+    fun decodeScalarExtensionList(def: BSchema.Scalar): List<ViaductSchema.Extension<BSchema.Scalar, Nothing>> =
+        buildList {
+            var isBase = true
+            do {
+                val refPlus = DefinitionRefPlus(data.readInt())
+                val appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives())
+                val sourceLocation = sourceLocations.get(refPlus.getIndex())
+
+                @Suppress("UNCHECKED_CAST")
+                val ext = ViaductSchema.Extension.of(
+                    def = def,
+                    memberFactory = { emptyList<Nothing>() },
+                    isBase = isBase,
+                    appliedDirectives = appliedDirectives,
+                    sourceLocation = sourceLocation
+                ) as ViaductSchema.Extension<BSchema.Scalar, Nothing>
+                add(ext)
+                isBase = false
+            } while (refPlus.hasNext())
+        }
 
     fun <D : BSchema.TypeDef, M : BSchema.Def> decodeExtensionList(
         def: D,

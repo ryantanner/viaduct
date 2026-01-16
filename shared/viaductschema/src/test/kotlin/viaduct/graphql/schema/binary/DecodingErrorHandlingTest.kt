@@ -54,7 +54,14 @@ class DecodingErrorHandlingTest {
     fun `Applied directive on field references non-existent directive`() {
         val obj = BSchema.Object("Query")
         val stringType = BSchema.Scalar("String")
-        stringType.populate(emptyList(), null)
+        val stringExt = ViaductSchema.Extension.of<BSchema.Scalar, Nothing>(
+            def = stringType,
+            memberFactory = { emptyList() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+        stringType.populate(listOf(stringExt))
 
         // Create a field with an applied directive that doesn't exist
         val appliedDirective = ViaductSchema.AppliedDirective.of("missingDirective", emptyMap())
@@ -90,7 +97,14 @@ class DecodingErrorHandlingTest {
         val scalar = BSchema.Scalar("MyScalar")
 
         val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
-        scalar.populate(listOf(appliedDirective), null)
+        val extension = ViaductSchema.Extension.of<BSchema.Scalar, Nothing>(
+            def = scalar,
+            memberFactory = { emptyList() },
+            isBase = true,
+            appliedDirectives = listOf(appliedDirective),
+            sourceLocation = null
+        )
+        scalar.populate(listOf(extension))
 
         assertThrows<InvalidSchemaException> {
             emptyDirectives.validateAppliedDirectives(scalar)
@@ -234,7 +248,14 @@ class DecodingErrorHandlingTest {
 
         val obj = BSchema.Object("Query")
         val stringType = BSchema.Scalar("String")
-        stringType.populate(emptyList(), null)
+        val stringExt = ViaductSchema.Extension.of<BSchema.Scalar, Nothing>(
+            def = stringType,
+            memberFactory = { emptyList() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+        stringType.populate(listOf(stringExt))
 
         // Create applied directive with an argument that doesn't exist in definition
         val appliedDirective = ViaductSchema.AppliedDirective.of(
@@ -638,7 +659,14 @@ class DecodingErrorHandlingTest {
 
         val obj = BSchema.Object("Query")
         val stringType = BSchema.Scalar("String")
-        stringType.populate(emptyList(), null)
+        val stringExt = ViaductSchema.Extension.of<BSchema.Scalar, Nothing>(
+            def = stringType,
+            memberFactory = { emptyList() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+        stringType.populate(listOf(stringExt))
 
         val appliedDirective = ViaductSchema.AppliedDirective.of("myDirective", emptyMap())
 

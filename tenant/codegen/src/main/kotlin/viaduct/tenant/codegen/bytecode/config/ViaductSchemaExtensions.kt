@@ -216,7 +216,7 @@ fun ViaductSchema.Interface.noArgsAnywhere(fieldName: String): Boolean {
  */
 val ViaductSchema.TypeDef.isNode: Boolean
     get() = (name == "Node" && this is ViaductSchema.Interface) ||
-        (this is ViaductSchema.Record && supers.any { it.isNode })
+        (this is ViaductSchema.OutputRecord && supers.any { it.isNode })
 
 /**
  * True is this type implements the PagedConnection interface,

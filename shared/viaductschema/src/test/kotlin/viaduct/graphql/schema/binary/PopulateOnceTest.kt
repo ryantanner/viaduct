@@ -139,12 +139,20 @@ class PopulateOnceTest {
     fun `calling populate twice on Scalar throws helpful error`() {
         val scalar = BSchema.Scalar("TestScalar")
 
+        val ext = ViaductSchema.Extension.of<BSchema.Scalar, Nothing>(
+            def = scalar,
+            memberFactory = { emptyList() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+
         // First populate succeeds
-        scalar.populate(emptyList(), null)
+        scalar.populate(listOf(ext))
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            scalar.populate(emptyList(), null)
+            scalar.populate(listOf(ext))
         }
         exception.message shouldContain "TestScalar"
         exception.message shouldContain "populate"

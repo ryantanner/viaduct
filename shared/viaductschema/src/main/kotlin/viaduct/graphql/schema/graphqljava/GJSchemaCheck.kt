@@ -190,7 +190,6 @@ class GJSchemaCheck(
 
     private fun checkSourceLocationInvariants() {
         for (d in schema.types.values) {
-            if (d !is ViaductSchema.HasExtensions<*, *>) continue
             check.withContext(d.name) {
                 val expectedExts: List<Node<*>?> =
                     when (d) {
@@ -198,6 +197,7 @@ class GJSchemaCheck(
                         is GJSchema.Input -> listOf(d.def.definition) + d.def.extensionDefinitions
                         is GJSchema.Interface -> listOf(d.def.definition) + d.def.extensionDefinitions
                         is GJSchema.Object -> listOf(d.def.definition) + d.def.extensionDefinitions
+                        is GJSchema.Scalar -> listOf(d.def.definition) + d.def.extensionDefinitions
                         is GJSchema.Union -> listOf(d.def.definition) + d.def.extensionDefinitions
                         else -> throw IllegalArgumentException("Unknown type ($d).")
                     }

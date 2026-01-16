@@ -10,6 +10,7 @@ import graphql.schema.GraphQLUnionType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
 
 /** Tests for error checking in GJSchema TypeDef classes. */
 class GJSchemaErrorTest {
@@ -92,12 +93,22 @@ class GJSchemaErrorTest {
         val def = GraphQLScalarType.newScalar().name("TestScalar").coercing(Scalars.GraphQLString.coercing).build()
         val scalar = GJSchema.Scalar(def, def.name)
 
+        val extensions = listOf(
+            ViaductSchema.Extension.of<GJSchema.Scalar, Nothing>(
+                def = scalar,
+                memberFactory = { emptyList() },
+                isBase = true,
+                appliedDirectives = emptyList(),
+                sourceLocation = null
+            )
+        )
+
         // First populate succeeds
-        scalar.populate(emptyList(), null)
+        scalar.populate(extensions)
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            scalar.populate(emptyList(), null)
+            scalar.populate(extensions)
         }
         exception.message shouldContain "TestScalar"
         exception.message shouldContain "populate"

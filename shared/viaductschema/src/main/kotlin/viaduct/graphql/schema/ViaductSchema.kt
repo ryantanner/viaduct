@@ -142,9 +142,9 @@ interface ViaductSchema {
             get() = (this != INPUT)
     }
 
-    interface Directive : HasArgs {
+    interface Directive : Def {
         override val name: String
-        override val args: Collection<DirectiveArg>
+        val args: Collection<DirectiveArg>
         val allowedLocations: Set<Location>
         val isRepeatable: Boolean
 
@@ -227,16 +227,6 @@ interface ViaductSchema {
         }
     }
 
-    interface HasExtensions<D : TypeDef, M : Def> : TypeDef {
-        val extensions: Collection<Extension<D, M>>
-    }
-
-    interface HasExtensionsWithSupers<D : Record, M : Field> :
-        Record,
-        HasExtensions<D, M> {
-        override val extensions: Collection<ExtensionWithSupers<D, M>>
-    }
-
     /** Supertype of all type definitions, as well as field
      *  enum-value definitions.  Compare to GraphQLDirectiveContainer
      *  in graphql-java.
@@ -256,6 +246,7 @@ interface ViaductSchema {
 
     interface TypeDef : Def {
         val kind: TypeDefKind
+        val extensions: Collection<Extension<TypeDef, Def>>
 
         /** True for scalar and enumeration types. */
         val isSimple: Boolean
@@ -284,6 +275,11 @@ interface ViaductSchema {
 
     interface Scalar : TypeDef {
         override val kind get() = TypeDefKind.SCALAR
+        override val extensions: Collection<Extension<Scalar, Nothing>>
+        override val sourceLocation get() = extensions.firstOrNull().let {
+            requireNotNull(it) { "Scalar $this has no extensions" }
+            it.sourceLocation
+        }
 
         override fun describe() = "Scalar<$name>"
     }
@@ -296,7 +292,7 @@ interface ViaductSchema {
         override fun describe() = "EnumValue<$name>"
     }
 
-    interface Enum : HasExtensions<Enum, EnumValue> {
+    interface Enum : TypeDef {
         override val kind get() = TypeDefKind.ENUM
 
         val values: Collection<EnumValue>
@@ -311,9 +307,7 @@ interface ViaductSchema {
         override fun describe() = "Enum<$name>"
     }
 
-    interface Union :
-        TypeDef,
-        HasExtensions<Union, Object> {
+    interface Union : TypeDef {
         override val kind get() = TypeDefKind.UNION
         override val extensions: Collection<Extension<Union, Object>>
         override val sourceLocation get() = extensions.firstOrNull().let {
@@ -367,14 +361,8 @@ interface ViaductSchema {
         override fun describe() = "DirectiveArg<${containingDef.name}.$name:$type>"
     }
 
-    interface HasArgs : Def {
-        val args: Collection<Arg>
-    }
-
     /** Represents fields for all of interface, object, and input types. */
-    interface Field :
-        HasDefaultValue,
-        HasArgs {
+    interface Field : HasDefaultValue {
         override val containingDef: Record
         val containingExtension: Extension<Record, Field>
         override val sourceLocation get() = containingExtension.sourceLocation
@@ -383,7 +371,7 @@ interface ViaductSchema {
          *  Important because code generators may want to order
          *  generated function-signatures in an order that matches
          *  what's in the schema. */
-        override val args: Collection<FieldArg>
+        val args: Collection<FieldArg>
 
         /** For fields in interfaces and objects, this is true if
          *  this field definition is overriding one from an
@@ -401,7 +389,7 @@ interface ViaductSchema {
      *  work the same for all three types. */
     interface Record : TypeDef {
         val fields: Collection<Field>
-        val extensions: Collection<Extension<Record, Field>>
+        override val extensions: Collection<Extension<Record, Field>>
         override val sourceLocation get() = extensions.firstOrNull().let {
             requireNotNull(it) { "Record $this has no extensions" }
             it.sourceLocation
@@ -411,33 +399,35 @@ interface ViaductSchema {
 
         // override with "= super.field(path) as Field" to get more precise typing
         fun field(path: Iterable<String>): Field
-
-        /** For object and interface types, the list of interfaces directly
-         *  implemented by the type.  Empty for InputTypes. */
-        val supers: Collection<Interface>
-
-        /** For object types, the list of unions that contain it (empty for
-         *  other types). */
-        val unions: Collection<Union>
     }
 
-    interface Interface : HasExtensionsWithSupers<Interface, Field> {
+    /** Supertype for GraphQL interface- and object-types (output record types).
+     *  These types have extensions with supers, unlike Input types. */
+    interface OutputRecord : Record {
+        override val extensions: Collection<ExtensionWithSupers<OutputRecord, Field>>
+
+        /** The list of interfaces directly implemented by this type. */
+        val supers: Collection<Interface>
+    }
+
+    interface Interface : OutputRecord {
         override val kind get() = TypeDefKind.INTERFACE
         override val extensions: Collection<ExtensionWithSupers<Interface, Field>>
 
         override fun describe() = "Interface<$name>"
     }
 
-    interface Object : HasExtensionsWithSupers<Object, Field> {
+    interface Object : OutputRecord {
         override val kind get() = TypeDefKind.OBJECT
         override val extensions: Collection<ExtensionWithSupers<Object, Field>>
+
+        /** The list of unions that contain this object type. */
+        val unions: Collection<Union>
 
         override fun describe() = "Object<$name>"
     }
 
-    interface Input :
-        Record,
-        HasExtensions<Input, Field> {
+    interface Input : Record {
         override val kind get() = TypeDefKind.INPUT
         override val extensions: Collection<Extension<Input, Field>>
 
@@ -561,7 +551,9 @@ interface ViaductSchema {
 
         // use as "override val isOverride by lazy { BridgeSchema.isOverride(this) }"
         fun isOverride(field: Field): Boolean {
-            for (s in field.containingDef.supers) {
+            val containingDef = field.containingDef
+            if (containingDef !is OutputRecord) return false
+            for (s in containingDef.supers) {
                 if (s.field(field.name) != null) return true
             }
             return false

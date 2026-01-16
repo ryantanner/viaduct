@@ -54,16 +54,16 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Scalar ==========
 
-    data class ScalarExtensions(
-        val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        val sourceLocation: ViaductSchema.SourceLocation?
-    )
-
-    fun decodeScalarExtensions(scalar: GJSchemaRaw.Scalar): ScalarExtensions {
-        return ScalarExtensions(
-            (listOf(scalar.def) + scalar.extensionDefs).flatMap { decodeAppliedDirectives(it.directives) },
-            decodeSourceLocation(scalar.def)
-        )
+    fun createScalarExtensions(scalarDef: GJSchemaRaw.Scalar): List<ViaductSchema.Extension<GJSchemaRaw.Scalar, Nothing>> {
+        return (listOf(scalarDef.def) + scalarDef.extensionDefs).map { gjLangTypeDef ->
+            ViaductSchema.Extension.of(
+                def = scalarDef,
+                memberFactory = { _ -> emptyList() },
+                isBase = gjLangTypeDef == scalarDef.def,
+                appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
+                sourceLocation = decodeSourceLocation(gjLangTypeDef)
+            )
+        }
     }
 
     // ========== Enum ==========

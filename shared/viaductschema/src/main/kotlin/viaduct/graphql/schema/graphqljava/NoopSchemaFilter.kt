@@ -13,7 +13,7 @@ class NoopSchemaFilter : SchemaFilter {
     override fun includeEnumValue(enumValue: ViaductSchema.EnumValue) = true
 
     override fun includeSuper(
-        record: ViaductSchema.HasExtensionsWithSupers<*, *>,
+        record: ViaductSchema.OutputRecord,
         superInterface: ViaductSchema.Interface
     ) = true
 }

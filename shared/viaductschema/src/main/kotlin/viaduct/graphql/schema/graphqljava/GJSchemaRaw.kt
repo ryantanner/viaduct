@@ -299,9 +299,7 @@ class GJSchemaRaw private constructor(
                 }
                 registry.scalars().values.forEach {
                     val scalarDef = result[it.name] as Scalar
-                    decoder.decodeScalarExtensions(scalarDef).let { ext ->
-                        scalarDef.populate(ext.appliedDirectives, ext.sourceLocation)
-                    }
+                    scalarDef.populate(decoder.createScalarExtensions(scalarDef))
                 }
                 registry.getTypes(UnionTypeDefinition::class.java).forEach {
                     val unionDef = result[it.name] as Union
@@ -439,12 +437,6 @@ class GJSchemaRaw private constructor(
     ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.Arg
 
-    interface HasArgs :
-        Def,
-        ViaductSchema.HasArgs {
-        override val args: List<Arg>
-    }
-
     class DirectiveArg internal constructor(
         override val def: InputValueDefinition,
         override val containingDef: Directive,
@@ -461,8 +453,7 @@ class GJSchemaRaw private constructor(
     class Directive internal constructor(
         override val def: DirectiveDefinition,
         override val name: String,
-    ) : ViaductSchema.Directive,
-        HasArgs {
+    ) : ViaductSchema.Directive, Def {
             private var mIsRepeatable: Boolean? = null
         private var mAllowedLocations: Set<ViaductSchema.Directive.Location>? = null
         private var mSourceLocation: ViaductSchema.SourceLocation? = null
@@ -497,19 +488,16 @@ class GJSchemaRaw private constructor(
         name: String,
     ) : TypeDefImpl(name),
         ViaductSchema.Scalar {
-        private var mSourceLocation: ViaductSchema.SourceLocation? = null
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mExtensions: List<ViaductSchema.Extension<Scalar, Nothing>>? = null
 
-        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mAppliedDirectives)
-        override val appliedDirectives get() = guardedGet(mAppliedDirectives)
+        override val extensions: List<ViaductSchema.Extension<Scalar, Nothing>> get() = guardedGet(mExtensions)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = extensions.flatMap { it.appliedDirectives }
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
-        internal fun populate(
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            sourceLocation: ViaductSchema.SourceLocation?
-        ) {
-            check(mAppliedDirectives == null) { "Type $name has already been populated; populate() can only be called once" }
-            mAppliedDirectives = appliedDirectives
-            mSourceLocation = sourceLocation
+        internal fun populate(extensions: List<ViaductSchema.Extension<Scalar, Nothing>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
+            mExtensions = extensions
         }
     }
 
@@ -613,8 +601,7 @@ class GJSchemaRaw private constructor(
         hasDefault: Boolean,
         defaultValue: Any?,
     ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue),
-        ViaductSchema.Field,
-        HasArgs {
+        ViaductSchema.Field {
         abstract override val containingDef: Record
         abstract override val containingExtension: ViaductSchema.Extension<Record, Field>
         abstract override val args: List<FieldArg>
@@ -659,16 +646,18 @@ class GJSchemaRaw private constructor(
         override fun field(name: String) = fields.find { name == it.name }
 
         override fun field(path: Iterable<String>): Field = ViaductSchema.field(this, path)
+    }
 
+    sealed interface OutputRecord : ViaductSchema.OutputRecord, Record {
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<OutputRecord, Field>>
         override val supers: List<Interface>
-        override val unions: List<Union>
     }
 
     class Interface internal constructor(
         override val def: InterfaceTypeDefinition,
         override val extensionDefs: List<InterfaceTypeExtensionDefinition>,
         name: String,
-    ) : TypeDefImpl(name), ViaductSchema.Interface, Record {
+    ) : TypeDefImpl(name), ViaductSchema.Interface, OutputRecord {
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
         private var mFields: List<Field>? = null
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
@@ -680,7 +669,6 @@ class GJSchemaRaw private constructor(
         override val supers: List<Interface> get() = guardedGet(mSupers)
         override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val unions = emptyList<Union>()
 
         internal fun populate(
             extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>,
@@ -700,7 +688,7 @@ class GJSchemaRaw private constructor(
         override val def: ObjectTypeDefinition,
         override val extensionDefs: List<ObjectTypeExtensionDefinition>,
         name: String,
-    ) : TypeDefImpl(name), ViaductSchema.Object, Record {
+    ) : TypeDefImpl(name), ViaductSchema.Object, OutputRecord {
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>>? = null
         private var mFields: List<Field>? = null
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
@@ -742,8 +730,6 @@ class GJSchemaRaw private constructor(
         override val fields: List<Field> get() = guardedGet(mFields)
         override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val supers = emptyList<Interface>()
-        override val unions = emptyList<Union>()
 
         internal fun populate(extensions: List<ViaductSchema.Extension<Input, Field>>) {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }

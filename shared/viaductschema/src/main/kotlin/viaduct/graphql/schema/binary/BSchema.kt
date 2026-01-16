@@ -53,10 +53,6 @@ internal class BSchema(
         defaultValue: Any?,
     ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue), ViaductSchema.Arg
 
-    interface HasArgs : Def, ViaductSchema.HasArgs {
-        override val args: List<Arg>
-    }
-
     class DirectiveArg(
         override val containingDef: Directive,
         name: String,
@@ -97,7 +93,7 @@ internal class BSchema(
         hasDefault: Boolean,
         defaultValue: Any?,
         argsFactory: (Field) -> List<FieldArg>,
-    ) : ViaductSchema.Field, HasArgs, HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue) {
+    ) : ViaductSchema.Field, HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue) {
         /** Secondary constructor for fields without arguments (e.g., input fields). */
         constructor(
             containingExtension: ViaductSchema.Extension<Record, Field>,
@@ -122,7 +118,7 @@ internal class BSchema(
 
     class Directive(
         override val name: String,
-    ) : ViaductSchema.Directive, TopLevelDef, HasArgs {
+    ) : ViaductSchema.Directive, TopLevelDef {
         override fun toString() = describe()
 
         private var mSourceLocation: ViaductSchema.SourceLocation? = null
@@ -200,19 +196,16 @@ internal class BSchema(
     class Scalar(
         name: String
     ) : ViaductSchema.Scalar, TypeDefImpl(name) {
-        private var mSourceLocation: ViaductSchema.SourceLocation? = null
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mExtensions: List<ViaductSchema.Extension<Scalar, Nothing>>? = null
 
-        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mAppliedDirectives)
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val extensions: List<ViaductSchema.Extension<Scalar, Nothing>> get() = guardedGet(mExtensions)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = extensions.flatMap { it.appliedDirectives }
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
-        internal fun populate(
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            sourceLocation: ViaductSchema.SourceLocation?
-        ) {
-            check(mAppliedDirectives == null) { "Type $name has already been populated; populate() can only be called once" }
-            mAppliedDirectives = appliedDirectives
-            mSourceLocation = sourceLocation
+        internal fun populate(extensions: List<ViaductSchema.Extension<Scalar, Nothing>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
+            mExtensions = extensions
         }
     }
 
@@ -260,14 +253,16 @@ internal class BSchema(
         override fun field(name: String) = fields.find { name == it.name }
 
         override fun field(path: Iterable<String>): Field = ViaductSchema.field(this, path)
+    }
 
+    sealed interface OutputRecord : ViaductSchema.OutputRecord, Record {
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<OutputRecord, Field>>
         override val supers: List<Interface>
-        override val unions: List<Union>
     }
 
     class Interface(
         name: String
-    ) : ViaductSchema.Interface, Record, TypeDefImpl(name) {
+    ) : ViaductSchema.Interface, OutputRecord, TypeDefImpl(name) {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
         private var mFields: List<Field>? = null
@@ -279,7 +274,6 @@ internal class BSchema(
         override val extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>> get() = guardedGet(mExtensions)
         override val fields: List<Field> get() = guardedGet(mFields)
         override val supers: List<Interface> get() = guardedGet(mSupers)
-        override val unions: List<Union> get() = emptyList()
         override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
 
         internal fun populate(
@@ -337,8 +331,6 @@ internal class BSchema(
         override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
         override val extensions: List<ViaductSchema.Extension<Input, Field>> get() = guardedGet(mExtensions)
         override val fields: List<Field> get() = guardedGet(mFields)
-        override val supers: List<Interface> get() = emptyList()
-        override val unions: List<Union> get() = emptyList()
 
         internal fun populate(extensions: List<ViaductSchema.Extension<Input, Field>>) {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
@@ -351,7 +343,7 @@ internal class BSchema(
 
     class Object(
         name: String
-    ) : ViaductSchema.Object, Record, TypeDefImpl(name) {
+    ) : ViaductSchema.Object, OutputRecord, TypeDefImpl(name) {
         override val possibleObjectTypes = setOf(this)
 
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null

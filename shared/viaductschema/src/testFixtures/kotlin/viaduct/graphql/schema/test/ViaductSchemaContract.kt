@@ -27,8 +27,8 @@ interface ViaductSchemaContract {
             type: String,
             block: (Iterable<ViaductSchema.Extension<*, *>>) -> Unit
         ) = block(
-            (this.types[type] as? ViaductSchema.HasExtensions<*, *>)?.extensions
-                ?: throw IllegalArgumentException("Unknown on non-extensions type $type")
+            this.types[type]?.extensions
+                ?: throw IllegalArgumentException("Unknown type $type")
         )
 
         private fun ViaductSchema.withField(

@@ -87,6 +87,9 @@ class NodeResolverGeneratorTest {
             override val possibleObjectTypes = emptySet<ViaductSchema.Object>()
 
             override fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }
+
+            override val extensions: Collection<ViaductSchema.Extension<ViaductSchema.TypeDef, ViaductSchema.Def>>
+                get() = TODO("Not yet implemented")
         }
     }
 

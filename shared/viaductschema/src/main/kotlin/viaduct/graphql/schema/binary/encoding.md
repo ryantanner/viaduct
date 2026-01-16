@@ -683,8 +683,7 @@ This three-level structure is encoded using the same patterns throughout: RefPlu
 
 **Scalar:**
 
-- Always exactly one extension (`END_OF_LIST_BIT` must be set immediately)
-- No members list
+- Per-extension: Applied directives only (no members list)
 - No global lists
 
 **Union:**

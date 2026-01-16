@@ -61,9 +61,9 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
 
         for (typeDef in defs.values) {
             when (typeDef) {
-                is Scalar<*> -> decoder.decodeScalarExtensions(typeDef).let {
-                    typeDef.populate(it.appliedDirectives, it.sourceLocation)
-                }
+                is Scalar<*> -> typeDef.populate(
+                    decoder.createScalarExtensions(typeDef)
+                )
                 is Enum<*> -> typeDef.populate(
                     decoder.createEnumExtensions(typeDef)
                 )
@@ -151,12 +151,6 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
     ) : HasDefaultValue<D, A>(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.Arg
 
-    interface HasArgs<D : ViaductSchema.Def> :
-        Def<D>,
-        ViaductSchema.HasArgs {
-        override val args: List<Arg<D, out ViaductSchema.Arg>>
-    }
-
     class DirectiveArg<D : ViaductSchema.Directive, A : ViaductSchema.DirectiveArg> internal constructor(
         override val unfilteredDef: A,
         override val containingDef: Directive<D>,
@@ -179,7 +173,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
     class Directive<D : ViaductSchema.Directive> internal constructor(
         override val unfilteredDef: D,
         override val name: String,
-    ) : HasArgs<D>,
+    ) : Def<D>,
         ViaductSchema.Directive {
         private var mIsRepeatable: Boolean? = null
         private var mAllowedLocations: Set<ViaductSchema.Directive.Location>? = null
@@ -214,19 +208,19 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
         name: String,
     ) : TypeDefImpl<S>(name),
         ViaductSchema.Scalar {
-        private var mSourceLocation: ViaductSchema.SourceLocation? = null
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mExtensions: List<ViaductSchema.Extension<Scalar<S>, Nothing>>? = null
 
-        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mAppliedDirectives)
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val extensions: List<ViaductSchema.Extension<Scalar<S>, Nothing>>
+            get() = guardedGet(mExtensions)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
+            get() = extensions.flatMap { it.appliedDirectives }
+        override val sourceLocation: ViaductSchema.SourceLocation?
+            get() = extensions.first().sourceLocation
 
-        internal fun populate(
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            sourceLocation: ViaductSchema.SourceLocation?
-        ) {
-            check(mAppliedDirectives == null) { "Type $name has already been populated; populate() can only be called once" }
-            mAppliedDirectives = appliedDirectives
-            mSourceLocation = sourceLocation
+        @Suppress("UNCHECKED_CAST")
+        internal fun populate(extensions: List<ViaductSchema.Extension<Scalar<*>, Nothing>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions as List<ViaductSchema.Extension<Scalar<S>, Nothing>>
         }
     }
 
@@ -348,7 +342,6 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
             hasDefault,
             defaultValue,
         ),
-        HasArgs<F>,
         ViaductSchema.Field {
         override val args = argsFactory(this)
         override val isOverride by lazy { ViaductSchema.isOverride(this) }
@@ -364,17 +357,17 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
         override fun field(name: String) = fields.find { name == it.name }
 
         override fun field(path: Iterable<String>): Field<R, out ViaductSchema.Field> = ViaductSchema.field(this, path)
+    }
 
+    sealed interface OutputRecord<R : ViaductSchema.OutputRecord> : Record<R>, ViaductSchema.OutputRecord {
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<out OutputRecord<*>, Field<*, *>>>
         override val supers: List<Interface<*>>
-        override val unions: List<Union<*>>
     }
 
     class Interface<I : ViaductSchema.Interface> internal constructor(
         override val unfilteredDef: I,
         name: String,
-    ) : TypeDefImpl<I>(name), Record<I>, ViaductSchema.Interface {
-        override val unions = emptyList<Union<*>>()
-
+    ) : TypeDefImpl<I>(name), OutputRecord<I>, ViaductSchema.Interface {
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface<I>, Field<I, *>>>? = null
         private var mFields: List<Field<I, *>>? = null
         private var mSupers: List<Interface<*>>? = null
@@ -409,7 +402,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
     class Object<O : ViaductSchema.Object> internal constructor(
         override val unfilteredDef: O,
         name: String,
-    ) : TypeDefImpl<O>(name), Record<O>, ViaductSchema.Object {
+    ) : TypeDefImpl<O>(name), OutputRecord<O>, ViaductSchema.Object {
         override val possibleObjectTypes = setOf(this)
 
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Object<O>, Field<O, *>>>? = null
@@ -449,9 +442,6 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
     ) : TypeDefImpl<I>(name),
         Record<I>,
         ViaductSchema.Input {
-        override val supers = emptyList<Interface<*>>()
-        override val unions = emptyList<Union<*>>()
-
         private var mExtensions: List<ViaductSchema.Extension<Input<I>, Field<I, *>>>? = null
         private var mFields: List<Field<I, *>>? = null
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
@@ -525,16 +515,16 @@ internal class FilteredSchemaDecoder<T : ViaductSchema.TypeDef>(
 
     // ========== Scalar ==========
 
-    data class ScalarExtensions(
-        val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        val sourceLocation: ViaductSchema.SourceLocation?
-    )
-
-    fun <S : ViaductSchema.Scalar> decodeScalarExtensions(scalar: FilteredSchema.Scalar<S>): ScalarExtensions =
-        ScalarExtensions(
-            scalar.unfilteredDef.appliedDirectives.toList(),
-            scalar.unfilteredDef.sourceLocation
-        )
+    fun <S : ViaductSchema.Scalar> createScalarExtensions(scalar: FilteredSchema.Scalar<S>): List<ViaductSchema.Extension<FilteredSchema.Scalar<S>, Nothing>> =
+        scalar.unfilteredDef.extensions.map { unfilteredExt ->
+            ViaductSchema.Extension.of(
+                def = scalar,
+                memberFactory = { _ -> emptyList() },
+                isBase = unfilteredExt.isBase,
+                appliedDirectives = unfilteredExt.appliedDirectives,
+                sourceLocation = unfilteredExt.sourceLocation
+            )
+        }
 
     // ========== Enum ==========
 
@@ -613,7 +603,7 @@ internal class FilteredSchemaDecoder<T : ViaductSchema.TypeDef>(
         }
     }
 
-    fun computeFilteredSupers(unfilteredDef: ViaductSchema.HasExtensionsWithSupers<*, *>): List<FilteredSchema.Interface<*>> =
+    fun computeFilteredSupers(unfilteredDef: ViaductSchema.OutputRecord): List<FilteredSchema.Interface<*>> =
         unfilteredDef.supers
             .filter { filter.includeSuper(unfilteredDef, it) && filter.includeTypeDef(it) }
             .map { filteredTypes[it.name] as FilteredSchema.Interface<*> }
@@ -625,7 +615,7 @@ internal class FilteredSchemaDecoder<T : ViaductSchema.TypeDef>(
             .toSet()
 
     private fun includePossibleSubType(
-        possibleSubType: ViaductSchema.HasExtensionsWithSupers<*, *>,
+        possibleSubType: ViaductSchema.OutputRecord,
         targetSuperType: ViaductSchema.Interface
     ): Boolean =
         when {
@@ -750,7 +740,7 @@ interface SchemaFilter {
     fun includeEnumValue(enumValue: ViaductSchema.EnumValue): Boolean
 
     fun includeSuper(
-        record: ViaductSchema.HasExtensionsWithSupers<*, *>,
+        record: ViaductSchema.OutputRecord,
         superInterface: ViaductSchema.Interface
     ): Boolean
 }

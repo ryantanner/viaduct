@@ -29,7 +29,7 @@ class ScopedSchemaFilter(private val appliedScopes: Set<String>) : SchemaFilter 
     }
 
     override fun includeSuper(
-        record: ViaductSchema.HasExtensionsWithSupers<*, *>,
+        record: ViaductSchema.OutputRecord,
         superInterface: ViaductSchema.Interface
     ): Boolean {
         val ext = record.extensions.first { it.supers.any { it.name == superInterface.name } }

@@ -214,16 +214,8 @@ fun ViaductSchema.Input.toMergedInputTypeDefinition(): InputObjectTypeDefinition
     return InputObjectTypeDefinition
         .newInputObjectDefinition()
         .name(allFields.first().containingDef.name)
-        .inputValueDefinitions(
-            allFields.map { field ->
-                InputValueDefinition
-                    .newInputValueDefinition()
-                    .name(field.name)
-                    .type(field.type.toTypeForTypeDefinition())
-                    .directives(field.appliedDirectives.map { it.toDirectiveForTypeDefinition() })
-                    .build()
-            }
-        ).directives(extensions.map { it.appliedDirectives }.flatten().map { it.toDirectiveForTypeDefinition() })
+        .inputValueDefinitions(allFields.map { it.inputValueDefinition() })
+        .directives(extensions.map { it.appliedDirectives }.flatten().map { it.toDirectiveForTypeDefinition() })
         .sourceLocation(sourceLocation?.toSourceLocationDefinition())
         .build()
 }
@@ -232,16 +224,8 @@ fun ViaductSchema.Input.toInputObjectTypeDefinition() =
     InputObjectTypeDefinition
         .newInputObjectDefinition()
         .name(extensions.first().def.name)
-        .inputValueDefinitions(
-            extensions.first().members.map { field ->
-                InputValueDefinition
-                    .newInputValueDefinition()
-                    .name(field.name)
-                    .type(field.type.toTypeForTypeDefinition())
-                    .directives(field.appliedDirectives.map { it.toDirectiveForTypeDefinition() })
-                    .build()
-            }
-        ).directives(extensions.first().appliedDirectives.map { it.toDirectiveForTypeDefinition() })
+        .inputValueDefinitions(extensions.first().members.map { it.inputValueDefinition() })
+        .directives(extensions.first().appliedDirectives.map { it.toDirectiveForTypeDefinition() })
         .sourceLocation(sourceLocation?.toSourceLocationDefinition())
         .build()
 
@@ -250,16 +234,8 @@ fun ViaductSchema.Input.toInputObjectTypeDefinitionExtensions() =
         InputObjectTypeExtensionDefinition
             .newInputObjectTypeExtensionDefinition()
             .name(extension.def.name)
-            .inputValueDefinitions(
-                extension.members.map {
-                    InputValueDefinition
-                        .newInputValueDefinition()
-                        .name(it.name)
-                        .type(it.type.toTypeForTypeDefinition())
-                        .directives(it.appliedDirectives.map { it.toDirectiveForTypeDefinition() })
-                        .build()
-                }
-            ).directives(extension.appliedDirectives.map { it.toDirectiveForTypeDefinition() })
+            .inputValueDefinitions(extension.members.map { it.inputValueDefinition() })
+            .directives(extension.appliedDirectives.map { it.toDirectiveForTypeDefinition() })
             .sourceLocation(sourceLocation?.toSourceLocationDefinition())
             .build()
     }
@@ -312,7 +288,7 @@ fun ViaductSchema.Interface.toInterfaceTypeDefinitionExtensions() =
             .build()
     }
 
-fun ViaductSchema.Arg.inputValueDefinition() =
+fun ViaductSchema.HasDefaultValue.inputValueDefinition() =
     InputValueDefinition
         .newInputValueDefinition()
         .name(name)
