@@ -4,9 +4,11 @@ import graphql.language.NullValue
 import viaduct.graphql.schema.ViaductSchema
 
 /**
- * Decodes the root types and definitions sections.  The act of instantiating
- * this class mutates [result] as the definitions are decoded, so the
- * resulting state is stored there and not in the resulting instance.
+ * Decodes the root types and definitions sections.
+ *
+ * @param queryTypeDef The query root type
+ * @param mutationTypeDef The mutation root type (may be null)
+ * @param subscriptionTypeDef The subscription root type (may be null)
  */
 internal class DefinitionsDecoder(
     val data: BInputStream,
@@ -14,77 +16,90 @@ internal class DefinitionsDecoder(
     private val types: TypeExpressionsDecoder,
     private val sourceLocations: SourceLocationsDecoder,
     private val constants: ConstantsDecoder,
-    val result: BSchema,
 ) {
+    val queryTypeDef: BSchema.Object?
+    val mutationTypeDef: BSchema.Object?
+    val subscriptionTypeDef: BSchema.Object?
+
     init {
         // Read Root Types section
         data.validateMagicNumber(MAGIC_ROOT_TYPES, "root types")
-        with(result) {
-            queryTypeDef = lookupRootType(identifiers.getRootName(data.readInt()), "query")
-            mutationTypeDef = lookupRootType(identifiers.getRootName(data.readInt()), "mutation")
-            subscriptionTypeDef = lookupRootType(identifiers.getRootName(data.readInt()), "subscription")
-        }
+        queryTypeDef = lookupRootType(identifiers.getRootName(data.readInt()), "query")
+        mutationTypeDef = lookupRootType(identifiers.getRootName(data.readInt()), "mutation")
+        subscriptionTypeDef = lookupRootType(identifiers.getRootName(data.readInt()), "subscription")
 
         // Read Definitions section
-        // Each definition now starts with a name reference (identifier index)
         data.validateMagicNumber(MAGIC_DEFINITIONS, "definitions")
         for (defIndex in identifiers.indexedDefs.indices) {
             // Read name reference to find the definition
             val nameRef = data.readInt() and IDX_MASK
             val defName = identifiers.get(nameRef)
-            val def = result.directives[defName] ?: result.types[defName]
+            val def = identifiers.directives[defName] ?: identifiers.types[defName]
                 ?: throw IllegalArgumentException("Definition not found: $defName")
 
             when (def) {
                 is BSchema.Directive -> {
-                    // Read RefPlus and assign source location
+                    // Read RefPlus and source location
                     val refPlus = DefinitionRefPlus(data.readInt())
-                    def.sourceLocation = sourceLocations.get(refPlus.getIndex())
+                    val sourceLocation = sourceLocations.get(refPlus.getIndex())
 
                     // Read directive info word
                     val directiveInfo = DirectiveInfo(data.readInt())
-                    def.isRepeatable = directiveInfo.isRepeatable()
-                    def.allowedLocations = directiveInfo.allowedLocations()
 
                     // Decode arguments if present
-                    if (directiveInfo.hasArgs()) {
-                        def.args = decodeInputLikeFieldList(def, BSchema::DirectiveArg)
+                    val args = if (directiveInfo.hasArgs()) {
+                        decodeInputLikeFieldList(def, BSchema::DirectiveArg)
+                    } else {
+                        emptyList()
                     }
+
+                    def.populate(
+                        directiveInfo.isRepeatable(),
+                        directiveInfo.allowedLocations(),
+                        sourceLocation,
+                        args
+                    )
                 }
 
                 is BSchema.Enum -> {
-                    def.extensions = decodeExtensionList<BSchema.Enum, BSchema.EnumValue>(def) { ext, v ->
-                        val valueRefPlus = EnumValueRefPlus(v)
-                        BSchema.EnumValue(
-                            ext,
-                            identifiers.get(valueRefPlus.getIndex()), // name
-                            decodeAppliedDirectives(valueRefPlus.hasAppliedDirectives())
-                        )
-                    }
+                    def.populate(
+                        decodeExtensionList<BSchema.Enum, BSchema.EnumValue>(def) { ext, v ->
+                            val valueRefPlus = EnumValueRefPlus(v)
+                            BSchema.EnumValue(
+                                ext,
+                                identifiers.get(valueRefPlus.getIndex()), // name
+                                decodeAppliedDirectives(valueRefPlus.hasAppliedDirectives())
+                            )
+                        }
+                    )
                 }
 
                 is BSchema.Input -> {
-                    def.extensions = decodeExtensionList(def) { ext, v ->
-                        decodeFieldOrArg(ext, FieldRefPlus(v), BSchema::Field)
-                    }
+                    def.populate(
+                        decodeExtensionList(def) { ext, v ->
+                            decodeFieldOrArg(ext, FieldRefPlus(v), BSchema::Field)
+                        }
+                    )
                 }
 
                 is BSchema.Interface -> {
-                    def.extensions = decodeExtensionList(def) { ext, v ->
-                        decodeFieldOrArg(ext, FieldRefPlus(v), BSchema::Field)
-                    }
-
                     @Suppress("UNCHECKED_CAST")
-                    def.possibleObjectTypes = (decodeTypeDefList() as List<BSchema.Object>).toSet()
+                    def.populate(
+                        decodeExtensionListWithSupers(def) { ext, v ->
+                            decodeOutputField(ext, FieldRefPlus(v))
+                        },
+                        (decodeTypeDefList() as List<BSchema.Object>).toSet()
+                    )
                 }
 
                 is BSchema.Object -> {
-                    def.extensions = decodeExtensionList(def) { ext, v ->
-                        decodeFieldOrArg(ext, FieldRefPlus(v), BSchema::Field)
-                    }
-
                     @Suppress("UNCHECKED_CAST")
-                    def.unions = decodeTypeDefList() as List<BSchema.Union>
+                    def.populate(
+                        decodeExtensionListWithSupers(def) { ext, v ->
+                            decodeOutputField(ext, FieldRefPlus(v))
+                        },
+                        decodeTypeDefList() as List<BSchema.Union>
+                    )
                 }
 
                 is BSchema.Scalar -> {
@@ -94,16 +109,34 @@ internal class DefinitionsDecoder(
                         "Scalar type ${def.name} has multiple extensions (continuation bit not set)"
                     }
 
-                    def.sourceLocation = sourceLocations.get(refPlus.getIndex())
-                    def.appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives())
+                    def.populate(
+                        appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives()),
+                        sourceLocation = sourceLocations.get(refPlus.getIndex())
+                    )
                 }
 
                 is BSchema.Union -> {
-                    def.extensions = decodeExtensionList<BSchema.Union, BSchema.Object>(def) { _, v ->
-                        typeDef<BSchema.Object>(v)
-                    }
+                    def.populate(
+                        decodeExtensionList<BSchema.Union, BSchema.Object>(def) { _, v ->
+                            typeDef<BSchema.Object>(v)
+                        }
+                    )
                 }
             }
+        }
+
+        // Phase 2: Validate applied directives now that all definitions are populated
+        validateAllAppliedDirectives()
+    }
+
+    /**
+     * Validates that all applied directives reference existing directive definitions
+     * and that their arguments match the definition.
+     */
+    private fun validateAllAppliedDirectives() {
+        val directives = identifiers.directives
+        for (typeDef in identifiers.types.values) {
+            directives.validateAppliedDirectives(typeDef)
         }
     }
 
@@ -119,7 +152,7 @@ internal class DefinitionsDecoder(
         rootKind: String
     ): BSchema.Object? {
         if (name == null) return null
-        val typeDef = result.types[name]
+        val typeDef = identifiers.types[name]
             ?: throw InvalidSchemaException("$rootKind root type '$name' not found")
         if (typeDef !is BSchema.Object) {
             throw InvalidSchemaException(
@@ -131,7 +164,7 @@ internal class DefinitionsDecoder(
 
     inline fun <reified T : BSchema.TypeDef> typeDef(refPlus: Int): T {
         val name = identifiers.get(refPlus)
-        return result.types[name] as? T
+        return identifiers.types[name] as? T
             ?: throw IllegalArgumentException("Type not found or wrong type: $name")
     }
 
@@ -156,35 +189,64 @@ internal class DefinitionsDecoder(
 
     fun decodeDefaultValue(hasDefaultValue: Boolean): Any? =
         when {
-            hasDefaultValue -> constants.decodeConstant(data.readInt() and IDX_MASK)
+            hasDefaultValue -> {
+                val decoded = constants.decodeConstant(data.readInt() and IDX_MASK)
+                if (decoded is NullValue) null else decoded
+            }
             else -> null
         }
 
     /**
      * Decode a field or argument (works for both input-like and output fields).
      * Input-like fields (directive args, field args, input type fields) may have default values.
-     * Output fields (interface/object fields) may have arguments.
+     * Output fields (interface/object fields) may have arguments - use [decodeOutputField] for those.
      */
     fun <D, T> decodeFieldOrArg(
         container: D,
         refPlus: FieldRefPlus,
-        create: (D, String, List<ViaductSchema.AppliedDirective>, BSchema.TypeExpr, Boolean, Any?) -> T,
+        create: (D, String, BSchema.TypeExpr, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
     ): T {
-        val result = create(
+        // Read in binary format order: name, appliedDirectives, type, hasDefault, defaultValue
+        val name = identifiers.get(refPlus.getIndex())
+        val appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives())
+        val type = types.get(data.readInt())
+        val hasDefault = refPlus.hasDefaultValue()
+        val defaultValue = decodeDefaultValue(hasDefault)
+        // Pass to constructor in standardized order: container, name, type, appliedDirectives, hasDefault, defaultValue
+        return create(container, name, type, appliedDirectives, hasDefault, defaultValue)
+    }
+
+    /**
+     * Decode an output field (interface/object field) which may have arguments.
+     */
+    fun decodeOutputField(
+        container: ViaductSchema.Extension<BSchema.Record, BSchema.Field>,
+        refPlus: FieldRefPlus,
+    ): BSchema.Field {
+        // Read in binary format order: name, appliedDirectives, type, hasDefault, defaultValue
+        val name = identifiers.get(refPlus.getIndex())
+        val appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives())
+        val type = types.get(data.readInt())
+        val hasDefault = refPlus.hasDefaultValue()
+        val defaultValue = decodeDefaultValue(hasDefault)
+        val hasArgs = refPlus.hasArguments()
+
+        // Pass to constructor in standardized order: container, name, type, appliedDirectives, hasDefault, defaultValue
+        return BSchema.Field(
             container,
-            identifiers.get(refPlus.getIndex()), // name
-            decodeAppliedDirectives(refPlus.hasAppliedDirectives()),
-            types.get(data.readInt()),
-            refPlus.hasDefaultValue(),
-            decodeDefaultValue(refPlus.hasDefaultValue()),
+            name,
+            type,
+            appliedDirectives,
+            hasDefault,
+            defaultValue,
+            argsFactory = { field ->
+                if (hasArgs) {
+                    decodeInputLikeFieldList(field, BSchema::FieldArg)
+                } else {
+                    emptyList()
+                }
+            }
         )
-
-        // Handle arguments for output fields (interface/object fields)
-        if (refPlus.hasArguments() && result is BSchema.Field) {
-            result.args = decodeInputLikeFieldList(result, BSchema::FieldArg)
-        }
-
-        return result
     }
 
     /**
@@ -196,7 +258,7 @@ internal class DefinitionsDecoder(
      */
     fun <D, T> decodeInputLikeFieldList(
         container: D,
-        create: (D, String, List<ViaductSchema.AppliedDirective>, BSchema.TypeExpr, Boolean, Any?) -> T,
+        create: (D, String, BSchema.TypeExpr, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
     ): List<T> {
         var v = data.readInt()
         if (v == EMPTY_LIST_MARKER) return emptyList()
@@ -257,7 +319,7 @@ internal class DefinitionsDecoder(
                 // If the directive definition is not yet available (can happen with circular
                 // directive dependencies), we use only the explicit args. The encoder ensures
                 // that in such cases, ALL arguments are encoded explicitly.
-                val directiveDef = result.directives[directiveName]
+                val directiveDef = identifiers.directives[directiveName]
                 val finalArgs = if (directiveDef != null && directiveDef.args.isNotEmpty()) {
                     buildMap {
                         for (argDef in directiveDef.args) {
@@ -286,37 +348,93 @@ internal class DefinitionsDecoder(
 
     fun <D : BSchema.TypeDef, M : BSchema.Def> decodeExtensionList(
         def: D,
-        block: (BSchema.Extension<D, M>, Int) -> M
-    ): List<BSchema.Extension<D, M>> =
+        block: (ViaductSchema.Extension<D, M>, Int) -> M
+    ): List<ViaductSchema.Extension<D, M>> =
         buildList {
             var isBase = true
             do {
                 val refPlus = DefinitionRefPlus(data.readInt())
+                val appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives())
+                val sourceLocation = sourceLocations.get(refPlus.getIndex())
 
                 @Suppress("UNCHECKED_CAST")
-                val ext = BSchema.Extension<D, M>(
-                    def,
-                    decodeAppliedDirectives(refPlus.hasAppliedDirectives()),
-                    sourceLocations.get(refPlus.getIndex()),
-                    isBase,
-                    supers = decodeTypeDefList(refPlus.hasImplementedTypes()) as List<BSchema.Interface>,
-                )
-                add(ext)
-
-                var v = data.readInt()
-                if (v != EMPTY_LIST_MARKER) {
-                    ext.members = buildList {
-                        do {
-                            add(block(ext, v))
-                            // NOTE: we're assuming END_OF_LIST_BIT is used by
-                            // all InputLikeField cases
-                            val hasNext = (0 == (v and END_OF_LIST_BIT))
-                            if (hasNext) {
-                                v = data.readInt()
+                val ext = ViaductSchema.Extension.of(
+                    def = def,
+                    memberFactory = { ext ->
+                        var v = data.readInt()
+                        if (v == EMPTY_LIST_MARKER) {
+                            emptyList()
+                        } else {
+                            buildList {
+                                do {
+                                    add(block(ext as ViaductSchema.Extension<D, M>, v))
+                                    val hasNext = (0 == (v and END_OF_LIST_BIT))
+                                    if (hasNext) {
+                                        v = data.readInt()
+                                    }
+                                } while (hasNext)
                             }
-                        } while (hasNext)
+                        }
+                    },
+                    isBase = isBase,
+                    appliedDirectives = appliedDirectives,
+                    sourceLocation = sourceLocation
+                ) as ViaductSchema.Extension<D, M>
+                add(ext)
+                isBase = false
+            } while (refPlus.hasNext())
+        }
+
+    fun <D : BSchema.TypeDef, M : BSchema.Def> decodeExtensionListWithSupers(
+        def: D,
+        block: (ViaductSchema.Extension<D, M>, Int) -> M
+    ): List<ViaductSchema.ExtensionWithSupers<D, M>> =
+        buildList {
+            var isBase = true
+            do {
+                val refPlus = DefinitionRefPlus(data.readInt())
+                val appliedDirectives = decodeAppliedDirectives(refPlus.hasAppliedDirectives())
+                val sourceLocation = sourceLocations.get(refPlus.getIndex())
+
+                @Suppress("UNCHECKED_CAST")
+                val supers = decodeTypeDefList(refPlus.hasImplementedTypes()) as List<BSchema.Interface>
+
+                // Validate that all supers are actually Interface types before creating extension
+                for (superType in supers) {
+                    if (superType !is BSchema.Interface) {
+                        val typeName = superType.name
+                        throw InvalidSchemaException(
+                            "Type ${def.name} implements $typeName which is not an Interface type " +
+                                "(got ${superType.javaClass.simpleName})"
+                        )
                     }
                 }
+
+                @Suppress("UNCHECKED_CAST")
+                val ext = ViaductSchema.ExtensionWithSupers.of(
+                    def = def,
+                    memberFactory = { ext ->
+                        var v = data.readInt()
+                        if (v == EMPTY_LIST_MARKER) {
+                            emptyList()
+                        } else {
+                            buildList {
+                                do {
+                                    add(block(ext as ViaductSchema.Extension<D, M>, v))
+                                    val hasNext = (0 == (v and END_OF_LIST_BIT))
+                                    if (hasNext) {
+                                        v = data.readInt()
+                                    }
+                                } while (hasNext)
+                            }
+                        }
+                    },
+                    isBase = isBase,
+                    appliedDirectives = appliedDirectives,
+                    supers = supers,
+                    sourceLocation = sourceLocation
+                ) as ViaductSchema.ExtensionWithSupers<D, M>
+                add(ext)
                 isBase = false
             } while (refPlus.hasNext())
         }

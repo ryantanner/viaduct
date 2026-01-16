@@ -30,87 +30,98 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Applied directive on type references non-existent directive`() {
-        val schema = BSchema()
-        val obj = schema.addTypeDef<BSchema.Object>("MyObject")
+        val obj = BSchema.Object("MyObject")
 
         // Create an applied directive referencing a directive that doesn't exist
         val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
 
-        val ext = BSchema.Extension<BSchema.Object, BSchema.Field>(
-            obj,
-            listOf(appliedDirective), // Applied directive with no definition!
-            null,
-            isBase = true
+        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Object, BSchema.Field>(
+            def = obj,
+            memberFactory = { emptyList() },
+            isBase = true,
+            appliedDirectives = listOf(appliedDirective), // Applied directive with no definition!
+            supers = emptyList(),
+            sourceLocation = null
         )
+        obj.populate(listOf(ext), emptyList())
 
         assertThrows<InvalidSchemaException> {
-            obj.extensions = listOf(ext)
+            emptyDirectives.validateAppliedDirectives(obj)
         }
     }
 
     @Test
     fun `Applied directive on field references non-existent directive`() {
-        val schema = BSchema()
-        val obj = schema.addTypeDef<BSchema.Object>("Query")
-        val stringType = schema.addTypeDef<BSchema.Scalar>("String")
-
-        val ext = BSchema.Extension<BSchema.Object, BSchema.Field>(
-            obj,
-            emptyList(),
-            null,
-            isBase = true
-        )
+        val obj = BSchema.Object("Query")
+        val stringType = BSchema.Scalar("String")
+        stringType.populate(emptyList(), null)
 
         // Create a field with an applied directive that doesn't exist
         val appliedDirective = ViaductSchema.AppliedDirective.of("missingDirective", emptyMap())
-        val field = BSchema.Field(
-            ext,
-            "myField",
-            listOf(appliedDirective), // Applied directive with no definition!
-            BSchema.TypeExpr(stringType),
-            hasDefault = false,
-            defaultValue = null
+
+        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Object, BSchema.Field>(
+            def = obj,
+            memberFactory = { ext ->
+                listOf(
+                    BSchema.Field(
+                        ext,
+                        "myField",
+                        BSchema.TypeExpr(stringType),
+                        listOf(appliedDirective), // Applied directive with no definition!
+                        hasDefault = false,
+                        defaultValue = null
+                    )
+                )
+            },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            supers = emptyList(),
+            sourceLocation = null
         )
+        obj.populate(listOf(ext), emptyList())
 
         assertThrows<InvalidSchemaException> {
-            ext.members = listOf(field)
+            emptyDirectives.validateAppliedDirectives(obj)
         }
     }
 
     @Test
     fun `Applied directive on scalar references non-existent directive`() {
-        val schema = BSchema()
-        val scalar = schema.addTypeDef<BSchema.Scalar>("MyScalar")
+        val scalar = BSchema.Scalar("MyScalar")
 
         val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
+        scalar.populate(listOf(appliedDirective), null)
 
         assertThrows<InvalidSchemaException> {
-            scalar.appliedDirectives = listOf(appliedDirective)
+            emptyDirectives.validateAppliedDirectives(scalar)
         }
     }
 
     @Test
     fun `Applied directive on enum value references non-existent directive`() {
-        val schema = BSchema()
-        val enumType = schema.addTypeDef<BSchema.Enum>("Status")
+        val enumType = BSchema.Enum("Status")
 
         val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
 
-        val ext = BSchema.Extension<BSchema.Enum, BSchema.EnumValue>(
-            enumType,
-            emptyList(),
-            null,
-            isBase = true
+        val ext = ViaductSchema.Extension.of<BSchema.Enum, BSchema.EnumValue>(
+            def = enumType,
+            memberFactory = { ext ->
+                listOf(
+                    BSchema.EnumValue(
+                        ext,
+                        "ACTIVE",
+                        listOf(appliedDirective) // Applied directive with no definition!
+                    )
+                )
+            },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
         )
-
-        val enumValue = BSchema.EnumValue(
-            ext,
-            "ACTIVE",
-            listOf(appliedDirective) // Applied directive with no definition!
-        )
+        enumType.populate(listOf(ext))
 
         assertThrows<InvalidSchemaException> {
-            enumType.extensions = listOf(ext.also { it.members = listOf(enumValue) })
+            emptyDirectives.validateAppliedDirectives(enumType)
         }
     }
 
@@ -120,39 +131,40 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Interface possibleObjectTypes contains non-Object type`() {
-        val schema = BSchema()
-        val iface = schema.addTypeDef<BSchema.Interface>("MyInterface")
-        val scalar = schema.addTypeDef<BSchema.Scalar>("NotAnObject")
-        val stringType = schema.addTypeDef<BSchema.Scalar>("String")
+        val iface = BSchema.Interface("MyInterface")
+        val scalar = BSchema.Scalar("NotAnObject")
+        val stringType = BSchema.Scalar("String")
 
         // Set up interface with a field
-        val ext = BSchema.Extension<BSchema.Interface, BSchema.Field>(
-            iface,
-            emptyList(),
-            null,
-            isBase = true
+        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Interface, BSchema.Field>(
+            def = iface,
+            memberFactory = { ext ->
+                listOf(
+                    BSchema.Field(ext, "field", BSchema.TypeExpr(stringType), emptyList(), false, null)
+                )
+            },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            supers = emptyList(),
+            sourceLocation = null
         )
-        val field = BSchema.Field(ext, "field", emptyList(), BSchema.TypeExpr(stringType), false, null)
-        iface.extensions = listOf(ext.also { it.members = listOf(field) })
 
         // Try to set possibleObjectTypes with a Scalar (not an Object)
         // The validation should catch this and throw InvalidSchemaException
-        // Currently throws ClassCastException - we want InvalidSchemaException instead
         assertThrows<InvalidSchemaException> {
             // Use unsafe cast to bypass compile-time type checking
             // This simulates what could happen during binary decoding
             @Suppress("UNCHECKED_CAST")
             val badSet = setOf(scalar) as Set<BSchema.Object>
-            iface.possibleObjectTypes = badSet
+            iface.populate(listOf(ext), badSet)
         }
     }
 
     @Test
     fun `Object implements non-Interface type`() {
-        val schema = BSchema()
-        val obj = schema.addTypeDef<BSchema.Object>("MyObject")
-        val scalar = schema.addTypeDef<BSchema.Scalar>("NotAnInterface")
-        val stringType = schema.addTypeDef<BSchema.Scalar>("String")
+        val obj = BSchema.Object("MyObject")
+        val scalar = BSchema.Scalar("NotAnInterface")
+        val stringType = BSchema.Scalar("String")
 
         assertThrows<InvalidSchemaException> {
             // Try to create extension with a Scalar in supers (should be Interface)
@@ -160,16 +172,20 @@ class DecodingErrorHandlingTest {
             @Suppress("UNCHECKED_CAST")
             val badSupers = listOf(scalar) as List<BSchema.Interface>
 
-            val ext = BSchema.Extension<BSchema.Object, BSchema.Field>(
-                obj,
-                emptyList(),
-                null,
+            val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Object, BSchema.Field>(
+                def = obj,
+                memberFactory = { ext ->
+                    listOf(
+                        BSchema.Field(ext, "field", BSchema.TypeExpr(stringType), emptyList(), false, null)
+                    )
+                },
                 isBase = true,
-                supers = badSupers // Wrong type!
+                appliedDirectives = emptyList(),
+                supers = badSupers, // Wrong type!
+                sourceLocation = null
             )
 
-            val field = BSchema.Field(ext, "field", emptyList(), BSchema.TypeExpr(stringType), false, null)
-            obj.extensions = listOf(ext.also { it.members = listOf(field) })
+            obj.populate(listOf(ext), emptyList())
         }
     }
 
@@ -179,24 +195,23 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Union contains non-Object member`() {
-        val schema = BSchema()
-        val union = schema.addTypeDef<BSchema.Union>("MyUnion")
-        val scalar = schema.addTypeDef<BSchema.Scalar>("NotAnObject")
+        val union = BSchema.Union("MyUnion")
+        val scalar = BSchema.Scalar("NotAnObject")
 
         assertThrows<InvalidSchemaException> {
             // Use unsafe cast to bypass compile-time type checking
             @Suppress("UNCHECKED_CAST")
             val badMembers = listOf(scalar) as List<BSchema.Object>
 
-            val ext = BSchema.Extension<BSchema.Union, BSchema.Object>(
-                union,
-                emptyList(),
-                null,
+            val ext = ViaductSchema.Extension.of<BSchema.Union, BSchema.Object>(
+                def = union,
+                memberFactory = { badMembers }, // Wrong type!
                 isBase = true,
-                initialMembers = badMembers // Wrong type!
+                appliedDirectives = emptyList(),
+                sourceLocation = null
             )
 
-            union.extensions = listOf(ext)
+            union.populate(listOf(ext))
         }
     }
 
@@ -206,21 +221,20 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Applied directive has argument not defined in directive definition`() {
-        val schema = BSchema()
-        val directive = schema.makeDirective("myDirective")
+        val directive = BSchema.Directive("myDirective")
         // Directive has no arguments defined
-        directive.args = emptyList()
-        directive.allowedLocations = setOf(ViaductSchema.Directive.Location.FIELD_DEFINITION)
-
-        val obj = schema.addTypeDef<BSchema.Object>("Query")
-        val stringType = schema.addTypeDef<BSchema.Scalar>("String")
-
-        val ext = BSchema.Extension<BSchema.Object, BSchema.Field>(
-            obj,
-            emptyList(),
-            null,
-            isBase = true
+        directive.populate(
+            isRepeatable = false,
+            allowedLocations = setOf(ViaductSchema.Directive.Location.FIELD_DEFINITION),
+            sourceLocation = null,
+            args = emptyList()
         )
+
+        val directives = mapOf("myDirective" to directive)
+
+        val obj = BSchema.Object("Query")
+        val stringType = BSchema.Scalar("String")
+        stringType.populate(emptyList(), null)
 
         // Create applied directive with an argument that doesn't exist in definition
         val appliedDirective = ViaductSchema.AppliedDirective.of(
@@ -228,17 +242,29 @@ class DecodingErrorHandlingTest {
             mapOf("unknownArg" to "value") // This arg doesn't exist!
         )
 
-        val field = BSchema.Field(
-            ext,
-            "myField",
-            listOf(appliedDirective),
-            BSchema.TypeExpr(stringType),
-            hasDefault = false,
-            defaultValue = null
+        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Object, BSchema.Field>(
+            def = obj,
+            memberFactory = { ext ->
+                listOf(
+                    BSchema.Field(
+                        ext,
+                        "myField",
+                        BSchema.TypeExpr(stringType),
+                        listOf(appliedDirective),
+                        hasDefault = false,
+                        defaultValue = null
+                    )
+                )
+            },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            supers = emptyList(),
+            sourceLocation = null
         )
+        obj.populate(listOf(ext), emptyList())
 
         assertThrows<InvalidSchemaException> {
-            ext.members = listOf(field)
+            directives.validateAppliedDirectives(obj)
         }
     }
 
@@ -249,6 +275,8 @@ class DecodingErrorHandlingTest {
     // result in InvalidFileFormatException (currently IllegalArgumentException).
 
     companion object {
+        private val emptyDirectives = emptyMap<String, BSchema.Directive>()
+
         fun assertMessageContains(
             expectedContents: String,
             exception: Throwable
@@ -505,14 +533,14 @@ class DecodingErrorHandlingTest {
         // This would require creating a binary where the definitions section
         // references an identifier that wasn't declared as a definition.
         // For now, we test that DefinitionsDecoder.typeDef throws properly.
-        val schema = BSchema()
+        val types = emptyMap<String, BSchema.TypeDef>()
         val identifiers = arrayOf("UnknownType")
 
         // Simulate what happens during decoding when a type reference
         // points to a name that isn't a type definition
         val exception = assertThrows<InvalidFileFormatException> {
             val name = identifiers[0]
-            schema.types[name]
+            types[name]
                 ?: throw InvalidFileFormatException("Type not found: $name")
         }
         assertMessageContains("Type not found", exception)
@@ -521,12 +549,12 @@ class DecodingErrorHandlingTest {
     @Test
     fun `Type reference to wrong kind throws InvalidFileFormatException`() {
         // When decoding, if we expect an Object but get a Scalar, etc.
-        val schema = BSchema()
-        schema.addTypeDef<BSchema.Scalar>("MyScalar")
+        val scalar = BSchema.Scalar("MyScalar")
+        val types = mapOf("MyScalar" to scalar as BSchema.TypeDef)
 
         // Simulate decoding expecting Object but finding Scalar
         val exception = assertThrows<InvalidFileFormatException> {
-            val typeDef = schema.types["MyScalar"]
+            val typeDef = types["MyScalar"]
             if (typeDef !is BSchema.Object) {
                 throw InvalidFileFormatException(
                     "Expected Object type but found ${typeDef?.javaClass?.simpleName}: MyScalar"
@@ -543,58 +571,99 @@ class DecodingErrorHandlingTest {
     // the binary data somehow encodes zero extensions.
 
     @Test
-    fun `Enum with empty extensions throws InvalidFileFormatException`() {
-        val schema = BSchema()
-        val enumType = schema.addTypeDef<BSchema.Enum>("Status")
+    fun `Enum with empty extensions throws IllegalArgumentException`() {
+        val enumType = BSchema.Enum("Status")
 
-        // Currently throws IllegalArgumentException, should be InvalidFileFormatException
-        val exception = assertThrows<InvalidFileFormatException> {
-            enumType.extensions = emptyList()
+        val exception = assertThrows<IllegalArgumentException> {
+            enumType.populate(emptyList())
         }
         assertMessageContains("Types must have at least one extension", exception)
     }
 
     @Test
-    fun `Union with empty extensions throws InvalidFileFormatException`() {
-        val schema = BSchema()
-        val unionType = schema.addTypeDef<BSchema.Union>("Result")
+    fun `Union with empty extensions throws IllegalArgumentException`() {
+        val unionType = BSchema.Union("Result")
 
-        val exception = assertThrows<InvalidFileFormatException> {
-            unionType.extensions = emptyList()
+        val exception = assertThrows<IllegalArgumentException> {
+            unionType.populate(emptyList())
         }
         assertMessageContains("Types must have at least one extension", exception)
     }
 
     @Test
-    fun `Input with empty extensions throws InvalidFileFormatException`() {
-        val schema = BSchema()
-        val inputType = schema.addTypeDef<BSchema.Input>("InputData")
+    fun `Input with empty extensions throws IllegalArgumentException`() {
+        val inputType = BSchema.Input("InputData")
 
-        val exception = assertThrows<InvalidFileFormatException> {
-            inputType.extensions = emptyList()
+        val exception = assertThrows<IllegalArgumentException> {
+            inputType.populate(emptyList())
         }
         assertMessageContains("Types must have at least one extension", exception)
     }
 
     @Test
-    fun `Interface with empty extensions throws InvalidFileFormatException`() {
-        val schema = BSchema()
-        val interfaceType = schema.addTypeDef<BSchema.Interface>("Node")
+    fun `Interface with empty extensions throws IllegalArgumentException`() {
+        val interfaceType = BSchema.Interface("Node")
 
-        val exception = assertThrows<InvalidFileFormatException> {
-            interfaceType.extensions = emptyList()
+        val exception = assertThrows<IllegalArgumentException> {
+            interfaceType.populate(emptyList(), emptySet())
         }
         assertMessageContains("Types must have at least one extension", exception)
     }
 
     @Test
-    fun `Object with empty extensions throws InvalidFileFormatException`() {
-        val schema = BSchema()
-        val objectType = schema.addTypeDef<BSchema.Object>("User")
+    fun `Object with empty extensions throws IllegalArgumentException`() {
+        val objectType = BSchema.Object("User")
 
-        val exception = assertThrows<InvalidFileFormatException> {
-            objectType.extensions = emptyList()
+        val exception = assertThrows<IllegalArgumentException> {
+            objectType.populate(emptyList(), emptyList())
         }
         assertMessageContains("Types must have at least one extension", exception)
+    }
+
+    // ========================================================================
+    // Additional validation tests (new)
+    // ========================================================================
+
+    @Test
+    fun `Valid applied directive passes validation`() {
+        val directive = BSchema.Directive("myDirective")
+        directive.populate(
+            isRepeatable = false,
+            allowedLocations = setOf(ViaductSchema.Directive.Location.FIELD_DEFINITION),
+            sourceLocation = null,
+            args = emptyList()
+        )
+
+        val directives = mapOf("myDirective" to directive)
+
+        val obj = BSchema.Object("Query")
+        val stringType = BSchema.Scalar("String")
+        stringType.populate(emptyList(), null)
+
+        val appliedDirective = ViaductSchema.AppliedDirective.of("myDirective", emptyMap())
+
+        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Object, BSchema.Field>(
+            def = obj,
+            memberFactory = { ext ->
+                listOf(
+                    BSchema.Field(
+                        ext,
+                        "myField",
+                        BSchema.TypeExpr(stringType),
+                        listOf(appliedDirective),
+                        hasDefault = false,
+                        defaultValue = null
+                    )
+                )
+            },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            supers = emptyList(),
+            sourceLocation = null
+        )
+        obj.populate(listOf(ext), emptyList())
+
+        // Should not throw
+        directives.validateAppliedDirectives(obj)
     }
 }

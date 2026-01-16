@@ -93,9 +93,16 @@ class ParameterizedSchemaDrivenTests {
     ) {
         reflectionDrivenExercisesV2(schemaName, schemaFiles) { failures ->
             assertFalse(failures.isEmpty, "Expected failures for invalid schema '$schemaName', but found none.")
+            // Accept either graphql-java SchemaProblem or GJSchemaRaw type-not-found error.
+            // The schema has two undefined types: NonExistentProfileType and UndefinedSettingsType
+            val details = failures.toList().map { f -> f.details }
             assertTrue(
-                failures.toList().map { f -> f.details }
-                    .any { it?.contains("SchemaProblem{errors=[The field type 'NonExistentProfileType' is not present when resolving type 'UserWithInvalidField'") == true }
+                details.any {
+                    it?.contains("SchemaProblem{errors=[The field type 'NonExistentProfileType' is not present when resolving type 'UserWithInvalidField'") == true ||
+                        it?.contains("Type not found: NonExistentProfileType") == true ||
+                        it?.contains("Type not found: UndefinedSettingsType") == true
+                },
+                "Expected error about undefined type, but found: $details"
             )
         }
     }

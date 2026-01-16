@@ -2,21 +2,15 @@
 
 package viaduct.graphql.schema.graphqljava
 
-import graphql.language.Directive
-import graphql.language.Type
-import graphql.language.TypeName
 import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirective
-import graphql.schema.GraphQLDirectiveContainer
 import graphql.schema.GraphQLEnumType
 import graphql.schema.GraphQLEnumValueDefinition
 import graphql.schema.GraphQLFieldDefinition
-import graphql.schema.GraphQLImplementingType
 import graphql.schema.GraphQLInputObjectField
 import graphql.schema.GraphQLInputObjectType
 import graphql.schema.GraphQLInterfaceType
 import graphql.schema.GraphQLNamedSchemaElement
-import graphql.schema.GraphQLNamedType
 import graphql.schema.GraphQLObjectType
 import graphql.schema.GraphQLScalarType
 import graphql.schema.GraphQLSchema
@@ -31,8 +25,6 @@ import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.parseWrappers
 import viaduct.utils.collections.BitVector
 import viaduct.utils.timer.Timer
-
-private typealias TypeMap = Map<String, GJSchema.TypeDef>
 
 /** This is an implementation of the [ViaductSchema] classes that uses the
  *  `graphql.schema` classes from the graphql-java library as the underlying
@@ -83,14 +75,48 @@ class GJSchema internal constructor(
         wrappers: String,
         baseString: String
     ): TypeExpr {
-        this.types[baseString]!! // Make sure type exists
+        val baseTypeDef = requireNotNull(this.types[baseString]) {
+            "Type not found: $baseString"
+        }
         val listNullable = parseWrappers(wrappers) // Checks syntax for us
         val baseNullable = (wrappers.last() == '?')
-        return TypeExpr(types, baseString, baseNullable, listNullable)
+        return TypeExpr(baseTypeDef, baseNullable, listNullable)
     }
 
     // Internal for testing (GJSchemaCheck)
-    internal fun toTypeExpr(gtype: GraphQLType): TypeExpr = toTypeExpr(types, gtype)
+    internal fun toTypeExpr(gtype: GraphQLType): TypeExpr {
+        var baseTypeNullable = true
+        var listNullable = ViaductSchema.TypeExpr.NO_WRAPPERS
+
+        var t = gtype
+        if (GraphQLTypeUtil.isWrapped(t)) {
+            val wrapperBuilder = BitVector.Builder()
+            do {
+                if (GraphQLTypeUtil.isList(t)) {
+                    wrapperBuilder.add(1L, 1)
+                    t = GraphQLTypeUtil.unwrapOne(t)
+                } else if (GraphQLTypeUtil.isNonNull(t)) {
+                    t = GraphQLTypeUtil.unwrapOne(t)
+                    if (GraphQLTypeUtil.isList(t)) {
+                        wrapperBuilder.add(0L, 1)
+                        t = GraphQLTypeUtil.unwrapOne(t)
+                    } else if (GraphQLTypeUtil.isWrapped(t)) {
+                        throw IllegalStateException("Unexpected GraphQL wrapping $gtype.")
+                    } else {
+                        baseTypeNullable = false
+                    }
+                } else {
+                    throw IllegalStateException("Unexpected GraphQL wrapper $gtype.")
+                }
+            } while (GraphQLTypeUtil.isWrapped(t))
+            listNullable = wrapperBuilder.build()
+        }
+
+        val baseTypeDefName = GraphQLTypeUtil.unwrapAll(gtype).name
+        val baseTypeDef = types[baseTypeDefName]
+            ?: error("Type not found: $baseTypeDefName")
+        return TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
+    }
 
     companion object {
         /** Convert collection of .graphqls files into a schema
@@ -129,113 +155,74 @@ class GJSchema internal constructor(
             schema: GraphQLSchema,
             valueConverter: ValueConverter = ValueConverter.default
         ): GJSchema {
-            val defs = schema.allTypesAsList
-            val result = mutableMapOf<String, TypeDef>()
+            // Phase 1: Create all TypeDef and Directive shells (just underlying def and name)
+            val types = mutableMapOf<String, TypeDef>()
+            for (def in schema.allTypesAsList) {
+                val typeDef = when (def) {
+                    is GraphQLScalarType -> Scalar(def, def.name)
+                    is GraphQLEnumType -> Enum(def, def.name)
+                    is GraphQLUnionType -> Union(def, def.name)
+                    is GraphQLInterfaceType -> Interface(def, def.name)
+                    is GraphQLObjectType -> Object(def, def.name)
+                    is GraphQLInputObjectType -> Input(def, def.name)
+                    else -> throw RuntimeException("Unexpected GraphQL type: $def")
+                }
+                types[def.name] = typeDef
+            }
 
-            // Take a first pass, translating unions and accumulating a
-            // name-to-list-of-unions map for interfaces and object types
-            val unionMap = mutableMapOf<String, MutableList<String>>()
-            val interfaceMap = mutableMapOf<String, MutableList<GraphQLNamedType>>()
-            for (def in defs) {
-                when (def) {
-                    is GraphQLUnionType -> {
-                        val u = Union(schema, result, def, valueConverter)
-                        def.types.forEach { unionMap.getOrPut(it.name) { mutableListOf() }.add(def.name) }
-                        result[def.name] = u
+            val directives = schema.directives.associate { it.name to Directive(it, it.name) }
+
+            // Phase 2: Create decoder and populate all types and directives
+            val decoder = GraphQLSchemaDecoder(schema, types, valueConverter)
+
+            types.values.forEach { typeDef ->
+                when (typeDef) {
+                    is Scalar -> decoder.decodeScalarExtensions(typeDef).let {
+                        typeDef.populate(it.appliedDirectives, it.sourceLocation)
                     }
-
-                    is GraphQLImplementingType -> {
-                        def.interfaces.forEach {
-                            interfaceMap.getOrPut(it.name) { mutableListOf() }.add(def)
-                        }
-                    }
+                    is Enum -> typeDef.populate(decoder.createEnumExtensions(typeDef))
+                    is Union -> typeDef.populate(decoder.createUnionExtensions(typeDef))
+                    is Interface -> typeDef.populate(
+                        decoder.createInterfaceExtensions(typeDef),
+                        decoder.computePossibleObjectTypes(typeDef)
+                    )
+                    is Object -> typeDef.populate(
+                        decoder.createObjectExtensions(typeDef),
+                        decoder.computeUnions(typeDef)
+                    )
+                    is Input -> typeDef.populate(decoder.createInputExtensions(typeDef))
                 }
             }
 
-            // Take second pass for the rest of the types
-            // union-lists accumulated above
-            for (def in defs) {
-                if (def !is GraphQLUnionType) {
-                    val unions = unionMap[def.name] ?: NO_TYPE_NAMES
-                    // assert: def is GraphQLObjectType || unions == NO_TYPE_NAMESS
-                    val d =
-                        when (def) {
-                            is GraphQLScalarType -> Scalar(result, def, valueConverter)
-                            is GraphQLEnumType -> Enum(schema, result, def, valueConverter)
-                            is GraphQLInputObjectType -> Input(schema, result, def, valueConverter)
-                            is GraphQLObjectType -> Object(schema, result, def, unions, valueConverter)
-                            is GraphQLInterfaceType ->
-                                Interface(schema, result, def, allObjectTypes(def.name, interfaceMap), valueConverter)
-
-                            else -> throw RuntimeException("Unexpected GraphQL type: $def")
-                        }
-                    result[def.name] = d
-                }
+            directives.values.forEach { directive ->
+                decoder.populate(directive)
             }
 
-            val directives =
-                schema.directives
-                    .associate { it.name to Directive(result, it, valueConverter) }
-
-            return GJSchema(result, directives, schema)
-        }
-
-        private val NO_TYPE_NAMES = listOf<String>()
-        private val NO_INTERFACES = listOf<Interface>()
-        private val NO_UNIONS = listOf<Union>()
-
-        private fun allObjectTypes(
-            interfaceName: String,
-            directs: Map<String, List<GraphQLNamedType>>
-        ): List<String> {
-            val result = mutableListOf<String>()
-
-            fun allObjectTypes(toAdd: GraphQLNamedType) {
-                if (toAdd.name == interfaceName) {
-                    throw IllegalArgumentException("Cyclical inheritance.")
-                }
-                if (toAdd is GraphQLObjectType) {
-                    result.add(toAdd.name)
-                } else {
-                    directs[toAdd.name]?.let { namedTypes ->
-                        namedTypes.forEach { allObjectTypes(it) }
-                    }
-                }
-            }
-
-            directs[interfaceName]?.let { namedTypes ->
-                namedTypes.forEach { allObjectTypes(it) }
-            }
-            return result
+            return GJSchema(types, directives, schema)
         }
     }
 
     // Well-designed GraphQL schemas are both immutable and highly
     // cyclical.  But the Kotlin(/Java) object-construction process
     // isn't friendly to immutable, cyclical data structures.  We
-    // address this gap by passing a "type map" around during object
-    // construction, which we use to lazily resolve references to
-    // cyclical references.
+    // address this using a "mutate-then-freeze" pattern:
     //
-    // We've established the following protocol to ensure that our
-    // lazy resolution is correct.  We differentiate between
-    // "top-level" objects -- which are specifically [TypeDef]s in
-    // our design -- from objects nested under those top-level
-    // objects (for example, [EnumValue]s and [Field]s).  When it
-    // comes to the construction of top-level objects, this is
-    // done using `by lazy`, using [typeMap] to resolve references.
-    // However, when it comes to the construction of nested objects,
-    // since those constructors are being called when [typeMap] has
-    // been populated, we can use [typeMap] without further laziness.
+    // Phase 1: Create all TypeDef "shells" with just their underlying
+    // graphql-java definition (and extensionDefinitions where applicable).
+    //
+    // Phase 2: Use GraphQLSchemaDecoder to populate each TypeDef with
+    // its cross-references (extensions, fields, appliedDirectives, etc.).
+    // At this point the type map is fully populated, so we can resolve
+    // any type reference.
+    //
+    // This pattern achieves direct references instead of map lookups,
+    // single mutation point per type (the populate() method), and
+    // tight encapsulation via nullable private backing fields.
 
     sealed interface Def : ViaductSchema.Def {
         val def: GraphQLNamedSchemaElement
 
-        override fun hasAppliedDirective(name: String) =
-            when (val container = def) {
-                is GraphQLDirectiveContainer -> container.hasAppliedDirective(name)
-                else -> false
-            }
+        override fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }
     }
 
     sealed interface TypeDef :
@@ -246,8 +233,23 @@ class GJSchema internal constructor(
         override val possibleObjectTypes: Set<Object>
     }
 
-    abstract class Arg :
-        HasDefaultValue(),
+    sealed class TypeDefImpl(
+        override val name: String
+    ) : TypeDef {
+        override fun asTypeExpr() = TypeExpr(this)
+
+        override fun toString() = describe()
+
+        open override val possibleObjectTypes: Set<Object> get() = emptySet()
+    }
+
+    sealed class Arg(
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.Arg
 
     interface HasArgs :
@@ -257,269 +259,207 @@ class GJSchema internal constructor(
     }
 
     class DirectiveArg internal constructor(
-        override val containingDef: Directive,
         override val def: GraphQLArgument,
-        override val type: TypeExpr,
-        protected override val _defaultValue: Any?,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ) : Arg(),
+        override val containingDef: Directive,
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : Arg(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.DirectiveArg {
-        override val name: String = def.name
-
         override fun toString() = describe()
     }
 
     class Directive internal constructor(
-        private val typeMap: TypeMap,
         override val def: GraphQLDirective,
-        valueConverter: ValueConverter
+        override val name: String,
     ) : ViaductSchema.Directive,
         HasArgs {
-        override val name: String = def.name
-        override val isRepeatable: Boolean = def.isRepeatable
-        override val args =
-            def.arguments.map {
-                val argType = toTypeExpr(typeMap, it.type)
-                val defaultValue = it.defaultValue(typeMap, valueConverter)
-                DirectiveArg(this, it, argType, defaultValue, emptyList())
-            }
+        private var mIsRepeatable: Boolean? = null
+        private var mAllowedLocations: Set<ViaductSchema.Directive.Location>? = null
+        private var mSourceLocation: ViaductSchema.SourceLocation? = null
+        private var mArgs: List<DirectiveArg>? = null
 
-        override val allowedLocations =
-            def
-                .validLocations()
-                .map {
-                ViaductSchema.Directive.Location.valueOf(it.name)
-            }.toSet()
-
-        override val sourceLocation =
-            def.definition?.sourceLocation?.sourceName?.let {
-                ViaductSchema.SourceLocation(it)
-            }
+        override val isRepeatable: Boolean get() = guardedGet(mIsRepeatable)
+        override val allowedLocations: Set<ViaductSchema.Directive.Location> get() = guardedGet(mAllowedLocations)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mArgs)
+        override val args: List<DirectiveArg> get() = guardedGet(mArgs)
 
         override val appliedDirectives: List<ViaductSchema.AppliedDirective> = emptyList()
+
+        internal fun populate(
+            isRepeatable: Boolean,
+            allowedLocations: Set<ViaductSchema.Directive.Location>,
+            sourceLocation: ViaductSchema.SourceLocation?,
+            args: List<DirectiveArg>
+        ) {
+            check(mArgs == null) { "Directive $name has already been populated; populate() can only be called once" }
+            mIsRepeatable = isRepeatable
+            mAllowedLocations = allowedLocations
+            mSourceLocation = sourceLocation
+            mArgs = args
+        }
 
         override fun toString() = describe()
     }
 
     class Scalar internal constructor(
-        private val typeMap: TypeMap,
         override val def: GraphQLScalarType,
-        valueConverter: ValueConverter
+        name: String,
     ) : ViaductSchema.Scalar,
-        TypeDef {
-        override val name: String = def.name
+        TypeDefImpl(name) {
+        private var mSourceLocation: ViaductSchema.SourceLocation? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
 
-        override val sourceLocation =
-            def.definition?.sourceLocation?.sourceName?.let {
-                ViaductSchema.SourceLocation(it)
-            }
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mAppliedDirectives)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
 
-        override val appliedDirectives by lazy { typeMap.collectDirectives(def, valueConverter) }
-
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
-
-        override val possibleObjectTypes = emptySet<Object>()
-
-        override fun toString() = describe()
+        internal fun populate(
+            appliedDirectives: List<ViaductSchema.AppliedDirective>,
+            sourceLocation: ViaductSchema.SourceLocation?
+        ) {
+            check(mAppliedDirectives == null) { "Type $name has already been populated; populate() can only be called once" }
+            mAppliedDirectives = appliedDirectives
+            mSourceLocation = sourceLocation
+        }
     }
 
     class EnumValue internal constructor(
-        override val containingDef: Enum,
         override val def: GraphQLEnumValueDefinition,
         override val containingExtension: ViaductSchema.Extension<Enum, EnumValue>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
+        override val name: String,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
     ) : ViaductSchema.EnumValue,
         Def {
-        override val name: String = def.name
+        override val containingDef: Enum get() = containingExtension.def
 
         override fun toString() = describe()
     }
 
     class Enum internal constructor(
-        schema: GraphQLSchema,
-        private val typeMap: TypeMap,
         override val def: GraphQLEnumType,
-        valueConverter: ValueConverter
+        name: String,
     ) : ViaductSchema.Enum,
-        TypeDef {
-        override val name: String = def.name
-        override val values by lazy { extensions.flatMap { it.members } }
+        TypeDefImpl(name) {
+        private var mExtensions: List<ViaductSchema.Extension<Enum, EnumValue>>? = null
+        private var mValues: List<EnumValue>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
 
-        override val extensions by lazy {
-            (listOf(def.definition) + def.extensionDefinitions).map { gjLangTypeDef ->
-                ViaductSchema.Extension.of(
-                    def = this@Enum,
-                    memberFactory = { containingExtension ->
-                        if (gjLangTypeDef == null) {
-                            def.values.map {
-                                val ad = typeMap.collectDirectives(it, valueConverter)
-                                createEnumValue(it.name, containingExtension, ad)
-                            }
-                        } else {
-                            gjLangTypeDef.enumValueDefinitions.map { evd ->
-                                val ad = evd.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                                createEnumValue(evd.name, containingExtension, ad)
-                            }
-                        }
-                    },
-                    isBase = gjLangTypeDef == def.definition,
-                    appliedDirectives =
-                        if (gjLangTypeDef != null) {
-                            gjLangTypeDef.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                        } else {
-                            typeMap.collectDirectives(def, valueConverter)
-                        },
-                    sourceLocation =
-                        gjLangTypeDef?.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
-        }
+        override val extensions: List<ViaductSchema.Extension<Enum, EnumValue>> get() = guardedGet(mExtensions)
+        override val values: List<EnumValue> get() = guardedGet(mValues)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
 
-        private fun createEnumValue(
-            valueName: String,
-            containingExtension: ViaductSchema.Extension<Enum, EnumValue>,
-            appliedDirectives: List<ViaductSchema.AppliedDirective>
-        ) = def.values.find { it.name == valueName }?.let {
-            EnumValue(containingExtension.def, it, containingExtension, appliedDirectives)
-        } ?: throw IllegalStateException("Enum value $valueName not found in ${def.name}")
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
         override fun value(name: String): EnumValue? = values.find { name == it.name }
 
-        override val appliedDirectives by lazy { typeMap.collectDirectives(def, valueConverter) }
-
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
-
-        override val possibleObjectTypes = emptySet<Object>()
-
-        override fun toString() = describe()
+        internal fun populate(extensions: List<ViaductSchema.Extension<Enum, EnumValue>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mValues = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
+        }
     }
 
     class Union internal constructor(
-        schema: GraphQLSchema,
-        private val typeMap: TypeMap,
         override val def: GraphQLUnionType,
-        valueConverter: ValueConverter
-    ) : ViaductSchema.Union,
-        TypeDef {
-        override val name: String = def.name
-        override val possibleObjectTypes by lazy { extensions.flatMap { it.members }.toSet() }
-        override val appliedDirectives by lazy { typeMap.collectDirectives(def, valueConverter) }
+        name: String,
+    ) : ViaductSchema.Union, TypeDefImpl(name) {
+        private var mExtensions: List<ViaductSchema.Extension<Union, Object>>? = null
+        private var mPossibleObjectTypes: Set<Object>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
 
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
+        override val extensions: List<ViaductSchema.Extension<Union, Object>> get() = guardedGet(mExtensions)
+        override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
 
-        override fun toString() = describe()
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
-        override val extensions by lazy {
-            (listOf(def.definition) + def.extensionDefinitions).map { gjLangTypeDef ->
-                ViaductSchema.Extension.of(
-                    def = this@Union,
-                    memberFactory = { _ ->
-                        if (gjLangTypeDef == null) {
-                            def.types.map { typeMap[it.name] as Object }
-                        } else {
-                            gjLangTypeDef.memberTypes
-                                .filter { (it as TypeName).name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                                .map {
-                                    val name = (it as TypeName).name
-                                    typeMap[name] as Object
-                                }
-                        }
-                    },
-                    isBase = gjLangTypeDef == def.definition,
-                    appliedDirectives =
-                        if (gjLangTypeDef != null) {
-                            gjLangTypeDef.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                        } else {
-                            typeMap.collectDirectives(def, valueConverter)
-                        },
-                    sourceLocation =
-                        gjLangTypeDef?.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
+        internal fun populate(extensions: List<ViaductSchema.Extension<Union, Object>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mPossibleObjectTypes = extensions.flatMap { it.members }.toSet()
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
     }
 
-    abstract class HasDefaultValue :
-        ViaductSchema.HasDefaultValue,
+    sealed class HasDefaultValue(
+        override val name: String,
+        override val type: TypeExpr,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val hasDefault: Boolean,
+        private val mDefaultValue: Any?,
+    ) : ViaductSchema.HasDefaultValue,
         Def {
+        // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
-        abstract override val type: TypeExpr
-
-        protected abstract val _defaultValue: Any?
-        override val hasDefault: Boolean get() = _defaultValue != NO_DEFAULT
-
-        /** Returns the default value; throws NoSuchElementException if there is none. */
-        override val defaultValue: Any? get() =
-            _defaultValue.also {
-                if (it == NO_DEFAULT) throw NoSuchElementException("No default value")
-            }
-
-        companion object {
-            internal val NO_DEFAULT = Any()
-        }
+        override val defaultValue: Any?
+            get() =
+                if (hasDefault) {
+                    mDefaultValue
+                } else {
+                    throw NoSuchElementException("No default value for ${this.describe()}")
+                }
     }
 
     class FieldArg internal constructor(
         override val containingDef: OutputField,
         override val def: GraphQLArgument,
-        override val type: TypeExpr,
-        protected override val _defaultValue: Any?,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ) : Arg(),
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : Arg(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.FieldArg {
-        override val name: String = def.name
-
         override fun toString() = describe()
     }
 
-    sealed class Field :
-        HasDefaultValue(),
+    sealed class Field(
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.Field,
         HasArgs {
         abstract override val containingDef: Record
         abstract override val containingExtension: ViaductSchema.Extension<Record, Field>
-        abstract override val type: TypeExpr
         abstract override val args: List<FieldArg>
 
         override fun toString() = describe()
     }
 
     class OutputField internal constructor(
-        typeMap: TypeMap,
         override val def: GraphQLFieldDefinition,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        valueConverter: ValueConverter
-    ) : Field() {
-        override val name: String = def.name
-        override val type = toTypeExpr(typeMap, def.type)
-        override val isOverride = ViaductSchema.isOverride(this)
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+        argsFactory: (OutputField) -> List<FieldArg>,
+    ) : Field(name, type, appliedDirectives, hasDefault, defaultValue) {
+        // isOverride must be lazy because it accesses containingDef.supers which may not be populated yet
+        override val isOverride by lazy { ViaductSchema.isOverride(this) }
         override val containingDef get() = containingExtension.def
-        protected override val _defaultValue = HasDefaultValue.NO_DEFAULT
-
-        override val args =
-            def.arguments.map {
-                val argType = toTypeExpr(typeMap, it.type)
-                val defaultValue = it.defaultValue(typeMap, valueConverter)
-                FieldArg(this, it, argType, defaultValue, typeMap.collectDirectives(it, valueConverter))
-            }
+        override val args: List<FieldArg> = argsFactory(this)
     }
 
     class InputField internal constructor(
-        typeMap: TypeMap,
         override val def: GraphQLInputObjectField,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        override val _defaultValue: Any?
-    ) : Field() {
-        override val name: String = def.name
-        override val type = toTypeExpr(typeMap, def.type)
-        override val isOverride = ViaductSchema.isOverride(this)
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : Field(name, type, appliedDirectives, hasDefault, defaultValue) {
+        // isOverride must be lazy because it accesses containingDef.supers which may not be populated yet
+        override val isOverride by lazy { ViaductSchema.isOverride(this) }
         override val containingDef get() = containingExtension.def as Input
         override val args = emptyList<FieldArg>()
     }
@@ -527,7 +467,6 @@ class GJSchema internal constructor(
     sealed interface Record :
         ViaductSchema.Record,
         TypeDef {
-        override val extensions: List<ViaductSchema.Extension<Record, Field>>
         override val fields: List<Field>
 
         override fun field(name: String) = fields.find { name == it.name }
@@ -539,317 +478,133 @@ class GJSchema internal constructor(
     }
 
     class Interface internal constructor(
-        schema: GraphQLSchema,
-        private val typeMap: TypeMap,
         override val def: GraphQLInterfaceType,
-        possibleObjectStrings: Iterable<String>,
-        valueConverter: ValueConverter
-    ) : ViaductSchema.Interface,
-        Record {
-        override val name: String = def.name
+        name: String,
+    ) : ViaductSchema.Interface, Record, TypeDefImpl(name) {
+        private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
+        private var mFields: List<Field>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mSupers: List<Interface>? = null
+        private var mPossibleObjectTypes: Set<Object>? = null
+
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>> get() = guardedGet(mExtensions)
+        override val fields: List<Field> get() = guardedGet(mFields)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val supers: List<Interface> get() = guardedGet(mSupers)
+        override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
+        override val unions = emptyList<Union>()
 
         override fun field(name: String) = super<Record>.field(name)
 
-        override val supers by lazy { def.interfaces.map { typeMap[it.name] as Interface } }
-        override val possibleObjectTypes by lazy { possibleObjectStrings.map { typeMap[it] as Object }.toSet() }
-        override val unions = NO_UNIONS
-        override val fields by lazy { extensions.flatMap { it.members } }
-        override val appliedDirectives by lazy { typeMap.collectDirectives(def, valueConverter) }
-
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
-
-        override fun toString() = describe()
-
-        private fun createOutputField(
-            fieldName: String,
-            containingExtension: ViaductSchema.Extension<Record, Field>,
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            valueConverter: ValueConverter
-        ) = def.fields.find { it.name == fieldName }?.let {
-            OutputField(typeMap, it, containingExtension, appliedDirectives, valueConverter)
-        } ?: throw IllegalStateException("Field $fieldName not found in ${def.name}")
-
-        override val extensions by lazy {
-            (listOf(def.definition) + def.extensionDefinitions).map { gjLangTypeDef ->
-                ViaductSchema.ExtensionWithSupers.of(
-                    def = this@Interface,
-                    memberFactory = { containingExtension ->
-                        if (gjLangTypeDef == null) {
-                            def.fields
-                                .filter { it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                                .map {
-                                    val ad = typeMap.collectDirectives(it, valueConverter)
-                                    createOutputField(it.name, containingExtension, ad, valueConverter)
-                                }
-                        } else {
-                            gjLangTypeDef.fieldDefinitions
-                                .filter { it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                                .map {
-                                    val ad = it.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                                    createOutputField(it.name, containingExtension, ad, valueConverter)
-                                }
-                        }
-                    },
-                    isBase = gjLangTypeDef == def.definition,
-                    appliedDirectives =
-                        if (gjLangTypeDef != null) {
-                            gjLangTypeDef.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                        } else {
-                            typeMap.collectDirectives(def, valueConverter)
-                        },
-                    supers =
-                        when {
-                            gjLangTypeDef == null -> this.supers
-                            else -> gjLangTypeDef.implements.map { typeMap[(it as TypeName).name] as Interface }
-                        },
-                    sourceLocation =
-                        gjLangTypeDef?.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
+        internal fun populate(
+            extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>,
+            possibleObjectTypes: Set<Object>
+        ) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mFields = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
+            @Suppress("UNCHECKED_CAST")
+            mSupers = (extensions.flatMap { it.supers } as List<Interface>).distinct()
+            mPossibleObjectTypes = possibleObjectTypes
         }
     }
 
     class Object internal constructor(
-        schema: GraphQLSchema,
-        private val typeMap: TypeMap,
         override val def: GraphQLObjectType,
-        unionNames: Iterable<String>,
-        valueConverter: ValueConverter
-    ) : ViaductSchema.Object,
-        Record {
-        override val name: String = def.name
+        name: String,
+    ) : ViaductSchema.Object, Record, TypeDefImpl(name) {
+        private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>>? = null
+        private var mFields: List<Field>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mSupers: List<Interface>? = null
+        private var mUnions: List<Union>? = null
+
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>> get() = guardedGet(mExtensions)
+        override val fields: List<Field> get() = guardedGet(mFields)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val supers: List<Interface> get() = guardedGet(mSupers)
+        override val unions: List<Union> get() = guardedGet(mUnions)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
+        override val possibleObjectTypes: Set<Object> get() = setOf(this)
 
         override fun field(name: String) = super<Record>.field(name)
 
-        override val supers by lazy { def.interfaces.map { typeMap[it.name] as Interface } }
-        override val unions by lazy { unionNames.map { typeMap[it] as Union } }
-        override val fields by lazy { extensions.flatMap { it.members } }
-        val extensionDefinitions get() = def.extensionDefinitions
-        override val appliedDirectives by lazy { typeMap.collectDirectives(def, valueConverter) }
-
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
-
-        override val possibleObjectTypes = setOf(this)
-
-        override fun toString() = describe()
-
-        private fun createOutputField(
-            fieldName: String,
-            containingExtension: ViaductSchema.Extension<Record, Field>,
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            valueConverter: ValueConverter
-        ) = def.fields.find { it.name == fieldName }?.let {
-            OutputField(typeMap, it, containingExtension, appliedDirectives, valueConverter)
-        } ?: throw IllegalStateException("Field $fieldName not found in ${def.name}")
-
-        override val extensions by lazy {
-            (listOf(def.definition) + def.extensionDefinitions)
-                .map { gjLangTypeDef ->
-                    ViaductSchema.ExtensionWithSupers.of(
-                        def = this@Object,
-                        memberFactory = { containingExtension ->
-                            if (gjLangTypeDef == null) {
-                                def.fields
-                                    .filter { it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                                    .map {
-                                        val ad = typeMap.collectDirectives(it, valueConverter)
-                                        createOutputField(it.name, containingExtension, ad, valueConverter)
-                                    }
-                            } else {
-                                gjLangTypeDef.fieldDefinitions
-                                    .filter { it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                                    .map {
-                                        val ad = it.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                                        createOutputField(it.name, containingExtension, ad, valueConverter)
-                                    }
-                            }
-                        },
-                        isBase = gjLangTypeDef == def.definition,
-                        appliedDirectives =
-                            if (gjLangTypeDef != null) {
-                                gjLangTypeDef.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                            } else {
-                                typeMap.collectDirectives(def, valueConverter)
-                            },
-                        supers =
-                            when {
-                                gjLangTypeDef == null -> this.supers
-                                else -> gjLangTypeDef.implements.map { typeMap[(it as TypeName).name] as Interface }
-                            },
-                        sourceLocation =
-                            gjLangTypeDef?.sourceLocation?.sourceName?.let {
-                                ViaductSchema.SourceLocation(it)
-                            }
-                    )
-                }
+        internal fun populate(
+            extensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>>,
+            unions: List<Union>
+        ) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mFields = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
+            @Suppress("UNCHECKED_CAST")
+            mSupers = (extensions.flatMap { it.supers } as List<Interface>).distinct()
+            mUnions = unions
         }
     }
 
     class Input internal constructor(
-        schema: GraphQLSchema,
-        private val typeMap: TypeMap,
         override val def: GraphQLInputObjectType,
-        valueConverter: ValueConverter
+        name: String,
     ) : ViaductSchema.Input,
-        Record {
-        override val name: String = def.name
-        override val supers = NO_INTERFACES
-        override val unions = NO_UNIONS
-        override val fields by lazy { extensions.flatMap { it.members } }
-        override val appliedDirectives by lazy { typeMap.collectDirectives(def, valueConverter) }
+        Record,
+        TypeDefImpl(name) {
+        override val supers = emptyList<Interface>()
+        override val unions = emptyList<Union>()
 
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
+        private var mExtensions: List<ViaductSchema.Extension<Input, Field>>? = null
+        private var mFields: List<Field>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+
+        override val extensions: List<ViaductSchema.Extension<Input, Field>> get() = guardedGet(mExtensions)
+        override val fields: List<Field> get() = guardedGet(mFields)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
         override val possibleObjectTypes = setOf<Object>()
 
-        override fun toString() = describe()
-
-        private fun createInputField(
-            fieldName: String,
-            containingExtension: ViaductSchema.Extension<Record, Field>,
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            valueConverter: ValueConverter
-        ) = def.fields.find { it.name == fieldName }?.let {
-            val defaultValue =
-                when {
-                    !it.hasSetDefaultValue() -> HasDefaultValue.NO_DEFAULT
-                    else -> valueConverter.convert(toTypeExpr(typeMap, it.type), it.inputFieldDefaultValue)
-                }
-            InputField(typeMap, it, containingExtension, appliedDirectives, defaultValue)
-        } ?: throw IllegalStateException("Field $fieldName not found in ${def.name}")
-
-        override val extensions by lazy {
-            (listOf(def.definition) + def.extensionDefinitions).map { gjLangTypeDef ->
-                ViaductSchema.Extension.of(
-                    def = this@Input,
-                    memberFactory = { containingExtension ->
-                        if (gjLangTypeDef == null) {
-                            def.fields.map {
-                                val ad = typeMap.collectDirectives(it, valueConverter)
-                                createInputField(it.name, containingExtension, ad, valueConverter)
-                            }
-                        } else {
-                            gjLangTypeDef.inputValueDefinitions.map {
-                                val ad = it.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                                createInputField(it.name, containingExtension, ad, valueConverter)
-                            }
-                        }
-                    },
-                    isBase = gjLangTypeDef == def.definition,
-                    appliedDirectives =
-                        if (gjLangTypeDef != null) {
-                            gjLangTypeDef.directives.toAppliedDirectives(schema, typeMap, valueConverter)
-                        } else {
-                            typeMap.collectDirectives(def, valueConverter)
-                        },
-                    sourceLocation =
-                        gjLangTypeDef?.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
+        internal fun populate(extensions: List<ViaductSchema.Extension<Input, Field>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mFields = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
     }
 
     class TypeExpr internal constructor(
-        private val typeMap: TypeMap,
-        private val baseTypeDefName: String,
+        override val baseTypeDef: TypeDef,
         override val baseTypeNullable: Boolean = true, // GraphQL default is types are nullable
         override val listNullable: BitVector = NO_WRAPPERS
     ) : ViaductSchema.TypeExpr() {
-        override val baseTypeDef get() = typeMap[baseTypeDefName]!!
-
-        override fun unwrapLists() = TypeExpr(typeMap, baseTypeDefName, baseTypeNullable)
+        override fun unwrapLists() = TypeExpr(baseTypeDef, baseTypeNullable)
 
         override fun unwrapList(): TypeExpr? =
             if (listNullable.size == 0) {
                 null
             } else {
-                TypeExpr(typeMap, baseTypeDefName, baseTypeNullable, listNullable.lsr())
+                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
             }
     }
 }
 
-private fun baseTypeDefName(t: GraphQLType) = GraphQLTypeUtil.unwrapAll(t).name
+private inline fun <T> GJSchema.TypeDef.guardedGet(v: T?): T = checkNotNull(v) { "Type ${this.name} has not been populated; call populate() first" }
 
-private fun toTypeExpr(
-    typeMap: TypeMap,
-    gtype: GraphQLType
-): GJSchema.TypeExpr {
-    var baseTypeNullable = true
-    var listNullable = ViaductSchema.TypeExpr.NO_WRAPPERS
-
-    var t = gtype
-    if (GraphQLTypeUtil.isWrapped(t)) {
-        val wrapperBuilder = BitVector.Builder()
-        do {
-            if (GraphQLTypeUtil.isList(t)) {
-                wrapperBuilder.add(1L, 1)
-                t = GraphQLTypeUtil.unwrapOne(t)
-            } else if (GraphQLTypeUtil.isNonNull(t)) {
-                t = GraphQLTypeUtil.unwrapOne(t)
-                if (GraphQLTypeUtil.isList(t)) {
-                    wrapperBuilder.add(0L, 1)
-                    t = GraphQLTypeUtil.unwrapOne(t)
-                } else if (GraphQLTypeUtil.isWrapped(t)) {
-                    throw IllegalStateException("Unexpected GraphQL wrapping $gtype.")
-                } else {
-                    baseTypeNullable = false
-                }
-            } else {
-                throw IllegalStateException("Unexpected GraphQL wrapper $gtype.")
-            }
-        } while (GraphQLTypeUtil.isWrapped(t))
-        listNullable = wrapperBuilder.build()
-    }
-
-    return GJSchema.TypeExpr(typeMap, baseTypeDefName(gtype), baseTypeNullable, listNullable)
+private inline fun <T> GJSchema.TypeDef.guardedGetNullable(
+    v: T?,
+    sentinel: Any?
+): T? {
+    check(sentinel != null) { "Type ${this.name} has not been populated; call populate() first" }
+    return v
 }
 
-private fun TypeMap.toTypeExpr(type: Type<*>): GJSchema.TypeExpr =
-    type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
-        GJSchema.TypeExpr(this, baseTypeDefName, baseTypeNullable, listNullable)
-    }
+private inline fun <T> GJSchema.Directive.guardedGet(v: T?): T = checkNotNull(v) { "Directive ${this.name} has not been populated; call populate() first" }
 
-private fun TypeMap.toAppliedDirective(
-    schema: GraphQLSchema,
-    dir: Directive,
-    valueConverter: ValueConverter
-): ViaductSchema.AppliedDirective {
-    val def =
-        schema.getDirective(dir.name)?.definition
-            ?: throw java.lang.IllegalStateException("Directive @${dir.name} not found in schema.")
-    return dir.toAppliedDirective(def, valueConverter) { toTypeExpr(it) }
-}
-
-private fun TypeMap.collectDirectives(
-    def: GraphQLDirectiveContainer,
-    valueConverter: ValueConverter
-): List<ViaductSchema.AppliedDirective> =
-    def.appliedDirectives.map { directive ->
-        ViaductSchema.AppliedDirective.of(
-            name = directive.name,
-            arguments =
-                directive.arguments.fold(mutableMapOf()) { m, arg ->
-                    m[arg.name] = valueConverter.convert(toTypeExpr(this, arg.type), arg.argumentValue)
-                    m
-                }
-        )
-    }
-
-private fun Iterable<Directive>.toAppliedDirectives(
-    schema: GraphQLSchema,
-    typeMap: TypeMap,
-    valueConverter: ValueConverter
-) = this.map { typeMap.toAppliedDirective(schema, it, valueConverter) }
-
-private fun GraphQLArgument.defaultValue(
-    typeMap: TypeMap,
-    valueConverter: ValueConverter
-) = if (!hasSetDefaultValue()) {
-    GJSchema.HasDefaultValue.NO_DEFAULT
-} else {
-    valueConverter.convert(toTypeExpr(typeMap, type), argumentDefaultValue)
+private inline fun <T> GJSchema.Directive.guardedGetNullable(
+    v: T?,
+    sentinel: Any?
+): T? {
+    check(sentinel != null) { "Directive ${this.name} has not been populated; call populate() first" }
+    return v
 }

@@ -4,7 +4,6 @@ import graphql.language.Description
 import graphql.language.Directive
 import graphql.language.DirectiveDefinition
 import graphql.language.DirectiveLocation
-import graphql.language.DirectivesContainer
 import graphql.language.EnumTypeDefinition
 import graphql.language.EnumTypeExtensionDefinition
 import graphql.language.EnumValueDefinition
@@ -17,6 +16,7 @@ import graphql.language.InterfaceTypeDefinition
 import graphql.language.InterfaceTypeExtensionDefinition
 import graphql.language.ListType
 import graphql.language.NamedNode
+import graphql.language.Node
 import graphql.language.NonNullType
 import graphql.language.NullValue
 import graphql.language.ObjectTypeDefinition
@@ -92,10 +92,12 @@ class GJSchemaRaw private constructor(
         wrappers: String,
         baseString: String
     ): TypeExpr {
-        this.types[baseString]!! // Make sure type exists
+        val baseTypeDef = requireNotNull(this.types[baseString]) {
+            "Type not found: $baseString"
+        }
         val listNullable = parseWrappers(wrappers) // Checks syntax for us
         val baseNullable = (wrappers.last() == '?')
-        return TypeExpr(types, baseString, baseNullable, listNullable)
+        return TypeExpr(baseTypeDef, baseNullable, listNullable)
     }
 
     companion object {
@@ -233,55 +235,82 @@ class GJSchemaRaw private constructor(
                     }
                 }
 
-                // Now build the TypeDefs
-                val result = mutableMapOf<String, TypeDef>()
+                // Lookup all extension definitions upfront (for Phase 1)
                 val enumExtensions = registry.enumTypeExtensions()
-                registry.getTypes(EnumTypeDefinition::class.java).forEach {
-                    assert(it != null)
-                    val x = enumExtensions[it.name] ?: emptyList()
-                    val v = Enum(registry, it, x, result, valueConverter)
-                    result[it.name] = v
-                }
                 val inputObjectExtensions = registry.inputObjectTypeExtensions()
-                registry.getTypes(InputObjectTypeDefinition::class.java).forEach {
-                    val x = inputObjectExtensions[it.name] ?: emptyList()
-                    val v = Input(registry, it, x, result, valueConverter)
-                    result[it.name] = v
-                }
                 val interfaceExtensions = registry.interfaceTypeExtensions()
-                registry.getTypes(InterfaceTypeDefinition::class.java).forEach {
-                    val x = interfaceExtensions[it.name] ?: emptyList()
-                    val mems = allObjectTypes(it.name, membersMap)
-                    val v = Interface(registry, it, x, result, mems, valueConverter)
-                    result[it.name] = v
-                }
                 val objectExtensions = registry.objectTypeExtensions()
-                registry.getTypes(ObjectTypeDefinition::class.java).forEach {
-                    // Filter out the VIADUCT_IGNORE stub type if it exists.
-                    if (it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL) {
-                        val x = objectExtensions[it.name] ?: emptyList()
-                        val v = Object(registry, it, x, result, unionsMap[it.name] ?: emptyList(), valueConverter)
-                        result[it.name] = v
-                    }
-                }
                 val scalarExtensions = registry.scalarTypeExtensions()
-                registry.scalars().values.forEach {
-                    // Scalars are handled differently
-                    val x = scalarExtensions[it.name] ?: emptyList()
-                    val v = Scalar(registry, it as ScalarTypeDefinition, x, result, valueConverter)
-                    result[it.name] = v
-                }
                 val unionExtensions = registry.unionTypeExtensions()
-                registry.getTypes(UnionTypeDefinition::class.java).forEach {
-                    val x = unionExtensions[it.name] ?: emptyList()
-                    val v = Union(registry, it, x, result, valueConverter)
-                    result[it.name] = v
+
+                // Phase 1: Create all TypeDef and Directive shells (with def and extensionDefs)
+                val result = buildMap<String, TypeDef>(registry.types().size + registry.scalars().size) {
+                    registry.types().values.forEach { graphqlDef ->
+                        val typeDef = when (graphqlDef) {
+                            is EnumTypeDefinition -> Enum(graphqlDef, enumExtensions[graphqlDef.name] ?: emptyList(), graphqlDef.name)
+                            is InputObjectTypeDefinition -> Input(graphqlDef, inputObjectExtensions[graphqlDef.name] ?: emptyList(), graphqlDef.name)
+                            is InterfaceTypeDefinition -> Interface(graphqlDef, interfaceExtensions[graphqlDef.name] ?: emptyList(), graphqlDef.name)
+                            is ObjectTypeDefinition ->
+                                if (graphqlDef.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL) {
+                                    Object(graphqlDef, objectExtensions[graphqlDef.name] ?: emptyList(), graphqlDef.name)
+                                } else {
+                                    null
+                                }
+                            is UnionTypeDefinition -> Union(graphqlDef, unionExtensions[graphqlDef.name] ?: emptyList(), graphqlDef.name)
+                            else -> null
+                        }
+                        if (typeDef != null) {
+                            put(graphqlDef.name, typeDef)
+                        }
+                    }
+                    // registry.scalars gets built-ins as well as explicitly-defined scalars
+                    registry.scalars().values.forEach {
+                        val scalarDef = it as ScalarTypeDefinition
+                        put(scalarDef.name, Scalar(scalarDef, scalarExtensions[scalarDef.name] ?: emptyList(), scalarDef.name))
+                    }
                 }
 
-                val directives =
-                    registry.directiveDefinitions.entries.associate {
-                        it.key to Directive(it.value, result, valueConverter)
+                val directives = registry.directiveDefinitions.entries.associate {
+                    it.key to Directive(it.value, it.value.name)
+                }
+
+                // Phase 2: Populate all TypeDefs and Directives using the decoder
+                val decoder = TypeDefinitionRegistryDecoder(registry, result, valueConverter)
+
+                registry.getTypes(EnumTypeDefinition::class.java).forEach {
+                    val enumDef = result[it.name] as Enum
+                    enumDef.populate(decoder.createEnumExtensions(enumDef))
+                }
+                registry.getTypes(InputObjectTypeDefinition::class.java).forEach {
+                    val inputDef = result[it.name] as Input
+                    inputDef.populate(decoder.createInputExtensions(inputDef))
+                }
+                registry.getTypes(InterfaceTypeDefinition::class.java).forEach {
+                    val interfaceDef = result[it.name] as Interface
+                    val possibleObjectTypes = allObjectTypes(it.name, membersMap).map { result[it] as Object }.toSet()
+                    interfaceDef.populate(decoder.createInterfaceExtensions(interfaceDef), possibleObjectTypes)
+                }
+                registry.getTypes(ObjectTypeDefinition::class.java).forEach {
+                    if (it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL) {
+                        val objectDef = result[it.name] as Object
+                        val unions = (unionsMap[it.name] ?: emptySet()).map { result[it] as Union }
+                        objectDef.populate(decoder.createObjectExtensions(objectDef), unions)
                     }
+                }
+                registry.scalars().values.forEach {
+                    val scalarDef = result[it.name] as Scalar
+                    decoder.decodeScalarExtensions(scalarDef).let { ext ->
+                        scalarDef.populate(ext.appliedDirectives, ext.sourceLocation)
+                    }
+                }
+                registry.getTypes(UnionTypeDefinition::class.java).forEach {
+                    val unionDef = result[it.name] as Union
+                    unionDef.populate(decoder.createUnionExtensions(unionDef))
+                }
+
+                directives.values.forEach { directive ->
+                    decoder.populate(directive)
+                }
 
                 val schemaDef = registry.schemaDefinition().orElse(null)
                 val queryTypeDef = rootDef(result, schemaDef, queryTypeName, "Query")
@@ -377,7 +406,7 @@ class GJSchemaRaw private constructor(
     sealed interface Def : ViaductSchema.Def {
         val def: NamedNode<*>
 
-        override fun hasAppliedDirective(name: String) = appliedDirectives.find { it.name == name } != null
+        override fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }
     }
 
     sealed interface TypeDef :
@@ -391,16 +420,23 @@ class GJSchemaRaw private constructor(
         override val possibleObjectTypes: Set<Object>
     }
 
-    sealed class TypeDefImpl : TypeDef {
-        protected abstract val typeMap: RawTypeMap
-
-        override fun asTypeExpr() = TypeExpr(typeMap, this.name)
+    sealed class TypeDefImpl(
+        override val name: String
+    ) : TypeDef {
+        override fun asTypeExpr() = TypeExpr(this)
 
         override fun toString() = describe()
+
+        open override val possibleObjectTypes: Set<Object> get() = emptySet()
     }
 
-    abstract class Arg :
-        HasDefaultValue(),
+    sealed class Arg(
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.Arg
 
     interface HasArgs :
@@ -410,231 +446,207 @@ class GJSchemaRaw private constructor(
     }
 
     class DirectiveArg internal constructor(
-        override val containingDef: Directive,
         override val def: InputValueDefinition,
-        override val type: TypeExpr,
-        protected override val _defaultValue: Any?,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ) : Arg(),
+        override val containingDef: Directive,
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : Arg(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.DirectiveArg {
-        override val name = def.name
-
         override fun toString() = describe()
     }
 
-    class Directive(
+    class Directive internal constructor(
         override val def: DirectiveDefinition,
-        protected val typeMap: RawTypeMap,
-        protected val valueConverter: ValueConverter
+        override val name: String,
     ) : ViaductSchema.Directive,
         HasArgs {
-        override val name = def.name
-        override val isRepeatable: Boolean = def.isRepeatable
-        override val args =
-            def.inputValueDefinitions.map {
-                val default = it.defaultValue(typeMap, valueConverter)
-                DirectiveArg(this, it, typeMap.toTypeExpr(it.type), default, emptyList())
-            }
+            private var mIsRepeatable: Boolean? = null
+        private var mAllowedLocations: Set<ViaductSchema.Directive.Location>? = null
+        private var mSourceLocation: ViaductSchema.SourceLocation? = null
+        private var mArgs: List<DirectiveArg>? = null
 
-        override val sourceLocation =
-            def.sourceLocation?.sourceName?.let {
-                ViaductSchema.SourceLocation(it)
-            }
+        override val isRepeatable: Boolean get() = guardedGet(mIsRepeatable)
+        override val allowedLocations: Set<ViaductSchema.Directive.Location> get() = guardedGet(mAllowedLocations)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mArgs)
+        override val args: List<DirectiveArg> get() = guardedGet(mArgs)
 
-        override val allowedLocations =
-            def.directiveLocations
-                .map {
-                ViaductSchema.Directive.Location.valueOf(it.name)
-            }.toSet()
         override val appliedDirectives: List<ViaductSchema.AppliedDirective> = emptyList()
+
+        internal fun populate(
+            isRepeatable: Boolean,
+            allowedLocations: Set<ViaductSchema.Directive.Location>,
+            sourceLocation: ViaductSchema.SourceLocation?,
+            args: List<DirectiveArg>
+        ) {
+            check(mArgs == null) { "Directive $name has already been populated; populate() can only be called once" }
+            mIsRepeatable = isRepeatable
+            mAllowedLocations = allowedLocations
+            mSourceLocation = sourceLocation
+            mArgs = args
+        }
 
         override fun toString() = describe()
     }
 
     class Scalar internal constructor(
-        registry: TypeDefinitionRegistry,
         override val def: ScalarTypeDefinition,
         override val extensionDefs: List<ScalarTypeExtensionDefinition>,
-        protected override val typeMap: RawTypeMap,
-        valueConverter: ValueConverter
-    ) : TypeDefImpl(),
+        name: String,
+    ) : TypeDefImpl(name),
         ViaductSchema.Scalar {
-        override val name = def.name
+        private var mSourceLocation: ViaductSchema.SourceLocation? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
 
-        override val sourceLocation =
-            def.sourceLocation?.sourceName?.let {
-                ViaductSchema.SourceLocation(it)
-            }
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mAppliedDirectives)
+        override val appliedDirectives get() = guardedGet(mAppliedDirectives)
 
-        override val appliedDirectives by lazy {
-            typeMap.collectDirectives(registry, def, extensionDefs, valueConverter)
+        internal fun populate(
+            appliedDirectives: List<ViaductSchema.AppliedDirective>,
+            sourceLocation: ViaductSchema.SourceLocation?
+        ) {
+            check(mAppliedDirectives == null) { "Type $name has already been populated; populate() can only be called once" }
+            mAppliedDirectives = appliedDirectives
+            mSourceLocation = sourceLocation
         }
-
-        override val possibleObjectTypes: Set<Object> get() = setOf<Object>()
     }
 
     class EnumValue internal constructor(
-        override val containingDef: Enum,
         override val def: EnumValueDefinition,
+        override val containingExtension: ViaductSchema.Extension<Enum, EnumValue>,
+        override val name: String,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        override val containingExtension: ViaductSchema.Extension<Enum, EnumValue>
     ) : ViaductSchema.EnumValue,
         Def {
-        override val name = def.name
+        override val containingDef: Enum get() = containingExtension.def
 
         override fun toString() = describe()
     }
 
     class Enum internal constructor(
-        registry: TypeDefinitionRegistry,
         override val def: EnumTypeDefinition,
         override val extensionDefs: List<EnumTypeExtensionDefinition>,
-        protected override val typeMap: RawTypeMap,
-        valueConverter: ValueConverter
-    ) : TypeDefImpl(),
+        name: String,
+    ) : TypeDefImpl(name),
         ViaductSchema.Enum {
-        override val name = def.name
-        override val values by lazy { extensions.flatMap { it.members } }
-        override val extensions by lazy {
-            (listOf(def) + extensionDefs).map { gjLangTypeDef ->
-                ViaductSchema.Extension.of(
-                    def = this@Enum,
-                    memberFactory = { containingExtension ->
-                        gjLangTypeDef.enumValueDefinitions.map { evd ->
-                            val ad = evd.directives.toAppliedDirectives(registry, typeMap, valueConverter)
-                            EnumValue(this, evd, ad, containingExtension)
-                        }
-                    },
-                    isBase = gjLangTypeDef == def,
-                    appliedDirectives = gjLangTypeDef.directives.toAppliedDirectives(registry, typeMap, valueConverter),
-                    sourceLocation =
-                        gjLangTypeDef.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
+        private var mValues: List<EnumValue>? = null
+        override val values: List<EnumValue> get() = guardedGet(mValues)
+
+        private var mExtensions: List<ViaductSchema.Extension<Enum, EnumValue>>? = null
+        override val extensions: List<ViaductSchema.Extension<Enum, EnumValue>> get() = guardedGet(mExtensions)
+
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
+
+        internal fun populate(extensions: List<ViaductSchema.Extension<Enum, EnumValue>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mValues = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
 
         override fun value(name: String): EnumValue? = values.find { name == it.name }
-
-        override val appliedDirectives by lazy {
-            typeMap.collectDirectives(registry, def, extensionDefs, valueConverter)
-        }
-        override val possibleObjectTypes: Set<Object> get() = setOf<Object>()
     }
 
     class Union internal constructor(
-        registry: TypeDefinitionRegistry,
         override val def: UnionTypeDefinition,
         override val extensionDefs: List<UnionTypeExtensionDefinition>,
-        protected override val typeMap: RawTypeMap,
-        valueConverter: ValueConverter
-    ) : TypeDefImpl(),
-        ViaductSchema.Union {
-        override val name = def.name
-        override val possibleObjectTypes by lazy { extensions.flatMap { it.members }.toSet() }
-        override val extensions by lazy {
-            (listOf(def) + extensionDefs).map { gjLangTypeDef ->
-                ViaductSchema.Extension.of(
-                    def = this@Union,
-                    memberFactory = { _ ->
-                        gjLangTypeDef.memberTypes
-                            .filter { (it as TypeName).name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                            .map { (it as TypeName).name }
-                            .map { typeMap[it] as Object }
-                    },
-                    isBase = gjLangTypeDef == def,
-                    appliedDirectives = gjLangTypeDef.directives.toAppliedDirectives(registry, typeMap, valueConverter),
-                    sourceLocation =
-                        gjLangTypeDef.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
-        }
+        name: String,
+    ) : TypeDefImpl(name), ViaductSchema.Union {
+        private var mExtensions: List<ViaductSchema.Extension<Union, Object>>? = null
+        private var mPossibleObjectTypes: Set<Object>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        override val extensions: List<ViaductSchema.Extension<Union, Object>> get() = guardedGet(mExtensions)
+        override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
-        override val appliedDirectives by lazy {
-            typeMap.collectDirectives(registry, def, extensionDefs, valueConverter)
+        internal fun populate(extensions: List<ViaductSchema.Extension<Union, Object>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mPossibleObjectTypes = extensions.flatMap { it.members }.toSet()
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
     }
 
-    abstract class HasDefaultValue :
-        ViaductSchema.HasDefaultValue,
+    sealed class HasDefaultValue(
+        override val name: String,
+        override val type: TypeExpr,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val hasDefault: Boolean,
+        private val mDefaultValue: Any?,
+    ) : ViaductSchema.HasDefaultValue,
         Def {
+        // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
-        abstract override val type: TypeExpr
-
-        protected abstract val _defaultValue: Any?
-
-        override val hasDefault: Boolean get() = _defaultValue != NO_DEFAULT
-
-        /** Returns the default value; throws NoSuchElementException if there is none. */
-        override val defaultValue: Any? get() =
-            _defaultValue.also {
-                if (it == NO_DEFAULT) throw NoSuchElementException("No default value")
-            }
-
-        companion object {
-            internal val NO_DEFAULT = Any()
-        }
+        override val defaultValue: Any?
+            get() =
+                if (hasDefault) {
+                    mDefaultValue
+                } else {
+                    throw NoSuchElementException("No default value for ${this.describe()}")
+                }
     }
 
     class FieldArg internal constructor(
         override val containingDef: OutputField,
         override val def: InputValueDefinition,
-        override val type: TypeExpr,
-        protected override val _defaultValue: Any?,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ) : Arg(),
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : Arg(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.FieldArg {
-        override val name = def.name
-
         override fun toString() = describe()
     }
 
-    sealed class Field :
-        HasDefaultValue(),
+    sealed class Field(
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue),
         ViaductSchema.Field,
         HasArgs {
         abstract override val containingDef: Record
         abstract override val containingExtension: ViaductSchema.Extension<Record, Field>
-        abstract override val type: TypeExpr
         abstract override val args: List<FieldArg>
 
         override fun toString() = describe()
     }
 
     class OutputField internal constructor(
-        registry: TypeDefinitionRegistry,
-        typeMap: RawTypeMap,
         override val def: FieldDefinition,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        valueConverter: ValueConverter
-    ) : Field() {
-        override val name = def.name
-        override val type = typeMap.toTypeExpr(def.type)
-        override val isOverride = ViaductSchema.isOverride(this)
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+        argsFactory: (OutputField) -> List<FieldArg>,
+    ) : Field(name, type, appliedDirectives, hasDefault, defaultValue) {
+        override val isOverride by lazy { ViaductSchema.isOverride(this) }
         override val containingDef get() = containingExtension.def
-        protected override val _defaultValue = HasDefaultValue.NO_DEFAULT
-        override val args =
-            def.inputValueDefinitions.map {
-                val default = it.defaultValue(typeMap, valueConverter)
-                val ad = it.directives.toAppliedDirectives(registry, typeMap, valueConverter)
-                FieldArg(this, it, typeMap.toTypeExpr(it.type), default, ad)
-            }
+        override val args: List<FieldArg> = argsFactory(this)
     }
 
     class InputField internal constructor(
         override val def: InputValueDefinition,
-        override val type: TypeExpr,
-        protected override val _defaultValue: Any?,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ) : Field() {
-        override val name = def.name
-        override val isOverride = ViaductSchema.isOverride(this)
+        name: String,
+        type: TypeExpr,
+        appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        hasDefault: Boolean,
+        defaultValue: Any?,
+    ) : Field(name, type, appliedDirectives, hasDefault, defaultValue) {
+        override val isOverride by lazy { ViaductSchema.isOverride(this) }
         override val args = emptyList<FieldArg>()
         override val containingDef get() = containingExtension.def as Input
     }
@@ -652,179 +664,107 @@ class GJSchemaRaw private constructor(
         override val unions: List<Union>
     }
 
-    sealed class ImplementingType protected constructor(
-        registry: TypeDefinitionRegistry,
-        override val def: ImplementingTypeDefinition<*>,
-        protected override val typeMap: RawTypeMap,
-        valueConverter: ValueConverter
-    ) : TypeDefImpl(),
-        Record {
-        abstract override val extensionDefs: List<ImplementingTypeDefinition<*>>
-
-        override fun field(name: String) = super<Record>.field(name)
-
-        override val supers by lazy {
-            val superNames =
-                def.implements.map {
-                    (it as TypeName).name
-                } +
-                    extensionDefs.flatMap { it.implements }.map {
-                        (it as TypeName).name
-                    }
-            superNames.map { typeMap[it] as Interface }
-        }
-        override val appliedDirectives by lazy {
-            typeMap.collectDirectives(registry, def, extensionDefs, valueConverter)
-        }
-    }
-
     class Interface internal constructor(
-        registry: TypeDefinitionRegistry,
         override val def: InterfaceTypeDefinition,
         override val extensionDefs: List<InterfaceTypeExtensionDefinition>,
-        protected override val typeMap: RawTypeMap,
-        memberNames: Iterable<String>,
-        valueConverter: ValueConverter
-    ) : ImplementingType(registry, def, typeMap, valueConverter),
-        ViaductSchema.Interface {
-        override val name = def.name
-        override val fields by lazy { extensions.flatMap { it.members } }
-        override val possibleObjectTypes by lazy { memberNames.map { typeMap[it] as Object }.toSet() }
+        name: String,
+    ) : TypeDefImpl(name), ViaductSchema.Interface, Record {
+        private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
+        private var mFields: List<Field>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mSupers: List<Interface>? = null
+        private var mPossibleObjectTypes: Set<Object>? = null
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>> get() = guardedGet(mExtensions)
+        override val fields: List<Field> get() = guardedGet(mFields)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val supers: List<Interface> get() = guardedGet(mSupers)
+        override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
         override val unions = emptyList<Union>()
-        override val extensions by lazy {
-            (listOf(def) + extensionDefs).map { gjLangTypeDef ->
-                ViaductSchema.ExtensionWithSupers.of(
-                    def = this@Interface,
-                    memberFactory = { containingExtension ->
-                        gjLangTypeDef.fieldDefinitions
-                            .filter { it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                            .map { fieldDefinition ->
-                                val ad = fieldDefinition.directives.toAppliedDirectives(registry, typeMap, valueConverter)
-                                OutputField(registry, typeMap, fieldDefinition, containingExtension, ad, valueConverter)
-                            }
-                    },
-                    isBase = gjLangTypeDef == def,
-                    appliedDirectives = gjLangTypeDef.directives.toAppliedDirectives(registry, typeMap, valueConverter),
-                    supers =
-                        gjLangTypeDef.implements.map {
-                            typeMap[(it as TypeName).name] as Interface
-                        },
-                    sourceLocation =
-                        gjLangTypeDef.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
+
+        internal fun populate(
+            extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>,
+            possibleObjectTypes: Set<Object>
+        ) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mFields = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
+            @Suppress("UNCHECKED_CAST")
+            mSupers = (extensions.flatMap { it.supers } as List<Interface>).distinct()
+            mPossibleObjectTypes = possibleObjectTypes
         }
     }
 
     class Object internal constructor(
-        registry: TypeDefinitionRegistry,
         override val def: ObjectTypeDefinition,
         override val extensionDefs: List<ObjectTypeExtensionDefinition>,
-        protected override val typeMap: RawTypeMap,
-        unionNames: Iterable<String>,
-        valueConverter: ValueConverter
-    ) : ImplementingType(registry, def, typeMap, valueConverter),
-        ViaductSchema.Object {
-        override val name = def.name
-        override val fields by lazy { extensions.flatMap { it.members } }
-        val extensionDefinitions get() = extensionDefs
-        override val unions by lazy { unionNames.map { typeMap[it] as Union } }
-        override val extensions by lazy {
-            (listOf(def) + extensionDefs).map { gjLangTypeDef ->
-                ViaductSchema.ExtensionWithSupers.of(
-                    def = this@Object,
-                    memberFactory = { containingExtension ->
-                        gjLangTypeDef.fieldDefinitions
-                            .filter { it.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                            .map { fieldDefinition ->
-                                val ad = fieldDefinition.directives.toAppliedDirectives(registry, typeMap, valueConverter)
-                                OutputField(registry, typeMap, fieldDefinition, containingExtension, ad, valueConverter)
-                            }
-                    },
-                    isBase = gjLangTypeDef == def,
-                    appliedDirectives = gjLangTypeDef.directives.toAppliedDirectives(registry, typeMap, valueConverter),
-                    supers =
-                        gjLangTypeDef.implements.map { typeMap[(it as TypeName).name] as Interface },
-                    sourceLocation =
-                        gjLangTypeDef.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
-        }
+        name: String,
+    ) : TypeDefImpl(name), ViaductSchema.Object, Record {
+        private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>>? = null
+        private var mFields: List<Field>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mSupers: List<Interface>? = null
+        private var mUnions: List<Union>? = null
+        override val extensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>> get() = guardedGet(mExtensions)
+        override val fields: List<Field> get() = guardedGet(mFields)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val supers: List<Interface> get() = guardedGet(mSupers)
+        override val unions: List<Union> get() = guardedGet(mUnions)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
         override val possibleObjectTypes: Set<Object> get() = setOf(this)
+
+        internal fun populate(
+            extensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>>,
+            unions: List<Union>
+        ) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mFields = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
+            @Suppress("UNCHECKED_CAST")
+            mSupers = (extensions.flatMap { it.supers } as List<Interface>).distinct()
+            mUnions = unions
+        }
     }
 
     class Input internal constructor(
-        private val registry: TypeDefinitionRegistry,
         override val def: InputObjectTypeDefinition,
         override val extensionDefs: List<InputObjectTypeExtensionDefinition>,
-        protected override val typeMap: RawTypeMap,
-        valueConverter: ValueConverter
-    ) : TypeDefImpl(),
-    ViaductSchema.Input,
+        name: String,
+    ) : TypeDefImpl(name),
+        ViaductSchema.Input,
         Record {
-        override val name = def.name
-        override val fields by lazy { extensions.flatMap { it.members } }
-        override val appliedDirectives = typeMap.collectDirectives(registry, def, extensionDefs, valueConverter)
+        private var mExtensions: List<ViaductSchema.Extension<Input, Field>>? = null
+        private var mFields: List<Field>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        override val extensions: List<ViaductSchema.Extension<Input, Field>> get() = guardedGet(mExtensions)
+        override val fields: List<Field> get() = guardedGet(mFields)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
         override val supers = emptyList<Interface>()
         override val unions = emptyList<Union>()
 
-        private fun createInputField(
-            def: InputValueDefinition,
-            containingExtension: ViaductSchema.Extension<Record, Field>,
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
-            valueConverter: ValueConverter
-        ): InputField {
-            val t = typeMap.toTypeExpr(def.type)
-            val default =
-                when {
-                    def.defaultValue == null -> HasDefaultValue.NO_DEFAULT
-                    else -> valueConverter.convert(typeMap.toTypeExpr(def.type), def.defaultValue)
-                }
-            return InputField(def, t, default, containingExtension, appliedDirectives)
+        internal fun populate(extensions: List<ViaductSchema.Extension<Input, Field>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            mExtensions = extensions
+            mFields = extensions.flatMap { it.members }
+            mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
-
-        override val extensions by lazy {
-            (listOf(def) + extensionDefs).map { gjLangTypeDef ->
-                ViaductSchema.Extension.of(
-                    def = this@Input,
-                    memberFactory = { containingExtension ->
-                        gjLangTypeDef.inputValueDefinitions.map {
-                            val ad = it.directives.toAppliedDirectives(registry, typeMap, valueConverter)
-                            createInputField(it, containingExtension, ad, valueConverter)
-                        }
-                    },
-                    isBase = gjLangTypeDef == def,
-                    appliedDirectives = gjLangTypeDef.directives.toAppliedDirectives(registry, typeMap, valueConverter),
-                    sourceLocation =
-                        gjLangTypeDef.sourceLocation?.sourceName?.let {
-                            ViaductSchema.SourceLocation(it)
-                        }
-                )
-            }
-        }
-        override val possibleObjectTypes: Set<Object> get() = setOf<Object>()
     }
 
     class TypeExpr internal constructor(
-        private val typeMap: RawTypeMap,
-        private val baseTypeDefName: String,
+        override val baseTypeDef: TypeDef,
         override val baseTypeNullable: Boolean = true, // GraphQL default is types are nullable
         override val listNullable: BitVector = NO_WRAPPERS
     ) : ViaductSchema.TypeExpr() {
-        override val baseTypeDef get() =
-            typeMap[baseTypeDefName] ?: throw java.lang.IllegalStateException("Bad basetype name: $baseTypeDefName")
-
-        override fun unwrapLists() = TypeExpr(typeMap, baseTypeDefName, baseTypeNullable)
+        override fun unwrapLists() = TypeExpr(baseTypeDef, baseTypeNullable)
 
         override fun unwrapList(): TypeExpr? =
             if (listNullable.size == 0) {
                 null
             } else {
-                TypeExpr(typeMap, baseTypeDefName, baseTypeNullable, listNullable.lsr())
+                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
             }
     }
 }
@@ -873,7 +813,11 @@ internal fun <T : ViaductSchema.TypeExpr> Type<*>.toTypeExpr(createTypeExpr: (St
 
 private fun RawTypeMap.toTypeExpr(type: Type<*>): GJSchemaRaw.TypeExpr =
     type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
-        GJSchemaRaw.TypeExpr(this, baseTypeDefName, baseTypeNullable, listNullable)
+        GJSchemaRaw.TypeExpr(
+            this[baseTypeDefName] ?: throw IllegalStateException("Type not found: $baseTypeDefName"),
+            baseTypeNullable,
+            listNullable
+        )
     }
 
 private fun RawTypeMap.toAppliedDirective(
@@ -883,36 +827,9 @@ private fun RawTypeMap.toAppliedDirective(
 ): ViaductSchema.AppliedDirective {
     val def =
         registry.getDirectiveDefinition(dir.name).orElse(null)
-            ?: throw java.lang.IllegalStateException("Directive @${dir.name} not found in schema.")
+            ?: throw IllegalStateException("Directive @${dir.name} not found in schema.")
     return dir.toAppliedDirective(def, valueConverter) { this.toTypeExpr(it) }
 }
-
-private fun RawTypeMap.collectDirectives(
-    registry: TypeDefinitionRegistry,
-    def: DirectivesContainer<*>,
-    extensionDefs: List<TypeDefinition<*>>,
-    valueConverter: ValueConverter
-): List<ViaductSchema.AppliedDirective> {
-    val result = mutableListOf<ViaductSchema.AppliedDirective>()
-    for (directive in def.directives) {
-        result.add(this.toAppliedDirective(registry, directive, valueConverter))
-    }
-    for (extension in extensionDefs) {
-        for (directive in extension.directives) {
-            result.add(this.toAppliedDirective(registry, directive, valueConverter))
-        }
-    }
-    return result
-}
-
-private fun RawTypeMap.appliedDirectives(
-    registry: TypeDefinitionRegistry,
-    def: DirectivesContainer<*>,
-    valueConverter: ValueConverter
-): List<ViaductSchema.AppliedDirective> =
-    def.directives.map {
-        this.toAppliedDirective(registry, it, valueConverter)
-    }
 
 private fun Iterable<Directive>.toAppliedDirectives(
     registry: TypeDefinitionRegistry,
@@ -923,8 +840,30 @@ private fun Iterable<Directive>.toAppliedDirectives(
 private fun InputValueDefinition.defaultValue(
     typeMap: RawTypeMap,
     valueConverter: ValueConverter
-) = if (defaultValue == null) {
-    GJSchemaRaw.HasDefaultValue.NO_DEFAULT
-} else {
+) = if (defaultValue != null) {
     valueConverter.convert(typeMap.toTypeExpr(type), defaultValue)
+} else {
+    null
+}
+
+private fun Node<*>.toSourceLocation() = sourceLocation?.sourceName?.let { ViaductSchema.SourceLocation(it) }
+
+private inline fun <T> GJSchemaRaw.TypeDef.guardedGet(v: T?): T = checkNotNull(v) { "Type ${this.name} has not been populated; call populate() first" }
+
+private inline fun <T> GJSchemaRaw.TypeDef.guardedGetNullable(
+    v: T?,
+    sentinel: Any?
+): T? {
+    check(sentinel != null) { "Type ${this.name} has not been populated; call populate() first" }
+    return v
+}
+
+private inline fun <T> GJSchemaRaw.Directive.guardedGet(v: T?): T = checkNotNull(v) { "Directive ${this.name} has not been populated; call populate() first" }
+
+private inline fun <T> GJSchemaRaw.Directive.guardedGetNullable(
+    v: T?,
+    sentinel: Any?
+): T? {
+    check(sentinel != null) { "Directive ${this.name} has not been populated; call populate() first" }
+    return v
 }

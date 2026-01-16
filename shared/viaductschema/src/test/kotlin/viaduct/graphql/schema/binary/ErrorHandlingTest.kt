@@ -75,19 +75,4 @@ class ErrorHandlingTest {
         }
         assertMessageContains("maxStringLength may not be larger than", exception)
     }
-
-    // ========================================================================
-    // Runtime lookup errors
-    // ========================================================================
-
-    @Test
-    fun `findDirective throws exception when directive not found`() {
-        val schema = BSchema()
-
-        val exception = assertThrows<NoSuchElementException> {
-            schema.findDirective("missingDirective")
-        }
-        assert(exception.message!!.contains("Directive def not found"))
-        assert(exception.message!!.contains("missingDirective"))
-    }
 }
