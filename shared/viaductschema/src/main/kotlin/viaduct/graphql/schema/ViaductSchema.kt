@@ -265,7 +265,7 @@ interface ViaductSchema {
             get() = kind.isOutput
 
         /** Returns a _nullable_ type-expr for this def. */
-        fun asTypeExpr(): TypeExpr
+        fun asTypeExpr(): TypeExpr<out TypeDef>
 
         /** Returns the set of Object types possibly subsumed by this
          *  type definition.  It's the empty set for any type other
@@ -320,7 +320,7 @@ interface ViaductSchema {
 
     interface HasDefaultValue : Def {
         val containingDef: Def
-        val type: TypeExpr
+        val type: TypeExpr<out TypeDef>
         override val sourceLocation get() = containingDef.sourceLocation
 
         /** Returns the default value; throws NoSuchElementException if none is explicit in the schema. */
@@ -475,16 +475,15 @@ interface ViaductSchema {
      *  type-names are equal (because they are assumed to come from
      *  the same schema), their base-type nullable indicators are
      *  equal, and their listNullable bit vectors are equal.
+     *
+     *  The type parameter `T` allows implementations to preserve
+     *  type information about the baseTypeDef.
      */
-    abstract class TypeExpr {
-        // This class overrides equals and hashCode as well as toString -
-        // that's too many things to make it an interface as we did all
-        // the other types...
-
-        abstract val baseTypeNullable: Boolean
-        abstract val baseTypeDef: TypeDef
-        abstract val listNullable: BitVector
-
+    class TypeExpr<out T : TypeDef>(
+        val baseTypeDef: T,
+        val baseTypeNullable: Boolean = true,
+        val listNullable: BitVector = NO_WRAPPERS
+    ) {
         /** Scalar or enum type. */
         val isSimple get() = (listNullable.size == 0 && baseTypeDef.isSimple)
         val isList get() = (listNullable.size != 0)
@@ -494,14 +493,19 @@ interface ViaductSchema {
 
         /** Strip all list wrappers but maintain both base type and
          *  its nullability. */
-        abstract fun unwrapLists(): TypeExpr
+        fun unwrapLists(): TypeExpr<T> = TypeExpr(baseTypeDef, baseTypeNullable, NO_WRAPPERS)
 
         /**
          * Unwrap one level of list depth.
          *
          * @returns null if [this] is not a list, the unwrapped list otherwise
          */
-        abstract fun unwrapList(): TypeExpr?
+        fun unwrapList(): TypeExpr<T>? =
+            if (listNullable.size == 0) {
+                null
+            } else {
+                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
+            }
 
         fun nullableAtDepth(depth: Int): Boolean {
             require(depth in 0..listDepth)
@@ -509,7 +513,7 @@ interface ViaductSchema {
         }
 
         override fun equals(other: Any?) =
-            other is TypeExpr &&
+            other is TypeExpr<*> &&
                 baseTypeDef.name == other.baseTypeDef.name &&
                 baseTypeNullable == other.baseTypeNullable &&
                 listNullable == other.listNullable

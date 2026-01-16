@@ -11,7 +11,7 @@ import viaduct.graphql.schema.ViaductSchema
  *  Note we use string representation for Enum values to avoid
  *  dependency on the Enum classes.
  */
-fun ViaductSchema.TypeExpr.valueInCtSyntax(
+fun ViaductSchema.TypeExpr<*>.valueInCtSyntax(
     value: Any?,
     pkg: KmName
 ): String = valueInCtSyntax(this, this.listDepth, value, pkg)
@@ -23,7 +23,7 @@ fun ViaductSchema.TypeExpr.valueInCtSyntax(
  *  an unboxed setting, then this function will wrap the
  *  expression in a call to the proper boxing function.
  */
-internal fun ViaductSchema.TypeExpr.ctBoxedExpr(unboxedExpr: String): String =
+internal fun ViaductSchema.TypeExpr<*>.ctBoxedExpr(unboxedExpr: String): String =
     if (this.isList || this.isNullable) {
         unboxedExpr
     } else {
@@ -39,7 +39,7 @@ internal fun ViaductSchema.TypeExpr.ctBoxedExpr(unboxedExpr: String): String =
     }
 
 private fun valueInCtSyntax(
-    type: ViaductSchema.TypeExpr,
+    type: ViaductSchema.TypeExpr<*>,
     depth: Int,
     value: Any?,
     pkg: KmName

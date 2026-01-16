@@ -41,7 +41,7 @@ class StandardValueMapperTest {
 
     private val schema = GJSchema.fromRegistry(readTypes(sdl))
 
-    private fun expr(name: String): ViaductSchema.TypeExpr = schema.types[name]!!.asTypeExpr()
+    private fun expr(name: String): ViaductSchema.TypeExpr<*> = schema.types[name]!!.asTypeExpr()
 
     @Test
     fun standardValueMapper() {

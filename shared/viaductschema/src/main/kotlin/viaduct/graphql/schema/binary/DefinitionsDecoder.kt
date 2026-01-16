@@ -195,7 +195,7 @@ internal class DefinitionsDecoder(
     fun <D, T> decodeFieldOrArg(
         container: D,
         refPlus: FieldRefPlus,
-        create: (D, String, BSchema.TypeExpr, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
+        create: (D, String, ViaductSchema.TypeExpr<BSchema.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
     ): T {
         // Read in binary format order: name, appliedDirectives, type, hasDefault, defaultValue
         val name = identifiers.get(refPlus.getIndex())
@@ -249,7 +249,7 @@ internal class DefinitionsDecoder(
      */
     fun <D, T> decodeInputLikeFieldList(
         container: D,
-        create: (D, String, BSchema.TypeExpr, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
+        create: (D, String, ViaductSchema.TypeExpr<BSchema.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
     ): List<T> {
         var v = data.readInt()
         if (v == EMPTY_LIST_MARKER) return emptyList()

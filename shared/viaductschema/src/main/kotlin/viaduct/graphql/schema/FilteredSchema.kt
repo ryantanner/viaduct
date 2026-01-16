@@ -1,7 +1,6 @@
 package viaduct.graphql.schema
 
 import viaduct.invariants.InvariantChecker
-import viaduct.utils.collections.BitVector
 
 private typealias TypeMap = Map<String, FilteredSchema.TypeDef<out ViaductSchema.TypeDef>>
 
@@ -127,7 +126,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
     sealed interface TypeDef<T : ViaductSchema.TypeDef> :
         Def<T>,
         ViaductSchema.TypeDef {
-        override fun asTypeExpr(): TypeExpr
+        override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef<*>>
 
         override val possibleObjectTypes: Set<Object<out ViaductSchema.Object>>
     }
@@ -137,14 +136,14 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
     ) : TypeDef<T> {
         override fun toString() = describe()
 
-        override fun asTypeExpr() = TypeExpr(this, true)
+        override fun asTypeExpr() = ViaductSchema.TypeExpr(this, true)
 
         open override val possibleObjectTypes: Set<Object<out ViaductSchema.Object>> get() = emptySet()
     }
 
     sealed class Arg<D : ViaductSchema.Def, A : ViaductSchema.Arg>(
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef<*>>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -155,7 +154,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
         override val unfilteredDef: A,
         override val containingDef: Directive<D>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef<*>>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -289,7 +288,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
 
     sealed class HasDefaultValue<P : ViaductSchema.Def, H : ViaductSchema.HasDefaultValue>(
         override val name: String,
-        override val type: TypeExpr,
+        override val type: ViaductSchema.TypeExpr<TypeDef<*>>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         private val mDefaultValue: Any?,
@@ -310,7 +309,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
         override val unfilteredDef: A,
         override val containingDef: Field<R, F>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef<*>>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -330,7 +329,7 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
         override val containingDef: Record<R>,
         override val containingExtension: ViaductSchema.Extension<Record<R>, Field<R, *>>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef<*>>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -460,21 +459,6 @@ class FilteredSchema<T : ViaductSchema.TypeDef>(
             mFields = mExtensions!!.flatMap { it.members }
             mAppliedDirectives = mExtensions!!.flatMap { it.appliedDirectives }
         }
-    }
-
-    class TypeExpr internal constructor(
-        override val baseTypeDef: TypeDef<out ViaductSchema.TypeDef>,
-        override val baseTypeNullable: Boolean,
-        override val listNullable: BitVector = ViaductSchema.TypeExpr.NO_WRAPPERS,
-    ) : ViaductSchema.TypeExpr() {
-        override fun unwrapLists() = TypeExpr(baseTypeDef, baseTypeNullable)
-
-        override fun unwrapList(): TypeExpr? =
-            if (listNullable.size == 0) {
-                null
-            } else {
-                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
-            }
     }
 }
 
@@ -724,10 +708,10 @@ internal class FilteredSchemaDecoder<T : ViaductSchema.TypeDef>(
         )
     }
 
-    private fun createTypeExprFromDefs(unfilteredTypeExpr: ViaductSchema.TypeExpr): FilteredSchema.TypeExpr {
+    private fun createTypeExprFromDefs(unfilteredTypeExpr: ViaductSchema.TypeExpr<*>): ViaductSchema.TypeExpr<FilteredSchema.TypeDef<*>> {
         val baseTypeDef = filteredTypes[unfilteredTypeExpr.baseTypeDef.name]
             ?: error("${unfilteredTypeExpr.baseTypeDef.name} not found in filtered types")
-        return FilteredSchema.TypeExpr(baseTypeDef, unfilteredTypeExpr.baseTypeNullable, unfilteredTypeExpr.listNullable)
+        return ViaductSchema.TypeExpr(baseTypeDef, unfilteredTypeExpr.baseTypeNullable, unfilteredTypeExpr.listNullable)
     }
 }
 

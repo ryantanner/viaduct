@@ -182,7 +182,7 @@ abstract class ValueConverterContract {
         }
     }
 
-    private fun typeOf(key: String): ViaductSchema.TypeExpr =
+    private fun typeOf(key: String): ViaductSchema.TypeExpr<*> =
         viaductExtendedSchema
             .cases(allElements = true)
             .find { it.key == key }!!

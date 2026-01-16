@@ -54,7 +54,7 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Core Decoding Primitives ==========
 
-    fun decodeTypeExpr(gtype: GraphQLType): GJSchema.TypeExpr {
+    fun decodeTypeExpr(gtype: GraphQLType): ViaductSchema.TypeExpr<GJSchema.TypeDef> {
         var baseTypeNullable = true
         var listNullable = ViaductSchema.TypeExpr.NO_WRAPPERS
 
@@ -85,14 +85,14 @@ internal class GraphQLSchemaDecoder(
         val baseTypeDefName = GraphQLTypeUtil.unwrapAll(gtype).name
         val baseTypeDef = types[baseTypeDefName]
             ?: error("Type not found: $baseTypeDefName")
-        return GJSchema.TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
+        return ViaductSchema.TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
     }
 
-    private fun decodeTypeExprFromLang(type: Type<*>): GJSchema.TypeExpr =
+    private fun decodeTypeExprFromLang(type: Type<*>): ViaductSchema.TypeExpr<GJSchema.TypeDef> =
         type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
             val baseTypeDef = types[baseTypeDefName]
                 ?: error("Type not found: $baseTypeDefName")
-            GJSchema.TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
+            ViaductSchema.TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
         }
 
     fun decodeSourceLocation(def: graphql.language.Node<*>?): ViaductSchema.SourceLocation? = def?.sourceLocation?.sourceName?.let { ViaductSchema.SourceLocation(it) }

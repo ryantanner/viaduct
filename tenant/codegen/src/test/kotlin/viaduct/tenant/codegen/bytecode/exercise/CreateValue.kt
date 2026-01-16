@@ -390,7 +390,7 @@ fun Iterable<ViaductGraphQLSchema.HasDefaultValue>.onlyOneValue(seen: List<Viadu
 }
 
 /** Returns true iff there's only one value for this type expression. */
-private fun ViaductGraphQLSchema.TypeExpr.onlyOneValue(seen: List<ViaductGraphQLSchema.HasDefaultValue>): Boolean =
+private fun ViaductGraphQLSchema.TypeExpr<*>.onlyOneValue(seen: List<ViaductGraphQLSchema.HasDefaultValue>): Boolean =
     if (this.nullableOrEmpty) {
         false
     } else {
@@ -413,10 +413,10 @@ private fun ViaductGraphQLSchema.TypeDef.onlyOneValue(): Boolean =
         false
     }
 
-private val ViaductGraphQLSchema.TypeExpr.nullableOrEmpty: Boolean get() =
+private val ViaductGraphQLSchema.TypeExpr<*>.nullableOrEmpty: Boolean get() =
     baseTypeNullable || (0 < listDepth)
 
-private fun ViaductGraphQLSchema.TypeExpr.nullOrEmpty(): Any? {
+private fun ViaductGraphQLSchema.TypeExpr<*>.nullOrEmpty(): Any? {
     if (!nullableOrEmpty) throw IllegalArgumentException("Must be nullable somewhere ($this).")
     var result: Any? = null
     if (isNullable) return result

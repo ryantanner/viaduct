@@ -412,7 +412,7 @@ fun ViaductSchema.Enum.enumTypeDefinitionExtensions() =
             .build()
     }
 
-private fun ViaductSchema.TypeExpr.constructNestedListType(
+private fun ViaductSchema.TypeExpr<*>.constructNestedListType(
     baseType: Type<*>,
     listDepth: Int
 ): Type<*> =
@@ -421,7 +421,7 @@ private fun ViaductSchema.TypeExpr.constructNestedListType(
         if (nullableAtDepth(index)) listType else NonNullType(listType)
     }
 
-fun ViaductSchema.TypeExpr.toTypeForTypeDefinition(): Type<*> {
+fun ViaductSchema.TypeExpr<*>.toTypeForTypeDefinition(): Type<*> {
     val typeName = TypeName(baseTypeDef.name)
     val baseType = if (!baseTypeNullable) NonNullType(typeName) else typeName
     return if (isList) {

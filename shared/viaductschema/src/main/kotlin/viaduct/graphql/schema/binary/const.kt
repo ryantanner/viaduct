@@ -106,7 +106,7 @@ internal const val EMPTY_OBJECT_MARKER = -2
 
 @JvmInline
 internal value class TexprWordOne(val word: Int) {
-    constructor(baseTypeIdx: Int, te: ViaductSchema.TypeExpr) : this(encode(baseTypeIdx, te))
+    constructor(baseTypeIdx: Int, te: ViaductSchema.TypeExpr<*>) : this(encode(baseTypeIdx, te))
 
     inline fun baseTypeNullable() = (0 != (word and BASE_TYPE_NULLABLE_BIT))
 
@@ -121,7 +121,7 @@ internal value class TexprWordOne(val word: Int) {
     companion object {
         private fun encode(
             baseTypeIdx: Int,
-            te: ViaductSchema.TypeExpr
+            te: ViaductSchema.TypeExpr<*>
         ): Int {
             val code = (VEC_TO_CODE[te.listNullable] ?: TWO_WORD_CODE) shl 28
             val baseNullableBit = (if (te.baseTypeNullable) 1 else 0) shl 31
@@ -166,13 +166,13 @@ internal value class TexprWordOne(val word: Int) {
             size: Int
         ): BitVector = BitVector.Builder().add(bits.toLong(), size).build()
 
-        fun typeExprByteSize(te: ViaductSchema.TypeExpr) = if (VEC_TO_CODE[te.listNullable] != null) WORD_SIZE else 2 * WORD_SIZE
+        fun typeExprByteSize(te: ViaductSchema.TypeExpr<*>) = if (VEC_TO_CODE[te.listNullable] != null) WORD_SIZE else 2 * WORD_SIZE
     }
 }
 
 @JvmInline
 internal value class TexprWordTwo(val word: Int) {
-    constructor(te: ViaductSchema.TypeExpr) : this(encode(te))
+    constructor(te: ViaductSchema.TypeExpr<*>) : this(encode(te))
 
     inline fun listDepth(): Int = (word ushr MAX_LIST_DEPTH) and 0x1F
 
@@ -184,7 +184,7 @@ internal value class TexprWordTwo(val word: Int) {
     companion object {
         const val MAX_LIST_DEPTH = 27
 
-        private fun encode(te: ViaductSchema.TypeExpr): Int {
+        private fun encode(te: ViaductSchema.TypeExpr<*>): Int {
             val depth = te.listDepth.takeIf { it <= MAX_LIST_DEPTH }
                 ?: throw IllegalArgumentException("Max list depth exceeded ($te).")
             return (depth shl MAX_LIST_DEPTH) or te.listNullable.get(0, depth).toInt()

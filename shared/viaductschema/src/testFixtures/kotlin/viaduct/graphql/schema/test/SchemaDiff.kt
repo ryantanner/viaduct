@@ -262,7 +262,7 @@ class SchemaDiff(
     fun areNodesEqual(
         expectedNode: Any?,
         actualNode: Any?,
-        type: ViaductSchema.TypeExpr? = null
+        type: ViaductSchema.TypeExpr<*>? = null
     ): Boolean {
         // Handle null cases
         if (expectedNode == null && actualNode == null) return true

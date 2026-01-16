@@ -15,9 +15,9 @@ import viaduct.mapping.graphql.RawValue
 import viaduct.mapping.graphql.ValueMapper
 
 class GraphQLValuesTest {
-    private object ToStringMapper : ValueMapper<ViaductSchema.TypeExpr, RawValue, String> {
+    private object ToStringMapper : ValueMapper<ViaductSchema.TypeExpr<*>, RawValue, String> {
         override fun invoke(
-            type: ViaductSchema.TypeExpr,
+            type: ViaductSchema.TypeExpr<*>,
             value: RawValue
         ): String = "$type:$value"
     }

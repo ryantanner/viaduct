@@ -73,7 +73,7 @@ class DecodingErrorHandlingTest {
                     BSchema.Field(
                         ext,
                         "myField",
-                        BSchema.TypeExpr(stringType),
+                        ViaductSchema.TypeExpr(stringType),
                         listOf(appliedDirective), // Applied directive with no definition!
                         hasDefault = false,
                         defaultValue = null
@@ -154,7 +154,7 @@ class DecodingErrorHandlingTest {
             def = iface,
             memberFactory = { ext ->
                 listOf(
-                    BSchema.Field(ext, "field", BSchema.TypeExpr(stringType), emptyList(), false, null)
+                    BSchema.Field(ext, "field", ViaductSchema.TypeExpr(stringType), emptyList(), false, null)
                 )
             },
             isBase = true,
@@ -190,7 +190,7 @@ class DecodingErrorHandlingTest {
                 def = obj,
                 memberFactory = { ext ->
                     listOf(
-                        BSchema.Field(ext, "field", BSchema.TypeExpr(stringType), emptyList(), false, null)
+                        BSchema.Field(ext, "field", ViaductSchema.TypeExpr(stringType), emptyList(), false, null)
                     )
                 },
                 isBase = true,
@@ -270,7 +270,7 @@ class DecodingErrorHandlingTest {
                     BSchema.Field(
                         ext,
                         "myField",
-                        BSchema.TypeExpr(stringType),
+                        ViaductSchema.TypeExpr(stringType),
                         listOf(appliedDirective),
                         hasDefault = false,
                         defaultValue = null
@@ -677,7 +677,7 @@ class DecodingErrorHandlingTest {
                     BSchema.Field(
                         ext,
                         "myField",
-                        BSchema.TypeExpr(stringType),
+                        ViaductSchema.TypeExpr(stringType),
                         listOf(appliedDirective),
                         hasDefault = false,
                         defaultValue = null

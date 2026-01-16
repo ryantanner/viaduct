@@ -15,7 +15,7 @@ import java.time.OffsetTime
 import viaduct.graphql.schema.ViaductSchema
 
 /** Implements a 1-way mapping of a value from a `From` type to a `To` type */
-interface ValueMapper<A, B> : ((ViaductSchema.TypeExpr, A?) -> B?)
+interface ValueMapper<A, B> : ((ViaductSchema.TypeExpr<*>, A?) -> B?)
 
 /** GJ uses "External" values to describe values that have not been parsed into a
  *  [graphql.language.Value]. A common source for these are input values
@@ -29,12 +29,12 @@ interface ValueMapper<A, B> : ((ViaductSchema.TypeExpr, A?) -> B?)
 val externalToLiteral =
     object : ValueMapper<Any, Value<*>> {
         override fun invoke(
-            type: ViaductSchema.TypeExpr,
+            type: ViaductSchema.TypeExpr<*>,
             value: Any?
         ): Value<*>? = map(type, value, 0)
 
         private fun map(
-            type: ViaductSchema.TypeExpr,
+            type: ViaductSchema.TypeExpr<*>,
             value: Any?,
             listDepth: Int
         ): Value<*>? {
@@ -76,7 +76,7 @@ val externalToLiteral =
 internal val defaultValueMapper =
     object : ValueMapper<Value<*>, Value<*>> {
         override fun invoke(
-            type: ViaductSchema.TypeExpr,
+            type: ViaductSchema.TypeExpr<*>,
             value: Value<*>?
         ): Value<*>? =
             if (value is NullValue) {

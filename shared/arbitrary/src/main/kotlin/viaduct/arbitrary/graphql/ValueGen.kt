@@ -179,11 +179,11 @@ private abstract class GenCtx {
 class ViaductSchemaRawValueGen(
     val cfg: Config,
     val rs: RandomSource
-) : ValueGen<ViaductSchema.TypeExpr, RawValue> {
+) : ValueGen<ViaductSchema.TypeExpr<*>, RawValue> {
     private val scalarGen = ScalarRawValueGen(cfg, rs)
 
     private data class Ctx(
-        val type: ViaductSchema.TypeExpr,
+        val type: ViaductSchema.TypeExpr<*>,
         override val depthBudget: Int,
         val listDepth: Int,
         override val input: Boolean,
@@ -206,7 +206,7 @@ class ViaductSchemaRawValueGen(
 
         fun traverseField(field: ViaductSchema.Field): Ctx = traverseType(field.type)
 
-        fun traverseType(type: ViaductSchema.TypeExpr): Ctx = copy(type = type, depthBudget = depthBudget - 1, listDepth = 0, forceNonNullable = false)
+        fun traverseType(type: ViaductSchema.TypeExpr<*>): Ctx = copy(type = type, depthBudget = depthBudget - 1, listDepth = 0, forceNonNullable = false)
 
         fun inullOr(
             field: ViaductSchema.Field,
@@ -216,7 +216,7 @@ class ViaductSchemaRawValueGen(
         fun asNonNullable(): Ctx = copy(forceNonNullable = true)
     }
 
-    override fun invoke(type: ViaductSchema.TypeExpr): RawValue =
+    override fun invoke(type: ViaductSchema.TypeExpr<*>): RawValue =
         gen(
             Ctx(
                 type = type,

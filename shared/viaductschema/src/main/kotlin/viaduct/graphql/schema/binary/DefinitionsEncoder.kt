@@ -282,7 +282,7 @@ private fun SchemaEncoder.encodeTypeDefsOrMarker(typeDefs: Iterable<ViaductSchem
  */
 private fun SchemaEncoder.encodeInputLikeField(
     name: String,
-    type: ViaductSchema.TypeExpr,
+    type: ViaductSchema.TypeExpr<*>,
     hasDefault: Boolean,
     defaultValue: Any?,
     hasNext: Boolean,

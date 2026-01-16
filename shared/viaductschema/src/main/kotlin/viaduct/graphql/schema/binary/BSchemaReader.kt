@@ -143,9 +143,9 @@ internal class TypeExpressionsDecoder(
     identifiers: IdentifiersDecoder,
 ) {
     /** Get type expression by index (will apply IDX_MASK) */
-    fun get(index: Int): BSchema.TypeExpr = typeExprs[index and IDX_MASK]
+    fun get(index: Int): ViaductSchema.TypeExpr<BSchema.TypeDef> = typeExprs[index and IDX_MASK]
 
-    val typeExprs: Array<BSchema.TypeExpr>
+    val typeExprs: Array<ViaductSchema.TypeExpr<BSchema.TypeDef>>
 
     init {
         // Read Type Expressions section
@@ -160,7 +160,7 @@ internal class TypeExpressionsDecoder(
             val typeDefName = identifiers.get(firstWord.typeIndex())
             val typeDef: BSchema.TypeDef = identifiers.types[typeDefName]
                 ?: throw NoSuchElementException("Type def not found ($typeDefName).")
-            BSchema.TypeExpr(
+            ViaductSchema.TypeExpr(
                 typeDef,
                 firstWord.baseTypeNullable(),
                 when (firstWord.needsWordTwo()) {

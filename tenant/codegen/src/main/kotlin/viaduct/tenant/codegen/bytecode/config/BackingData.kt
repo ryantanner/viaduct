@@ -39,6 +39,6 @@ data class BackingData(val fqClass: String) {
 }
 
 /** create a KmType describing the customized BackingData */
-fun ViaductSchema.TypeExpr.backingDataType(): KmType {
+fun ViaductSchema.TypeExpr<*>.backingDataType(): KmType {
     return Km.ANY.asType().apply { isNullable = baseTypeNullable }
 }

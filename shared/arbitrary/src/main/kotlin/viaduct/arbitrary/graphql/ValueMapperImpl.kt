@@ -33,7 +33,7 @@ import viaduct.mapping.graphql.RawValue.Companion.scalar
 import viaduct.mapping.graphql.ValueMapper
 
 private data class BridgeTypeCtx(
-    val type: ViaductSchema.TypeExpr,
+    val type: ViaductSchema.TypeExpr<*>,
     val listDepth: Int,
 ) {
     val isList: Boolean = type.isList && type.listDepth > listDepth
@@ -124,9 +124,9 @@ private class GJTypeCtx private constructor(
     }
 }
 
-object BridgeGJToRaw : ValueMapper<ViaductSchema.TypeExpr, Value<*>, RawValue>, RawValue.DSL() {
+object BridgeGJToRaw : ValueMapper<ViaductSchema.TypeExpr<*>, Value<*>, RawValue>, RawValue.DSL() {
     override fun invoke(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         value: Value<*>
     ): RawValue = toRaw(BridgeTypeCtx(type, 0), value)
 
@@ -198,9 +198,9 @@ internal object ScalarGJToRaw : ValueMapper<String, ScalarValue<*>, RawScalar> {
         }
 }
 
-object BridgeRawToGJ : ValueMapper<ViaductSchema.TypeExpr, RawValue, Value<*>> {
+object BridgeRawToGJ : ValueMapper<ViaductSchema.TypeExpr<*>, RawValue, Value<*>> {
     override fun invoke(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         value: RawValue
     ): Value<*> = toGJ(BridgeTypeCtx(type, 0), value)
 

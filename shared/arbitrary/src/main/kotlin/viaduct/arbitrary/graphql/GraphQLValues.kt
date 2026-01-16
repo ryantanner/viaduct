@@ -144,7 +144,7 @@ fun Arb.Companion.rawValueFor(
 
 /** Generate an arbitrary [RawValue] for a provided [ViaductSchema.TypeExpr] */
 fun Arb.Companion.rawValueFor(
-    type: ViaductSchema.TypeExpr,
+    type: ViaductSchema.TypeExpr<*>,
     cfg: Config = Config.default
 ): Arb<RawValue> =
     arbitrary { rs ->
@@ -156,8 +156,8 @@ fun Arb.Companion.rawValueFor(
  * been mapped by the provided [viaduct.mapping.graphql.ValueMapper].
  */
 fun <T> Arb.Companion.mappedValueFor(
-    type: ViaductSchema.TypeExpr,
-    mapper: ValueMapper<ViaductSchema.TypeExpr, RawValue, T>,
+    type: ViaductSchema.TypeExpr<*>,
+    mapper: ValueMapper<ViaductSchema.TypeExpr<*>, RawValue, T>,
     cfg: Config = Config.default
 ): Arb<T> =
     rawValueFor(type, cfg).map { raw ->
@@ -170,7 +170,7 @@ fun <T> Arb.Companion.mappedValueFor(
  */
 fun <T> Arb.Companion.mappedValueFor(
     def: ViaductSchema.TypeDef,
-    mapper: ValueMapper<ViaductSchema.TypeExpr, RawValue, T>,
+    mapper: ValueMapper<ViaductSchema.TypeExpr<*>, RawValue, T>,
     cfg: Config = Config.default
 ): Arb<T> =
     mappedValueFor(

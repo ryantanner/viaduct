@@ -44,7 +44,7 @@ class ValueMapperTest {
 
     private val schema = GJSchema.fromRegistry(readTypes(sdl))
 
-    private fun expr(name: String): ViaductSchema.TypeExpr = schema.types[name]!!.asTypeExpr()
+    private fun expr(name: String): ViaductSchema.TypeExpr<*> = schema.types[name]!!.asTypeExpr()
 
     private fun assertEquals(
         a: Value<*>?,

@@ -74,17 +74,17 @@ class GJSchema internal constructor(
     fun toTypeExpr(
         wrappers: String,
         baseString: String
-    ): TypeExpr {
+    ): ViaductSchema.TypeExpr<TypeDef> {
         val baseTypeDef = requireNotNull(this.types[baseString]) {
             "Type not found: $baseString"
         }
         val listNullable = parseWrappers(wrappers) // Checks syntax for us
         val baseNullable = (wrappers.last() == '?')
-        return TypeExpr(baseTypeDef, baseNullable, listNullable)
+        return ViaductSchema.TypeExpr(baseTypeDef, baseNullable, listNullable)
     }
 
     // Internal for testing (GJSchemaCheck)
-    internal fun toTypeExpr(gtype: GraphQLType): TypeExpr {
+    internal fun toTypeExpr(gtype: GraphQLType): ViaductSchema.TypeExpr<TypeDef> {
         var baseTypeNullable = true
         var listNullable = ViaductSchema.TypeExpr.NO_WRAPPERS
 
@@ -115,7 +115,7 @@ class GJSchema internal constructor(
         val baseTypeDefName = GraphQLTypeUtil.unwrapAll(gtype).name
         val baseTypeDef = types[baseTypeDefName]
             ?: error("Type not found: $baseTypeDefName")
-        return TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
+        return ViaductSchema.TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
     }
 
     companion object {
@@ -226,7 +226,7 @@ class GJSchema internal constructor(
     sealed interface TypeDef :
         ViaductSchema.TypeDef,
         Def {
-        override fun asTypeExpr(): TypeExpr
+        override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef>
 
         override val possibleObjectTypes: Set<Object>
     }
@@ -234,7 +234,7 @@ class GJSchema internal constructor(
     sealed class TypeDefImpl(
         override val name: String
     ) : TypeDef {
-        override fun asTypeExpr() = TypeExpr(this)
+        override fun asTypeExpr() = ViaductSchema.TypeExpr(this)
 
         override fun toString() = describe()
 
@@ -243,7 +243,7 @@ class GJSchema internal constructor(
 
     sealed class Arg(
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -254,7 +254,7 @@ class GJSchema internal constructor(
         override val def: GraphQLArgument,
         override val containingDef: Directive,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -373,7 +373,7 @@ class GJSchema internal constructor(
 
     sealed class HasDefaultValue(
         override val name: String,
-        override val type: TypeExpr,
+        override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         private val mDefaultValue: Any?,
@@ -395,7 +395,7 @@ class GJSchema internal constructor(
         override val containingDef: OutputField,
         override val def: GraphQLArgument,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -406,7 +406,7 @@ class GJSchema internal constructor(
 
     sealed class Field(
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -423,7 +423,7 @@ class GJSchema internal constructor(
         override val def: GraphQLFieldDefinition,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -439,7 +439,7 @@ class GJSchema internal constructor(
         override val def: GraphQLInputObjectField,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -555,21 +555,6 @@ class GJSchema internal constructor(
             mFields = extensions.flatMap { it.members }
             mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
-    }
-
-    class TypeExpr internal constructor(
-        override val baseTypeDef: TypeDef,
-        override val baseTypeNullable: Boolean = true, // GraphQL default is types are nullable
-        override val listNullable: BitVector = NO_WRAPPERS
-    ) : ViaductSchema.TypeExpr() {
-        override fun unwrapLists() = TypeExpr(baseTypeDef, baseTypeNullable)
-
-        override fun unwrapList(): TypeExpr? =
-            if (listNullable.size == 0) {
-                null
-            } else {
-                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
-            }
     }
 }
 

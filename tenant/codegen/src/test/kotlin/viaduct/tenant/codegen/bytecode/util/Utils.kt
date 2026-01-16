@@ -24,7 +24,7 @@ fun ViaductSchema.HasDefaultValue.assertKotlinTypeString(
     baseTypeMapper: BaseTypeMapper = ViaductBaseTypeMapper(ViaductSchema.Empty)
 ) = type.assertKotlinTypeString(expected, field = this, isInput = isInput, pkg = pkg, baseTypeMapper = baseTypeMapper)
 
-fun ViaductSchema.TypeExpr.assertKotlinTypeString(
+fun ViaductSchema.TypeExpr<*>.assertKotlinTypeString(
     expected: String,
     field: ViaductSchema.HasDefaultValue?,
     isInput: Boolean = false,
@@ -43,7 +43,7 @@ fun ViaductSchema.typedef(type: String): ViaductSchema.TypeDef = types[type]!!
 fun ViaductSchema.expr(
     type: String,
     field: String? = null
-): ViaductSchema.TypeExpr =
+): ViaductSchema.TypeExpr<*> =
     typedef(type).let { t ->
         if (field == null) {
             t.asTypeExpr()

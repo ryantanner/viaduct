@@ -1,7 +1,6 @@
 package viaduct.graphql.schema.binary
 
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.utils.collections.BitVector
 
 internal class BSchema(
     override val directives: Map<String, Directive>,
@@ -28,7 +27,7 @@ internal class BSchema(
 
     sealed class HasDefaultValue(
         override val name: String,
-        override val type: TypeExpr,
+        override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         private val mDefaultValue: Any?,
@@ -47,7 +46,7 @@ internal class BSchema(
 
     sealed class Arg(
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -56,7 +55,7 @@ internal class BSchema(
     class DirectiveArg(
         override val containingDef: Directive,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -67,7 +66,7 @@ internal class BSchema(
     class FieldArg internal constructor(
         override val containingDef: Field,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -88,7 +87,7 @@ internal class BSchema(
     class Field(
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         override val name: String,
-        override val type: TypeExpr,
+        override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -98,7 +97,7 @@ internal class BSchema(
         constructor(
             containingExtension: ViaductSchema.Extension<Record, Field>,
             name: String,
-            type: TypeExpr,
+            type: ViaductSchema.TypeExpr<TypeDef>,
             appliedDirectives: List<ViaductSchema.AppliedDirective>,
             hasDefault: Boolean,
             defaultValue: Any?,
@@ -152,7 +151,7 @@ internal class BSchema(
     // [TypeDef] related interfaces and abstract classes
 
     sealed interface TypeDef : ViaductSchema.TypeDef, TopLevelDef {
-        override fun asTypeExpr(): TypeExpr
+        override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef>
 
         override val possibleObjectTypes: Set<Object>
     }
@@ -160,7 +159,7 @@ internal class BSchema(
     sealed class TypeDefImpl(
         override val name: String
     ) : TypeDef {
-        override fun asTypeExpr() = TypeExpr(this)
+        override fun asTypeExpr() = ViaductSchema.TypeExpr(this)
 
         override fun toString() = describe()
 
@@ -388,24 +387,6 @@ internal class BSchema(
             mSupers = extensions.flatMap { it.supers as Collection<Interface> }
             mUnions = unions
         }
-    }
-
-    class TypeExpr(
-        override val baseTypeDef: TypeDef,
-        override val baseTypeNullable: Boolean = true,
-        override val listNullable: BitVector = ViaductSchema.TypeExpr.NO_WRAPPERS
-    ) : ViaductSchema.TypeExpr() {
-        // isSimple, isList, isNullable, listDepth, and nullableAtDepth are inherited from parent class
-        // equals, hashCode, and toString are inherited from parent class
-
-        override fun unwrapLists() = TypeExpr(baseTypeDef, baseTypeNullable, ViaductSchema.TypeExpr.NO_WRAPPERS)
-
-        override fun unwrapList() =
-            if (listNullable.size == 0) {
-                null
-            } else {
-                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
-            }
     }
 }
 

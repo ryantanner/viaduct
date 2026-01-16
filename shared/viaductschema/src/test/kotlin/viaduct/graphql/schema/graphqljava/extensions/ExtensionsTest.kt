@@ -103,7 +103,7 @@ internal class ExtensionsTest {
     fun testHasExternalType() {
         val field = spyk(mockFieldWithSourceLoc("repo/schema/other/someFile"))
 
-        val typeExpression = mockk<GJSchema.TypeExpr>()
+        val typeExpression = mockk<ViaductSchema.TypeExpr<GJSchema.TypeDef>>()
         every { typeExpression.baseTypeDef } returns GJSchema
             .fromFiles(
                 listOf(

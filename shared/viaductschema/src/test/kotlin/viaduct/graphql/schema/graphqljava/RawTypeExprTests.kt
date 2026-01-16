@@ -122,7 +122,7 @@ class RawTypeExprTests {
         assertThatWrapper("T2.d15", "!!!!")
     }
 
-    private fun fieldType(f: String): ViaductSchema.TypeExpr {
+    private fun fieldType(f: String): ViaductSchema.TypeExpr<*> {
         val coords = f.split('.')
         val tname: String = coords[0]
         val fname: String = coords[1]

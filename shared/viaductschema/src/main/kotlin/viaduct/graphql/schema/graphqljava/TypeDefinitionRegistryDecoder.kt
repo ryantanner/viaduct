@@ -24,9 +24,9 @@ internal class TypeDefinitionRegistryDecoder(
 ) {
     // ========== Core Decoding Primitives ==========
 
-    fun decodeTypeExpr(type: Type<*>): GJSchemaRaw.TypeExpr =
+    fun decodeTypeExpr(type: Type<*>): ViaductSchema.TypeExpr<GJSchemaRaw.TypeDef> =
         type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
-            GJSchemaRaw.TypeExpr(
+            ViaductSchema.TypeExpr(
                 types[baseTypeDefName] ?: error("Type not found: $baseTypeDefName"),
                 baseTypeNullable,
                 listNullable

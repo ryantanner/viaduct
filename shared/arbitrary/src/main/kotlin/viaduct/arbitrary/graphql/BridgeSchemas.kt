@@ -22,7 +22,7 @@ fun Arb.Companion.viaductExtendedSchema(
 fun Arb.Companion.typeExpr(
     config: Config = Config.default,
     valueConverter: ValueConverter = ValueConverter.default
-): Arb<ViaductSchema.TypeExpr> =
+): Arb<ViaductSchema.TypeExpr<*>> =
     viaductExtendedSchema(config, valueConverter)
         .filter { it.types.values.isNotEmpty() }
         .flatMap { schema ->

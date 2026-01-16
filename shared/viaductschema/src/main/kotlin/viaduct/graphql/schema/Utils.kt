@@ -16,7 +16,7 @@ import viaduct.utils.collections.BitVector
  *  means a not-nullable list of nullable elements, each
  *  element, if not null, is itself a list of non-null
  *  elements having the bast-type as their type. */
-fun ViaductSchema.TypeExpr.unparseWrappers(): String {
+fun <T : ViaductSchema.TypeDef> ViaductSchema.TypeExpr<T>.unparseWrappers(): String {
     val result = StringBuilder()
     for (i in 0 until listDepth) {
         result.append(if (nullableAtDepth(i)) '?' else '!')

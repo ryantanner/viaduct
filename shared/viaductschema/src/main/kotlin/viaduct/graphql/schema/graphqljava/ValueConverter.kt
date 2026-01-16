@@ -26,7 +26,7 @@ interface ValueConverter {
      *  [valueWithState.isNotSet] is false, otherwise returns null.
      */
     fun convert(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         valueWithState: InputValueWithState
     ): Any? =
         when {
@@ -45,7 +45,7 @@ interface ValueConverter {
 
     /** Convert a value that was parsed as a literal [graphql.language.Value] */
     fun convert(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         value: Value<*>
     ): Any?
 
@@ -54,17 +54,17 @@ interface ValueConverter {
      *  to check that the conversion functions are returning objects of
      *  the expected class.
      */
-    fun javaClassFor(type: ViaductSchema.TypeExpr): Class<*>? = null
+    fun javaClassFor(type: ViaductSchema.TypeExpr<*>): Class<*>? = null
 
     companion object {
         val default =
             object : ValueConverter {
                 override fun convert(
-                    type: ViaductSchema.TypeExpr,
+                    type: ViaductSchema.TypeExpr<*>,
                     value: Value<*>
                 ): Any? = defaultValueMapper(type, value)
 
-                override fun javaClassFor(type: ViaductSchema.TypeExpr): Class<*> =
+                override fun javaClassFor(type: ViaductSchema.TypeExpr<*>): Class<*> =
                     when {
                         type.isList -> ArrayValue::class.java
                         type.baseTypeDef is ViaductSchema.Enum -> EnumValue::class.java
@@ -81,7 +81,7 @@ interface ValueConverter {
         val standard =
             object : ValueConverter {
                 override fun convert(
-                    type: ViaductSchema.TypeExpr,
+                    type: ViaductSchema.TypeExpr<*>,
                     value: Value<*>
                 ): Any? = standardValueMapper(type, value)
             }

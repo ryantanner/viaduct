@@ -154,7 +154,7 @@ private class GraphQLJavaSchemaBuilder(
     internal fun typeRef(typeDef: ViaductSchema.TypeDef): GraphQLNamedType = convertedTypeDefs[typeDef.name] ?: GraphQLTypeReference(typeDef.name)
 
     /** Note: updates [scalarsSeen]. */
-    internal fun typeExpr(source: ViaductSchema.TypeExpr): GraphQLType {
+    internal fun typeExpr(source: ViaductSchema.TypeExpr<*>): GraphQLType {
         val base = source.baseTypeDef
         if (base is ViaductSchema.Scalar) scalarsSeen.add(base.name)
         var result: GraphQLType = typeRef(base)
@@ -239,9 +239,9 @@ private class GraphQLJavaSchemaBuilder(
         }
     }
 
-    internal fun inputTypeExpr(source: ViaductSchema.TypeExpr): GraphQLInputType = typeExpr(source) as GraphQLInputType
+    internal fun inputTypeExpr(source: ViaductSchema.TypeExpr<*>): GraphQLInputType = typeExpr(source) as GraphQLInputType
 
-    internal fun outputTypeExpr(source: ViaductSchema.TypeExpr): GraphQLOutputType = typeExpr(source) as GraphQLOutputType
+    internal fun outputTypeExpr(source: ViaductSchema.TypeExpr<*>): GraphQLOutputType = typeExpr(source) as GraphQLOutputType
 
     internal fun convertInputObjectType(source: ViaductSchema.Input): GraphQLInputObjectType {
         val c = convertedTypeDefs[source.name]
@@ -403,7 +403,7 @@ private class GraphQLJavaSchemaBuilder(
         val deprecationInfo = extractDeprecation(source.appliedDirectives)
         return GraphQLArgument.Builder()
             .name(source.name)
-            .type(inputTypeExpr(source.type as ViaductSchema.TypeExpr))
+            .type(inputTypeExpr(source.type))
             .apply {
                 if (source.hasDefault) {
                     defaultValueLiteral(toGraphQLValue(source.defaultValue))
@@ -484,7 +484,7 @@ private class GraphQLJavaSchemaBuilder(
 
                     // Get the argument type from the directive definition, or use String as fallback
                     val argType = directiveDef?.args?.find { it.name == name }?.type?.let {
-                        inputTypeExpr(it as ViaductSchema.TypeExpr)
+                        inputTypeExpr(it)
                     } ?: Scalars.GraphQLString
 
                     argument(
@@ -521,7 +521,7 @@ private class GraphQLJavaSchemaBuilder(
     private fun convertDirectiveArg(source: ViaductSchema.DirectiveArg): GraphQLArgument {
         return GraphQLArgument.Builder()
             .name(source.name)
-            .type(inputTypeExpr(source.type as ViaductSchema.TypeExpr))
+            .type(inputTypeExpr(source.type))
             .apply {
                 if (source.hasDefault) {
                     defaultValueLiteral(toGraphQLValue(source.defaultValue))

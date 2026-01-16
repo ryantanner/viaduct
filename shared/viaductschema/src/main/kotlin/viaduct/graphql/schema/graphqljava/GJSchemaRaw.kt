@@ -91,13 +91,13 @@ class GJSchemaRaw private constructor(
     fun toTypeExpr(
         wrappers: String,
         baseString: String
-    ): TypeExpr {
+    ): ViaductSchema.TypeExpr<TypeDef> {
         val baseTypeDef = requireNotNull(this.types[baseString]) {
             "Type not found: $baseString"
         }
         val listNullable = parseWrappers(wrappers) // Checks syntax for us
         val baseNullable = (wrappers.last() == '?')
-        return TypeExpr(baseTypeDef, baseNullable, listNullable)
+        return ViaductSchema.TypeExpr(baseTypeDef, baseNullable, listNullable)
     }
 
     companion object {
@@ -413,7 +413,7 @@ class GJSchemaRaw private constructor(
         override val def: TypeDefinition<*>
         val extensionDefs: List<TypeDefinition<*>>
 
-        override fun asTypeExpr(): TypeExpr
+        override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef>
 
         override val possibleObjectTypes: Set<Object>
     }
@@ -421,7 +421,7 @@ class GJSchemaRaw private constructor(
     sealed class TypeDefImpl(
         override val name: String
     ) : TypeDef {
-        override fun asTypeExpr() = TypeExpr(this)
+        override fun asTypeExpr() = ViaductSchema.TypeExpr(this)
 
         override fun toString() = describe()
 
@@ -430,7 +430,7 @@ class GJSchemaRaw private constructor(
 
     sealed class Arg(
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -441,7 +441,7 @@ class GJSchemaRaw private constructor(
         override val def: InputValueDefinition,
         override val containingDef: Directive,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -563,7 +563,7 @@ class GJSchemaRaw private constructor(
 
     sealed class HasDefaultValue(
         override val name: String,
-        override val type: TypeExpr,
+        override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         private val mDefaultValue: Any?,
@@ -585,7 +585,7 @@ class GJSchemaRaw private constructor(
         override val containingDef: OutputField,
         override val def: InputValueDefinition,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -596,7 +596,7 @@ class GJSchemaRaw private constructor(
 
     sealed class Field(
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -613,7 +613,7 @@ class GJSchemaRaw private constructor(
         override val def: FieldDefinition,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -628,7 +628,7 @@ class GJSchemaRaw private constructor(
         override val def: InputValueDefinition,
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         name: String,
-        type: TypeExpr,
+        type: ViaductSchema.TypeExpr<TypeDef>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>,
         hasDefault: Boolean,
         defaultValue: Any?,
@@ -738,27 +738,12 @@ class GJSchemaRaw private constructor(
             mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
         }
     }
-
-    class TypeExpr internal constructor(
-        override val baseTypeDef: TypeDef,
-        override val baseTypeNullable: Boolean = true, // GraphQL default is types are nullable
-        override val listNullable: BitVector = NO_WRAPPERS
-    ) : ViaductSchema.TypeExpr() {
-        override fun unwrapLists() = TypeExpr(baseTypeDef, baseTypeNullable)
-
-        override fun unwrapList(): TypeExpr? =
-            if (listNullable.size == 0) {
-                null
-            } else {
-                TypeExpr(baseTypeDef, baseTypeNullable, listNullable.lsr())
-            }
-    }
 }
 
 internal fun Directive.toAppliedDirective(
     def: DirectiveDefinition,
     valueConverter: ValueConverter,
-    typeExprConverter: (Type<*>) -> ViaductSchema.TypeExpr
+    typeExprConverter: (Type<*>) -> ViaductSchema.TypeExpr<*>
 ): ViaductSchema.AppliedDirective {
     val args = def.inputValueDefinitions
     return ViaductSchema.AppliedDirective.of(
@@ -778,7 +763,7 @@ internal fun Directive.toAppliedDirective(
     )
 }
 
-internal fun <T : ViaductSchema.TypeExpr> Type<*>.toTypeExpr(createTypeExpr: (String, Boolean, BitVector) -> T): T {
+internal fun <T : ViaductSchema.TypeDef> Type<*>.toTypeExpr(createTypeExpr: (String, Boolean, BitVector) -> ViaductSchema.TypeExpr<T>): ViaductSchema.TypeExpr<T> {
     val listNullable = BitVector.Builder()
     var currentNullableBit = 1L
     var t = this
@@ -797,9 +782,9 @@ internal fun <T : ViaductSchema.TypeExpr> Type<*>.toTypeExpr(createTypeExpr: (St
     return createTypeExpr(t.name, (currentNullableBit == 1L), listNullable.build())
 }
 
-private fun RawTypeMap.toTypeExpr(type: Type<*>): GJSchemaRaw.TypeExpr =
+private fun RawTypeMap.toTypeExpr(type: Type<*>): ViaductSchema.TypeExpr<GJSchemaRaw.TypeDef> =
     type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
-        GJSchemaRaw.TypeExpr(
+        ViaductSchema.TypeExpr(
             this[baseTypeDefName] ?: throw IllegalStateException("Type not found: $baseTypeDefName"),
             baseTypeNullable,
             listNullable

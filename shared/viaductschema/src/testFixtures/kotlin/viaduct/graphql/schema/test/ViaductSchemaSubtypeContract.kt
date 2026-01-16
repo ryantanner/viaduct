@@ -260,7 +260,12 @@ abstract class ViaductSchemaSubtypeContract {
 
     @Test
     @EnabledIf("noMissingClasses")
-    fun `baseTypeDef of TypeExpr is expected subtype`() = assertIsSubtype(returnType("TypeExpr.baseTypeDef"), "TypeDef")
+    fun `baseTypeDef of TypeExpr is expected subtype`() {
+        // When TypeExpr is shared from ViaductSchema, its baseTypeDef returns ViaductSchema.TypeDef,
+        // not the schema-specific TypeDef. Skip this test in that case.
+        if (classes["TypeExpr"] == ViaductSchema.TypeExpr::class) return
+        assertIsSubtype(returnType("TypeExpr.baseTypeDef"), "TypeDef")
+    }
 
     // From Union
 
@@ -287,14 +292,14 @@ abstract class ViaductSchemaSubtypeContract {
                 "Record",
                 "Scalar",
                 "TypeDef",
-                "TypeExpr",
                 "Union"
             )
         val OPTIONAL_CLASS_NAMES =
             listOf(
                 "AppliedDirective",
                 "Extension",
-                "ExtensionWithSupers"
+                "ExtensionWithSupers",
+                "TypeExpr"
             )
 
         fun KType.elementType() =

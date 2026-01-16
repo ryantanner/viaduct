@@ -21,12 +21,12 @@ import viaduct.graphql.schema.ViaductSchema
  */
 internal val standardValueMapper = object : ValueMapper<Value<*>, Any> {
     override fun invoke(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         value: Value<*>?
     ): Any? = value?.let { map(type, it, 0) }
 
     private fun map(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         value: Value<*>,
         listDepth: Int
     ): Any? {

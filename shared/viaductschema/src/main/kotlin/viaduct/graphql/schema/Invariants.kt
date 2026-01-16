@@ -104,7 +104,7 @@ private fun checkBackPointerInvariants(
 
 fun checkTypeExprReferentialIntegrity(
     schema: ViaductSchema,
-    type: ViaductSchema.TypeExpr,
+    type: ViaductSchema.TypeExpr<*>,
     check: InvariantChecker
 ) {
     val n = type.baseTypeDef.name

@@ -19,7 +19,7 @@ import viaduct.tenant.codegen.bytecode.config.cfg.REFLECTION_NAME
  */
 interface BaseTypeMapper {
     fun mapBaseType(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         pkg: KmName,
         field: ViaductSchema.HasDefaultValue? = null,
         isInput: Boolean = false,
@@ -66,7 +66,7 @@ class ViaductBaseTypeMapper(
     val schema: ViaductSchema,
 ) : BaseTypeMapper {
     override fun mapBaseType(
-        type: ViaductSchema.TypeExpr,
+        type: ViaductSchema.TypeExpr<*>,
         pkg: KmName,
         field: ViaductSchema.HasDefaultValue?,
         isInput: Boolean,
@@ -142,7 +142,7 @@ class ViaductBaseTypeMapper(
      * @param isInput type is being used in an input context, e.g., as
      *   setter for a field or the continuation param of a suspend fun
      */
-    internal fun ViaductSchema.TypeExpr.idKmType(
+    internal fun ViaductSchema.TypeExpr<*>.idKmType(
         pkg: KmName,
         field: ViaductSchema.HasDefaultValue?,
         isInput: Boolean = false,

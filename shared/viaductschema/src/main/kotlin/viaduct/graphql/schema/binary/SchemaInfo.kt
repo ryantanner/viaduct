@@ -27,8 +27,8 @@ internal class SchemaInfo(
     /** Count of source names including null placeholder */
     val sourceNameCount: Int get() = sourceNames.size + 1
 
-    val typeExprs: Map<ViaductSchema.TypeExpr, Int> by lazy {
-        mutableMapOf<ViaductSchema.TypeExpr, Int>().apply {
+    val typeExprs: Map<ViaductSchema.TypeExpr<*>, Int> by lazy {
+        mutableMapOf<ViaductSchema.TypeExpr<*>, Int>().apply {
             var idx = 0
             typeExprMap.entries.sortedBy { -it.value }.forEach {
                 put(it.key, idx++)
@@ -91,7 +91,7 @@ internal class SchemaInfo(
 
     private val identifierSet = sortedSetOf<String>()
     private val sourceNameSet = sortedSetOf<String>()
-    private val typeExprMap = mutableMapOf<ViaductSchema.TypeExpr, Int>()
+    private val typeExprMap = mutableMapOf<ViaductSchema.TypeExpr<*>, Int>()
 
     init {
         // Account for section magic number (4 bytes) in identifiers section
@@ -251,7 +251,7 @@ internal class SchemaInfo(
         }
     }
 
-    private fun addTypeExpr(te: ViaductSchema.TypeExpr) {
+    private fun addTypeExpr(te: ViaductSchema.TypeExpr<*>) {
         typeExprMap.put(te, 1 + typeExprMap.getOrDefault(te, 0))
     }
 
