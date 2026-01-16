@@ -114,12 +114,13 @@ abstract class ViaductSchemaSubtypeContract {
     @Test
     @EnabledIf("noMissingClasses")
     fun `Def class hierarchy is correct`() {
-        assertIsSubtype("Directive", "Def")
+        assertIsSubtype("TopLevelDef", "Def")
+        assertIsSubtype("Directive", "TopLevelDef")
+        assertIsSubtype("TypeDef", "TopLevelDef")
+
         assertIsSubtype("EnumValue", "Def")
         assertIsSubtype("Field", "Def")
-        assertIsSubtype("Directive", "Def")
         assertIsSubtype("HasDefaultValue", "Def")
-        assertIsSubtype("TypeDef", "Def")
 
         assertIsSubtype("DirectiveArg", "HasDefaultValue")
         assertIsSubtype("FieldArg", "HasDefaultValue")
@@ -291,6 +292,7 @@ abstract class ViaductSchemaSubtypeContract {
                 "OutputRecord",
                 "Record",
                 "Scalar",
+                "TopLevelDef",
                 "TypeDef",
                 "Union"
             )

@@ -4,6 +4,12 @@ package viaduct.graphql.schema
 
 import viaduct.invariants.InvariantChecker
 
+/**
+ * Flags to turn on and off invariance checks.  Right
+ * now the only flag is [allowEmptyTypes], which controls
+ * whether or not a type with no fields is considered
+ * an error.
+ */
 data class SchemaInvariantOptions(
     val allowEmptyTypes: Boolean
 ) {
@@ -13,6 +19,14 @@ data class SchemaInvariantOptions(
     }
 }
 
+/**
+ * Checks invariants expected of a [ViaductSchema] instance, e.g.,
+ * referential integrity (e.g., [Field.containingDef] of a member
+ * of [Record.fields] points back to the record) and structural
+ * integrity (e.g., `asTypeExpr` is not a list).  While some of these
+ * checks correspond to GraphQL validation rules, this function does
+ * _not_ fully validate GraphQL schemas.
+ */
 fun checkBridgeSchemaInvariants(
     schema: ViaductSchema,
     check: InvariantChecker,

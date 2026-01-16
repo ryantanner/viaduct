@@ -472,7 +472,7 @@ internal class GraphQLSchemaDecoder(
             decodeTypeExpr(fieldDef.type),
             appliedDirectives,
             hasDefault = false,
-            defaultValue = null,
+            mDefaultValue = null,
             argsFactory = { field -> createFieldArgs(field, fieldDef) }
         )
     }

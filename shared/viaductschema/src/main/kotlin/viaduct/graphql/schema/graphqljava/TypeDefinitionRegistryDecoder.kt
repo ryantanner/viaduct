@@ -221,7 +221,7 @@ internal class TypeDefinitionRegistryDecoder(
             decodeTypeExpr(fieldDef.type),
             decodeAppliedDirectives(fieldDef.directives),
             hasDefault = false,
-            defaultValue = null,
+            mDefaultValue = null,
             argsFactory = { field -> createFieldArgs(field, fieldDef) }
         )
     }

@@ -2,13 +2,91 @@ package viaduct.graphql.schema
 
 import viaduct.utils.collections.BitVector
 
-/** See KDoc for [ViaductSchema] for background. */
+/**
+ * Abstract representation of a GraphQL schema.  The main entry into
+ * a schema is the [types] map from type-names to
+ * [ViaductSchema.TypeDef] instances.
+ *
+ * [ViaductSchema] defines a collection of interfaces that are
+ * meant to be defined by different "implementations" of
+ * [ViaductSchema], e.g., [GJSchema] is an implementation
+ * that wraps a graphql-java schema.  To that end, there are no
+ * default implementations for any function that returns a type
+ * intended to be provided by an implementation.  This class
+ * does provided a few default implementations for member
+ * functions that return scalars like Boolean and String, and
+ * a few static functions for default implementations of member
+ * functions that return other types.
+ *
+ * There is an important invariant maintained by all implementations
+ * of [ViaductSchema], which is that they are "closed."  Put
+ * differently, object-equality is equality in the schema.  That is
+ * within a [ViaductSchema], there's exactly one TypeDef object
+ * for each unique type-definition in the GraphQL schema.  And the
+ * same is true for field- and enum-value definitions.
+ *
+ * We have four implementations of [ViaductSchema]:
+ *
+ *  * `GJSchema` - wraps graphql-java's `GraphQLSchema` — a parsed, validated, and semantically analyzed schema.
+ *  * `GJSchemaRaw` - wraps graphql-java's `TypeDefinitionRegistry` — a parsed but not semantically validated schema.
+ *  * `BSchema` - native `ViaductSchema` implementation with a compact binary serialization format that enables fast loading and reduced memory footprint.
+ *  * `FilteredSchema` - projects an existing `ViaductSchema` through a filter to create a restricted view.
+ *
+ * If you want to output a [ViaductSchema] as GraphQL SDL,
+ * use [ViaductSchema.toRegistry] to convert the schema into a
+ * graphql-java `TypeDefinitionRegistry` and then use graphql-java's
+ * pretty printer to serialize to a text file.
+ *
+ * [ViaductSchema] allows for types that have no fields, which
+ * graphql-java does not.  To increase interoperability with
+ * graphql-java and other toolsets, the
+ * [ViaductSchema.toRegistry] function inserts a fake field
+ * named [ViaductSchema.VIADUCT_IGNORE_SYMBOL] into every object,
+ * interface, and input-object type in the schema. In addition,
+ * it inserts the fake object-type [ViaductSchema.VIADUCT_IGNORE_SYMBOL]
+ * into every schema, and adds this fake type as a fake member to
+ * every union of the schema.  This ensures that pretty-printed versions
+ * of [ViaductSchema] will be valid GraphQL schemas.  On the
+ * other side, both [GJSchema] and [GJSchemaRaw] strip out these fake
+ * entries and the fake type.
+ *
+ * There are a number of places in these classes where we need to
+ * represent "real values."  For example, the arguments provided to
+ * an applied directive, the default value of an input field, and the
+ * arguments passed to a field in a selection-set: these all need a
+ * representation of real values.  This set of classes is agnostic
+ * about how that representation is done.  It uses [Any?] as the type
+ * of real values, and does not further specify what that means.  As
+ * a result, for example, the invariant checker for
+ * [ViaductSchema] does not interrogate those values.
+ * Implementations of these classes should document the specific way
+ * they represent real values.
+ */
 interface ViaductSchema {
+    /** Map of all type definitions in the schema. */
     val types: Map<String, TypeDef>
+
+    /** Map of all directive definitions in the schema. */
     val directives: Map<String, Directive>
 
+    /**
+     * Root query type if one defined.  (Unliked GraphQL itself
+     * [ViaductSchema] allows for schemas with no root type
+     * defined.)  If not null, guaranteed to be a member
+     * of [types.values].
+     */
     val queryTypeDef: Object?
+
+    /**
+     * Root mutation type if one defined.  If not null,
+     * guaranteed to be a member of [types.values].
+     */
     val mutationTypeDef: Object?
+
+    /**
+     * Root subscription type if one defined.  If not null,
+     * guaranteed to be a member of [types.values].
+     */
     val subscriptionTypeDef: Object?
 
     /**
@@ -33,26 +111,31 @@ interface ViaductSchema {
         override val subscriptionTypeDef = null
     }
 
+    /**
+     * Produces a projection of [this] according to the
+     * logic provided by [filter].  The result is first
+     * checked for basic invariants: this check will
+     * honor the flags passed in [schemaInvariantOptions].
+     */
     fun filter(
         filter: SchemaFilter,
         schemaInvariantOptions: SchemaInvariantOptions = SchemaInvariantOptions.DEFAULT,
-    ) = FilteredSchema(
-        filter,
-        this.types.entries,
-        directives.entries,
-        schemaInvariantOptions,
-        queryTypeDef?.name,
-        mutationTypeDef?.name,
-        subscriptionTypeDef?.name
-    )
+    ): ViaductSchema =
+        FilteredSchema(
+            filter,
+            this.types.entries,
+            directives.entries,
+            schemaInvariantOptions,
+            queryTypeDef?.name,
+            mutationTypeDef?.name,
+            subscriptionTypeDef?.name
+        )
 
-    // Everything below this line (inside the BridgeSchema definition) are
-    // static interface and class definitions
-
-    /** The name and arguments of a directive applied to a schema element
-     *  (e.g., a type-definition, field-definition, etc.).  Implementations
-     *  of this type must implement "value type" semantics, meaning [equals]
-     *  and [hashCode] are based on value equality, not on reference equality.
+    /**
+     * The name and arguments of a directive applied to a schema element
+     * (e.g., a type-definition, field-definition, etc.).  Implementations
+     * of this type must implement "value type" semantics, meaning [equals]
+     * and [hashCode] are based on value equality, not on reference equality.
      */
     interface AppliedDirective {
         val name: String
@@ -104,6 +187,9 @@ interface ViaductSchema {
         }
     }
 
+    /**
+     * Not supported yet:  a placeholder for future use cases...
+     */
     interface Selection {
         val subselections: Collection<Selection>
         val directives: Collection<ViaductSchema.AppliedDirective>
@@ -126,6 +212,7 @@ interface ViaductSchema {
         OBJECT,
         UNION;
 
+        /** True for enum and scalar types. */
         val isSimple
             get() = (this == SCALAR || this == ENUM)
 
@@ -142,7 +229,7 @@ interface ViaductSchema {
             get() = (this != INPUT)
     }
 
-    interface Directive : Def {
+    interface Directive : TopLevelDef {
         override val name: String
         val args: Collection<DirectiveArg>
         val allowedLocations: Set<Location>
@@ -152,6 +239,10 @@ interface ViaductSchema {
 
         override fun describe() = "Directive<$name>[${if (isRepeatable) "repeatable on" else ""} ${allowedLocations.joinToString("| ")}]"
 
+        /**
+         * Locations in the GraphQL schema that a directive is allowed
+         * to be applied.  Names come from the GraphQL specification.
+         */
         enum class Location {
             QUERY,
             MUTATION,
@@ -244,7 +335,12 @@ interface ViaductSchema {
         fun unwrapAll(): Def = this
     }
 
-    interface TypeDef : Def {
+    /**
+     * Base type for top-level definitions that appear in a schema (Directive and TypeDef).
+     */
+    interface TopLevelDef : Def
+
+    interface TypeDef : TopLevelDef {
         val kind: TypeDefKind
         val extensions: Collection<Extension<TypeDef, Def>>
 

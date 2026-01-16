@@ -10,30 +10,28 @@ internal class BSchema(
     override val subscriptionTypeDef: Object?,
 ) : ViaductSchema {
     //
-    // [Def] related interfaces and classes
+    // [Def] related classes
 
-    sealed interface Def : ViaductSchema.Def {
+    sealed class Def : ViaductSchema.Def {
         override fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }
+
+        override fun toString() = describe()
     }
 
     /**
-     * Marker interface for top-level definitions that appear a schema (Directive and TypeDef).
+     * Base class for top-level definitions that appear in a schema (Directive and TypeDef).
      */
-    sealed interface TopLevelDef : Def
+    sealed class TopLevelDef : Def(), ViaductSchema.TopLevelDef
 
     //
     // "Contained" things:
-    // [Arg], [Field] and [EnumValue] and related interfaces and classes
+    // [Arg], [Field] and [EnumValue] and related classes
 
-    sealed class HasDefaultValue(
-        override val name: String,
-        override val type: ViaductSchema.TypeExpr<TypeDef>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        override val hasDefault: Boolean,
-        private val mDefaultValue: Any?,
-    ) : ViaductSchema.HasDefaultValue, Def {
+    sealed class HasDefaultValue : Def(), ViaductSchema.HasDefaultValue {
         // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
+
+        protected abstract val mDefaultValue: Any?
 
         override val defaultValue: Any?
             get() =
@@ -44,43 +42,31 @@ internal class BSchema(
                 }
     }
 
-    sealed class Arg(
-        name: String,
-        type: ViaductSchema.TypeExpr<TypeDef>,
-        appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        hasDefault: Boolean,
-        defaultValue: Any?,
-    ) : HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue), ViaductSchema.Arg
+    sealed class Arg : HasDefaultValue(), ViaductSchema.Arg
 
     class DirectiveArg(
         override val containingDef: Directive,
-        name: String,
-        type: ViaductSchema.TypeExpr<TypeDef>,
-        appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        hasDefault: Boolean,
-        defaultValue: Any?,
-    ) : ViaductSchema.DirectiveArg, Arg(name, type, appliedDirectives, hasDefault, defaultValue) {
-        override fun toString() = describe()
-    }
+        override val name: String,
+        override val type: ViaductSchema.TypeExpr<TypeDef>,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val hasDefault: Boolean,
+        override val mDefaultValue: Any?,
+    ) : Arg(), ViaductSchema.DirectiveArg
 
     class FieldArg internal constructor(
         override val containingDef: Field,
-        name: String,
-        type: ViaductSchema.TypeExpr<TypeDef>,
-        appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        hasDefault: Boolean,
-        defaultValue: Any?,
-    ) : ViaductSchema.FieldArg, Arg(name, type, appliedDirectives, hasDefault, defaultValue) {
-        override fun toString() = describe()
-    }
+        override val name: String,
+        override val type: ViaductSchema.TypeExpr<TypeDef>,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val hasDefault: Boolean,
+        override val mDefaultValue: Any?,
+    ) : Arg(), ViaductSchema.FieldArg
 
     class EnumValue internal constructor(
         override val containingExtension: ViaductSchema.Extension<Enum, EnumValue>,
         override val name: String,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-    ) : ViaductSchema.EnumValue, Def {
-        override fun toString() = describe()
-
+    ) : Def(), ViaductSchema.EnumValue {
         override val containingDef get() = containingExtension.def
     }
 
@@ -89,10 +75,10 @@ internal class BSchema(
         override val name: String,
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
-        hasDefault: Boolean,
-        defaultValue: Any?,
+        override val hasDefault: Boolean,
+        override val mDefaultValue: Any?,
         argsFactory: (Field) -> List<FieldArg>,
-    ) : ViaductSchema.Field, HasDefaultValue(name, type, appliedDirectives, hasDefault, defaultValue) {
+    ) : HasDefaultValue(), ViaductSchema.Field {
         /** Secondary constructor for fields without arguments (e.g., input fields). */
         constructor(
             containingExtension: ViaductSchema.Extension<Record, Field>,
@@ -102,8 +88,6 @@ internal class BSchema(
             hasDefault: Boolean,
             defaultValue: Any?,
         ) : this(containingExtension, name, type, appliedDirectives, hasDefault, defaultValue, { emptyList() })
-
-        override fun toString() = describe()
 
         override val args: List<FieldArg> = argsFactory(this)
 
@@ -117,9 +101,7 @@ internal class BSchema(
 
     class Directive(
         override val name: String,
-    ) : ViaductSchema.Directive, TopLevelDef {
-        override fun toString() = describe()
-
+    ) : TopLevelDef(), ViaductSchema.Directive {
         private var mSourceLocation: ViaductSchema.SourceLocation? = null
         private var mIsRepeatable: Boolean? = null
         private var mAllowedLocations: Set<ViaductSchema.Directive.Location>? = null
@@ -148,20 +130,10 @@ internal class BSchema(
     }
 
     //
-    // [TypeDef] related interfaces and abstract classes
+    // [TypeDef] related classes
 
-    sealed interface TypeDef : ViaductSchema.TypeDef, TopLevelDef {
-        override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef>
-
-        override val possibleObjectTypes: Set<Object>
-    }
-
-    sealed class TypeDefImpl(
-        override val name: String
-    ) : TypeDef {
-        override fun asTypeExpr() = ViaductSchema.TypeExpr(this)
-
-        override fun toString() = describe()
+    sealed class TypeDef : TopLevelDef(), ViaductSchema.TypeDef {
+        override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef> = ViaductSchema.TypeExpr(this)
 
         open override val possibleObjectTypes: Set<Object> get() = emptySet()
     }
@@ -170,8 +142,8 @@ internal class BSchema(
     // Non-[Record] [TypeDef] concrete classes
 
     class Enum(
-        name: String
-    ) : ViaductSchema.Enum, TypeDefImpl(name) {
+        override val name: String
+    ) : TypeDef(), ViaductSchema.Enum {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.Extension<Enum, EnumValue>>? = null
         private var mValues: List<EnumValue>? = null
@@ -193,8 +165,8 @@ internal class BSchema(
     }
 
     class Scalar(
-        name: String
-    ) : ViaductSchema.Scalar, TypeDefImpl(name) {
+        override val name: String
+    ) : TypeDef(), ViaductSchema.Scalar {
         private var mExtensions: List<ViaductSchema.Extension<Scalar, Nothing>>? = null
 
         override val extensions: List<ViaductSchema.Extension<Scalar, Nothing>> get() = guardedGet(mExtensions)
@@ -209,8 +181,8 @@ internal class BSchema(
     }
 
     class Union(
-        name: String
-    ) : ViaductSchema.Union, TypeDefImpl(name) {
+        override val name: String
+    ) : TypeDef(), ViaductSchema.Union {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.Extension<Union, Object>>? = null
         private var mPossibleObjectTypes: Set<Object>? = null
@@ -246,22 +218,22 @@ internal class BSchema(
     //
     // [Record] and its concrete classes
 
-    sealed interface Record : ViaductSchema.Record, TypeDef {
-        override val fields: List<Field>
+    sealed class Record : TypeDef(), ViaductSchema.Record {
+        abstract override val fields: List<Field>
 
         override fun field(name: String) = fields.find { name == it.name }
 
         override fun field(path: Iterable<String>): Field = ViaductSchema.field(this, path)
     }
 
-    sealed interface OutputRecord : ViaductSchema.OutputRecord, Record {
-        override val extensions: List<ViaductSchema.ExtensionWithSupers<OutputRecord, Field>>
-        override val supers: List<Interface>
+    sealed class OutputRecord : Record(), ViaductSchema.OutputRecord {
+        abstract override val extensions: List<ViaductSchema.ExtensionWithSupers<OutputRecord, Field>>
+        abstract override val supers: List<Interface>
     }
 
     class Interface(
-        name: String
-    ) : ViaductSchema.Interface, OutputRecord, TypeDefImpl(name) {
+        override val name: String
+    ) : OutputRecord(), ViaductSchema.Interface {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
         private var mFields: List<Field>? = null
@@ -320,8 +292,8 @@ internal class BSchema(
     }
 
     class Input(
-        name: String
-    ) : ViaductSchema.Input, Record, TypeDefImpl(name) {
+        override val name: String
+    ) : Record(), ViaductSchema.Input {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.Extension<Input, Field>>? = null
         private var mFields: List<Field>? = null
@@ -341,8 +313,8 @@ internal class BSchema(
     }
 
     class Object(
-        name: String
-    ) : ViaductSchema.Object, OutputRecord, TypeDefImpl(name) {
+        override val name: String
+    ) : OutputRecord(), ViaductSchema.Object {
         override val possibleObjectTypes = setOf(this)
 
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null

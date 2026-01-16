@@ -277,16 +277,16 @@ class PopulateOnceTest {
     @Test
     fun `Object possibleObjectTypes is not empty when cast to TypeDefImpl`() {
         // This test verifies that BSchema.Object.possibleObjectTypes correctly
-        // returns setOf(this) even when accessed through the TypeDefImpl base class.
-        // This works because Object.possibleObjectTypes overrides the interface
-        // declaration, not the TypeDefImpl implementation.
+        // returns setOf(this) even when accessed through the TypeDef base class.
+        // This works because Object.possibleObjectTypes overrides the base class
+        // implementation.
         val obj = BSchema.Object("TestObject")
 
         // Access through the concrete type
         obj.possibleObjectTypes.shouldNotBeEmpty()
 
-        // Access through TypeDefImpl - should still return the Object's override
-        val asTypeDefImpl: BSchema.TypeDefImpl = obj
-        asTypeDefImpl.possibleObjectTypes.shouldNotBeEmpty()
+        // Access through TypeDef - should still return the Object's override
+        val asTypeDef: BSchema.TypeDef = obj
+        asTypeDef.possibleObjectTypes.shouldNotBeEmpty()
     }
 }

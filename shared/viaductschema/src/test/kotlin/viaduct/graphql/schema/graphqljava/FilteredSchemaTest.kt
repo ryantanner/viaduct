@@ -124,6 +124,20 @@ class FilteredSchemaTest {
             type OB implements AKeep { a: String }
             """.trimIndent()
 
+        private fun filterSchema(
+            schema: ViaductSchema,
+            filter: SchemaFilter,
+            schemaInvariantOptions: SchemaInvariantOptions = SchemaInvariantOptions.DEFAULT,
+        ) = FilteredSchema(
+            filter,
+            schema.types.entries,
+            schema.directives.entries,
+            schemaInvariantOptions,
+            schema.queryTypeDef?.name,
+            schema.mutationTypeDef?.name,
+            schema.subscriptionTypeDef?.name
+        )
+
         @BeforeAll
         @JvmStatic
         fun loadSchema() {
@@ -133,7 +147,7 @@ class FilteredSchemaTest {
 
     @Test
     fun `compare noop-filtered test schema against expected result`() {
-        val noopFilteredSchema = unfilteredTestSchema.filter(NoopSchemaFilter())
+        val noopFilteredSchema = filterSchema(unfilteredTestSchema, NoopSchemaFilter())
         SchemaDiff(unfilteredTestSchema, noopFilteredSchema).diff().assertEmpty("\n")
     }
 
@@ -145,7 +159,7 @@ class FilteredSchemaTest {
         try {
             InvariantChecker()
                 .also { check ->
-                    checkBridgeSchemaInvariants(unfilteredTestSchema.filter(EmptyTypesSchemaFilter()), check)
+                    checkBridgeSchemaInvariants(filterSchema(unfilteredTestSchema, EmptyTypesSchemaFilter()), check)
                 }.assertEmpty("\n")
         } catch (_: AssertionError) {
             // Assertion error is expected here as the filtered schema has empty types
@@ -155,7 +169,8 @@ class FilteredSchemaTest {
         InvariantChecker()
             .also { check ->
                 checkBridgeSchemaInvariants(
-                    unfilteredTestSchema.filter(
+                    filterSchema(
+                        unfilteredTestSchema,
                         schemaFilterProducingEmptyTypes,
                         SchemaInvariantOptions.ALLOW_EMPTY_TYPES
                     ),
@@ -169,13 +184,13 @@ class FilteredSchemaTest {
     fun `invariant checks on filtered test schema`() {
         InvariantChecker()
             .also { check ->
-                checkBridgeSchemaInvariants(unfilteredTestSchema.filter(SuffixSchemaFilter("Remove", "Keep")), check)
+                checkBridgeSchemaInvariants(filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep")), check)
             }.assertEmpty("\n")
     }
 
     @Test
     fun `compare filtered test schema against expected result`() {
-        val filteredSchema = unfilteredTestSchema.filter(SuffixSchemaFilter("Remove", "Keep"))
+        val filteredSchema = filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep"))
         assertFalse(
             SchemaDiff(unfilteredTestSchema, filteredSchema).diff().isEmpty,
             "Unfiltered schema should be different from filtered schema"
@@ -187,7 +202,7 @@ class FilteredSchemaTest {
 
     @Test
     fun `test unfilteredDef`() {
-        val filteredSchema = unfilteredTestSchema.filter(SuffixSchemaFilter("Remove", "Keep"))
+        val filteredSchema = filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep"))
 
         val filteredEnum = filteredSchema.types["EnumKeep"] as FilteredSchema.Enum
         filteredEnum.checkUnfilteredDef(GJSchema.Enum::class)
@@ -223,7 +238,7 @@ class FilteredSchemaTest {
                 .map { it.name }
                 .toSet()
         )
-        val filteredSchema = unfilteredTestSchema.filter(SuffixSchemaFilter("Remove", "Keep"))
+        val filteredSchema = filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep"))
         assertEquals(
             setOf("OA", "OB"),
             filteredSchema.types["AKeep"]!!
@@ -239,16 +254,17 @@ class FilteredSchemaTest {
 
     @Test
     fun `test unwrapAll for one layer`() {
-        val filteredSchema = unfilteredTestSchema.filter(SuffixSchemaFilter("Remove", "Keep"))
+        val filteredSchema = filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep"))
         `test unwrapAll`(unfilteredTestSchema, filteredSchema)
     }
 
     @Test
     fun `test unwrapAll for two layers`() {
         val filteredSchema =
-            unfilteredTestSchema
-                .filter(SuffixSchemaFilter("Remove", "Keep"))
-                .filter(NoopSchemaFilter())
+            filterSchema(
+                filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep")),
+                NoopSchemaFilter()
+            )
         `test unwrapAll`(unfilteredTestSchema, filteredSchema)
     }
 
