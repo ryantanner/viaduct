@@ -1,7 +1,9 @@
 package viaduct.graphql.schema.test
 
+import graphql.language.NullValue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
@@ -126,7 +128,7 @@ interface ViaductSchemaContract {
         ).apply {
             withArg("Query", "foo", "a") {
                 assertTrue(it.hasEffectiveDefault, "Query.a")
-                assertNull(it.effectiveDefaultValue, "Query.a")
+                assertInstanceOf(NullValue::class.java, it.effectiveDefaultValue, "Query.a")
             }
             withArg("Query", "foo", "b") {
                 assertTrue(it.hasEffectiveDefault, "Query.b")
@@ -134,7 +136,7 @@ interface ViaductSchemaContract {
             }
             withField("I", "a") {
                 assertTrue(it.hasEffectiveDefault, "I.a")
-                assertNull(it.effectiveDefaultValue, "I.a")
+                assertInstanceOf(NullValue::class.java, it.effectiveDefaultValue, "I.a")
             }
             withField("I", "b") {
                 assertTrue(it.hasEffectiveDefault, "I.b")

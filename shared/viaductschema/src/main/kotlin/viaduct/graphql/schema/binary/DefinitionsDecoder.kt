@@ -1,6 +1,7 @@
 package viaduct.graphql.schema.binary
 
 import graphql.language.NullValue
+import graphql.language.Value
 import viaduct.graphql.schema.ViaductSchema
 
 /**
@@ -178,13 +179,11 @@ internal class DefinitionsDecoder(
         }
     }
 
-    fun decodeDefaultValue(hasDefaultValue: Boolean): Any? =
-        when {
-            hasDefaultValue -> {
-                val decoded = constants.decodeConstant(data.readInt() and IDX_MASK)
-                if (decoded is NullValue) null else decoded
-            }
-            else -> null
+    fun decodeDefaultValue(hasDefaultValue: Boolean): Value<*>? =
+        if (hasDefaultValue) {
+            constants.decodeConstant(data.readInt() and IDX_MASK)
+        } else {
+            null
         }
 
     /**
@@ -195,7 +194,7 @@ internal class DefinitionsDecoder(
     fun <D, T> decodeFieldOrArg(
         container: D,
         refPlus: FieldRefPlus,
-        create: (D, String, ViaductSchema.TypeExpr<BSchema.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
+        create: (D, String, ViaductSchema.TypeExpr<BSchema.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Value<*>?) -> T,
     ): T {
         // Read in binary format order: name, appliedDirectives, type, hasDefault, defaultValue
         val name = identifiers.get(refPlus.getIndex())
@@ -249,7 +248,7 @@ internal class DefinitionsDecoder(
      */
     fun <D, T> decodeInputLikeFieldList(
         container: D,
-        create: (D, String, ViaductSchema.TypeExpr<BSchema.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Any?) -> T,
+        create: (D, String, ViaductSchema.TypeExpr<BSchema.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Value<*>?) -> T,
     ): List<T> {
         var v = data.readInt()
         if (v == EMPTY_LIST_MARKER) return emptyList()
@@ -272,7 +271,7 @@ internal class DefinitionsDecoder(
      * |--------------------------------------------------------------------|----------------------------
      * | Argument explicitly specified                                      | Specified value
      * | Argument not explicitly specified but has default in definition    | Default from definition
-     * | Argument not explicitly specified, has no default, but is nullable | Null
+     * | Argument not explicitly specified, has no default, but is nullable | NullValue
      * | Other                                                              | Nothing, key not defined
      *
      * **Note on Missing Directive Definitions**: If the directive definition is not available
@@ -290,7 +289,7 @@ internal class DefinitionsDecoder(
                 val directiveName = identifiers.get(refPlus.getIndex())
 
                 // Read explicitly provided arguments from the binary data
-                val explicitArgs: Map<String, Any?> = if (refPlus.hasArguments()) {
+                val explicitArgs: Map<String, Value<*>> = if (refPlus.hasArguments()) {
                     buildMap {
                         var argRefPlus: AppliedDirectiveArgRefPlus
                         do {
@@ -299,7 +298,7 @@ internal class DefinitionsDecoder(
                             val constantRef = data.readInt() and IDX_MASK
 
                             val decoded = constants.decodeConstant(constantRef)
-                            put(argName, if (decoded is NullValue) null else decoded)
+                            put(argName, decoded)
                         } while (argRefPlus.hasNext())
                     }
                 } else {
@@ -311,16 +310,16 @@ internal class DefinitionsDecoder(
                 // directive dependencies), we use only the explicit args. The encoder ensures
                 // that in such cases, ALL arguments are encoded explicitly.
                 val directiveDef = identifiers.directives[directiveName]
-                val finalArgs = if (directiveDef != null && directiveDef.args.isNotEmpty()) {
+                val finalArgs: Map<String, Value<*>> = if (directiveDef != null && directiveDef.args.isNotEmpty()) {
                     buildMap {
                         for (argDef in directiveDef.args) {
                             when {
                                 // Argument explicitly specified
-                                argDef.name in explicitArgs -> put(argDef.name, explicitArgs[argDef.name])
+                                argDef.name in explicitArgs -> put(argDef.name, explicitArgs[argDef.name]!!)
                                 // Argument has default in definition
                                 argDef.hasDefault -> put(argDef.name, argDef.defaultValue)
                                 // Argument is nullable (no default)
-                                argDef.type.isNullable -> put(argDef.name, null)
+                                argDef.type.isNullable -> put(argDef.name, NullValue.of())
                                 // Other: key not defined (don't add to map)
                             }
                         }

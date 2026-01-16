@@ -1,5 +1,6 @@
 package viaduct.graphql.schema.binary
 
+import graphql.language.Value
 import viaduct.graphql.schema.ViaductSchema
 
 internal class BSchema(
@@ -31,12 +32,12 @@ internal class BSchema(
         // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
-        protected abstract val mDefaultValue: Any?
+        protected abstract val mDefaultValue: Value<*>?
 
-        override val defaultValue: Any?
+        override val defaultValue: Value<*>
             get() =
                 if (hasDefault) {
-                    mDefaultValue
+                    mDefaultValue!!
                 } else {
                     throw NoSuchElementException("No default value for ${this.describe()}")
                 }
@@ -50,7 +51,7 @@ internal class BSchema(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Arg(), ViaductSchema.DirectiveArg
 
     class FieldArg internal constructor(
@@ -59,7 +60,7 @@ internal class BSchema(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Arg(), ViaductSchema.FieldArg
 
     class EnumValue internal constructor(
@@ -76,7 +77,7 @@ internal class BSchema(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
         argsFactory: (Field) -> List<FieldArg>,
     ) : HasDefaultValue(), ViaductSchema.Field {
         /** Secondary constructor for fields without arguments (e.g., input fields). */
@@ -86,7 +87,7 @@ internal class BSchema(
             type: ViaductSchema.TypeExpr<TypeDef>,
             appliedDirectives: List<ViaductSchema.AppliedDirective>,
             hasDefault: Boolean,
-            defaultValue: Any?,
+            defaultValue: Value<*>?,
         ) : this(containingExtension, name, type, appliedDirectives, hasDefault, defaultValue, { emptyList() })
 
         override val args: List<FieldArg> = argsFactory(this)

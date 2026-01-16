@@ -7,6 +7,7 @@ import graphql.language.InputValueDefinition
 import graphql.language.Node
 import graphql.language.Type
 import graphql.language.TypeName
+import graphql.language.Value
 import graphql.schema.idl.TypeDefinitionRegistry
 import viaduct.graphql.schema.ViaductSchema
 
@@ -20,7 +21,6 @@ import viaduct.graphql.schema.ViaductSchema
 internal class TypeDefinitionRegistryDecoder(
     private val registry: TypeDefinitionRegistry,
     private val types: Map<String, GJSchemaRaw.TypeDef>,
-    private val valueConverter: ValueConverter
 ) {
     // ========== Core Decoding Primitives ==========
 
@@ -40,14 +40,14 @@ internal class TypeDefinitionRegistryDecoder(
     private fun decodeAppliedDirective(dir: Directive): ViaductSchema.AppliedDirective {
         val def = registry.getDirectiveDefinition(dir.name).orElse(null)
             ?: error("Directive @${dir.name} not found in schema.")
-        return dir.toAppliedDirective(def, valueConverter) { decodeTypeExpr(it) }
+        return dir.toAppliedDirective(def) { decodeTypeExpr(it) }
     }
 
     fun decodeHasDefault(ivd: InputValueDefinition): Boolean = ivd.defaultValue != null
 
-    fun decodeDefaultValue(ivd: InputValueDefinition): Any? =
+    fun decodeDefaultValue(ivd: InputValueDefinition): Value<*>? =
         if (ivd.defaultValue != null) {
-            valueConverter.convert(decodeTypeExpr(ivd.type), ivd.defaultValue)
+            ValueConverter.convert(decodeTypeExpr(ivd.type), ivd.defaultValue)
         } else {
             null
         }
@@ -199,7 +199,7 @@ internal class TypeDefinitionRegistryDecoder(
         val args = def.inputValueDefinitions.map {
             val hasDefault = it.defaultValue != null
             val default = if (hasDefault) {
-                valueConverter.convert(decodeTypeExpr(it.type), it.defaultValue)
+                ValueConverter.convert(decodeTypeExpr(it.type), it.defaultValue)
             } else {
                 null
             }
@@ -233,7 +233,7 @@ internal class TypeDefinitionRegistryDecoder(
         fieldDef.inputValueDefinitions.map { ivd ->
             val hasDefault = ivd.defaultValue != null
             val default = if (hasDefault) {
-                valueConverter.convert(decodeTypeExpr(ivd.type), ivd.defaultValue)
+                ValueConverter.convert(decodeTypeExpr(ivd.type), ivd.defaultValue)
             } else {
                 null
             }

@@ -24,7 +24,6 @@ import graphql.language.Type
 import graphql.language.TypeName
 import graphql.language.UnionTypeDefinition
 import graphql.language.UnionTypeExtensionDefinition
-import graphql.language.Value
 import graphql.schema.idl.TypeDefinitionRegistry
 import viaduct.graphql.schema.ViaductSchema
 
@@ -293,7 +292,7 @@ fun ViaductSchema.HasDefaultValue.inputValueDefinition() =
         .newInputValueDefinition()
         .name(name)
         .type(type.toTypeForTypeDefinition())
-        .defaultValue(if (hasDefault) effectiveDefaultValue as Value<*>? else null)
+        .defaultValue(if (hasDefault) effectiveDefaultValue else null)
         .directives(appliedDirectives.map { it.toDirectiveForTypeDefinition() })
         .build()
 
@@ -307,9 +306,9 @@ fun ViaductSchema.AppliedDirective.toDirectiveForTypeDefinition() =
                     Argument
                         .newArgument()
                         .name(arg.key)
-                        .value(arg.value as Value<*>?)
+                        .value(arg.value)
                         .build()
-                }.filter { it.value != null }
+                }
         ).build()
 
 fun ViaductSchema.Union.toMergedUnionTypeDefinition(options: TypeDefinitionRegistryOptions = TypeDefinitionRegistryOptions.DEFAULT): UnionTypeDefinition {

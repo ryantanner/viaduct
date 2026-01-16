@@ -16,7 +16,6 @@ import graphql.language.InterfaceTypeDefinition
 import graphql.language.InterfaceTypeExtensionDefinition
 import graphql.language.ListType
 import graphql.language.NamedNode
-import graphql.language.Node
 import graphql.language.NonNullType
 import graphql.language.NullValue
 import graphql.language.ObjectTypeDefinition
@@ -39,30 +38,19 @@ import viaduct.graphql.schema.parseWrappers
 import viaduct.utils.collections.BitVector
 import viaduct.utils.timer.Timer
 
-private typealias RawTypeMap = Map<String, GJSchemaRaw.TypeDef>
-
-/** This is an implementation of the [ViaductSchema] classes that uses the
- *  `graphql.language` classes from the graphql-java library as the underlying
- *  representation.  It is an alternative to [GJSchema], which uses the
- *  `graphql.schema` classes: it's quite expensive in graphql-java to convert
- *  from the `language` to the `schema` classes, and this implementation avoids
- *  that cost.
+/**
+ * This is an implementation of [ViaductSchema] that constructs the
+ * [ViaductSchema] from a [TypeDefinitionRegistry] and makes elements
+ * of that underlying registry available via [Def.def] properties.
+ * It is an alternative to [GJSchema], which uses the `graphql.schema`:
+ * [TypeDefinitionRegistry]s are faster to create than [GraphQLSchema]s
+ * but are not validated, so there's a performance/safety tradeoff
+ * here.
  *
- *  This class represents "real values" exactly the same as [GJSchema], so it
- *  can be a drop-in replacement.  See [GJSchema] for details on that representation.
- *
- *  The construction of the (query/mutation/subscription)TypeDef fields for this
- *  type is unusual.  As noted in the KDoc for [ViaductSchema.queryTypeDef],
- *  [ViaductSchema] can be used for "partial" schemas that do not define any
- *  of the schema-root types.  Because [graphql.schema.GraphQLSchema] represents
- *  a valid schema, [GJSchema] can't be used for such a partial schema, but
- *  [GJSchemaRaw] can be.
- *
- *  Root types are determined by first checking the `schema` definition
- *  ([graphql.language.SchemaDefinition]) found while parsing the schema,
- *  and falling back to the standard names ("Query", "Mutation", "Subscription")
- *  if no schema definition exists or if it doesn't specify the root type.
- *  Note that only the base schema definition is considered, not extensions.
+ * Root types are determined by first checking the `schema` definition
+ * ([graphql.language.SchemaDefinition]) found while parsing the schema,
+ * and falling back to the standard names ("Query", "Mutation", "Subscription")
+ * if no schema definition exists.
  */
 @Suppress("ktlint:standard:indent")
 class GJSchemaRaw private constructor(
@@ -223,7 +211,7 @@ class GJSchemaRaw private constructor(
                 }
 
                 // Phase 2: Populate all TypeDefs and Directives using the decoder
-                val decoder = TypeDefinitionRegistryDecoder(registry, result, ValueConverter.default)
+                val decoder = TypeDefinitionRegistryDecoder(registry, result)
 
                 registry.getTypes(EnumTypeDefinition::class.java).forEach {
                     val enumDef = result[it.name] as Enum
@@ -364,12 +352,12 @@ class GJSchemaRaw private constructor(
         // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
-        protected abstract val mDefaultValue: Any?
+        protected abstract val mDefaultValue: Value<*>?
 
-        override val defaultValue: Any?
+        override val defaultValue: Value<*>
             get() =
                 if (hasDefault) {
-                    mDefaultValue
+                    mDefaultValue!!
                 } else {
                     throw NoSuchElementException("No default value for ${this.describe()}")
                 }
@@ -384,7 +372,7 @@ class GJSchemaRaw private constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Arg(), ViaductSchema.DirectiveArg
 
     class FieldArg internal constructor(
@@ -394,7 +382,7 @@ class GJSchemaRaw private constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Arg(), ViaductSchema.FieldArg
 
     class EnumValue internal constructor(
@@ -419,7 +407,7 @@ class GJSchemaRaw private constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
         argsFactory: (OutputField) -> List<FieldArg>,
     ) : Field() {
         override val isOverride by lazy { ViaductSchema.isOverride(this) }
@@ -434,7 +422,7 @@ class GJSchemaRaw private constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Field() {
         override val isOverride by lazy { ViaductSchema.isOverride(this) }
         override val args = emptyList<FieldArg>()
@@ -657,13 +645,12 @@ class GJSchemaRaw private constructor(
 
 internal fun Directive.toAppliedDirective(
     def: DirectiveDefinition,
-    valueConverter: ValueConverter,
     typeExprConverter: (Type<*>) -> ViaductSchema.TypeExpr<*>
 ): ViaductSchema.AppliedDirective {
     val args = def.inputValueDefinitions
     return ViaductSchema.AppliedDirective.of(
         this.name,
-        args.fold(mutableMapOf<String, Any?>()) { m, arg ->
+        args.fold(mutableMapOf<String, Value<*>>()) { m, arg ->
             val t = typeExprConverter(arg.type)
             val v: Value<*> =
                 this.getArgument(arg.name)?.value ?: arg.defaultValue
@@ -672,7 +659,7 @@ internal fun Directive.toAppliedDirective(
                             throw IllegalStateException("No default value for non-nullable argument ${arg.name}")
                         }
                     }
-            m[arg.name] = valueConverter.convert(t, v)
+            m[arg.name] = ValueConverter.convert(t, v)
             m
         }
     )
@@ -696,43 +683,6 @@ internal fun <T : ViaductSchema.TypeDef> Type<*>.toTypeExpr(createTypeExpr: (Str
     }
     return createTypeExpr(t.name, (currentNullableBit == 1L), listNullable.build())
 }
-
-private fun RawTypeMap.toTypeExpr(type: Type<*>): ViaductSchema.TypeExpr<GJSchemaRaw.TypeDef> =
-    type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
-        ViaductSchema.TypeExpr(
-            this[baseTypeDefName] ?: throw IllegalStateException("Type not found: $baseTypeDefName"),
-            baseTypeNullable,
-            listNullable
-        )
-    }
-
-private fun RawTypeMap.toAppliedDirective(
-    registry: TypeDefinitionRegistry,
-    dir: Directive,
-    valueConverter: ValueConverter
-): ViaductSchema.AppliedDirective {
-    val def =
-        registry.getDirectiveDefinition(dir.name).orElse(null)
-            ?: throw IllegalStateException("Directive @${dir.name} not found in schema.")
-    return dir.toAppliedDirective(def, valueConverter) { this.toTypeExpr(it) }
-}
-
-private fun Iterable<Directive>.toAppliedDirectives(
-    registry: TypeDefinitionRegistry,
-    typeMap: RawTypeMap,
-    valueConverter: ValueConverter
-) = this.map { typeMap.toAppliedDirective(registry, it, valueConverter) }
-
-private fun InputValueDefinition.defaultValue(
-    typeMap: RawTypeMap,
-    valueConverter: ValueConverter
-) = if (defaultValue != null) {
-    valueConverter.convert(typeMap.toTypeExpr(type), defaultValue)
-} else {
-    null
-}
-
-private fun Node<*>.toSourceLocation() = sourceLocation?.sourceName?.let { ViaductSchema.SourceLocation(it) }
 
 private inline fun <T> GJSchemaRaw.TopLevelDef.guardedGet(v: T?): T = checkNotNull(v) { "${this.name} has not been populated; call populate() first" }
 

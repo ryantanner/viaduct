@@ -1,5 +1,6 @@
 package viaduct.tenant.codegen.kotlingen
 
+import graphql.language.Value
 import java.io.File
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -115,7 +116,7 @@ class NodeResolverGeneratorTest {
     private fun mockAppliedDirective(): ViaductSchema.AppliedDirective {
         return object : ViaductSchema.AppliedDirective {
             override val name = "mockDirective"
-            override val arguments = emptyMap<String, String>()
+            override val arguments = emptyMap<String, Value<*>>()
         }
     }
 }

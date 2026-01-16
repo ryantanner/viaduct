@@ -1,7 +1,6 @@
 package viaduct.graphql.schema.binary
 
 import com.google.common.base.Utf8
-import graphql.language.NullValue
 import graphql.language.Value
 import viaduct.graphql.schema.ViaductSchema
 
@@ -186,17 +185,9 @@ internal class SchemaInfo(
     private fun visitAppliedDirectives(appliedDirectives: Collection<ViaductSchema.AppliedDirective>) {
         for (ad in appliedDirectives) {
             addIdentifier(ad.name)
-            val directiveDef = inputSchema.directives[ad.name]
-                ?: throw IllegalArgumentException("Unknown directive: ${ad.name}")
             for ((argName, argValue) in ad.arguments) {
                 addIdentifier(argName)
-                // Find the argument definition to get its type
-                val argDef = directiveDef.args.find { it.name == argName }
-                    ?: throw IllegalArgumentException("Unknown argument $argName for directive ${ad.name}")
-                // Convert the value to string representation using the argument's type
-                val value = argValue as? Value<*>
-                    ?: NullValue.newNullValue().build()
-                val constantRepr = ValueStringConverter.valueToString(value)
+                val constantRepr = ValueStringConverter.valueToString(argValue as Value<*>)
                 constantsEncoderBuilder.addValue(constantRepr)
             }
         }
@@ -214,10 +205,7 @@ internal class SchemaInfo(
         addTypeExpr(f.type)
         // For input type fields, collect default values
         if (f.containingDef is ViaductSchema.Input && f.hasDefault) {
-            // Handle explicit null default values - ViaductSchema returns Java null instead of NullValue
-            val value = f.defaultValue as? Value<*>
-                ?: NullValue.newNullValue().build()
-            val constantRepr = ValueStringConverter.valueToString(value)
+            val constantRepr = ValueStringConverter.valueToString(f.defaultValue as Value<*>)
             constantsEncoderBuilder.addValue(constantRepr)
         }
         for (a in f.args) visitArg(a)
@@ -243,10 +231,7 @@ internal class SchemaInfo(
 
     private fun addConstant(arg: ViaductSchema.Arg) {
         if (arg.hasDefault) {
-            // Handle explicit null default values - ViaductSchema returns Java null instead of NullValue
-            val value = arg.defaultValue as? Value<*>
-                ?: NullValue.newNullValue().build()
-            val constantRepr = ValueStringConverter.valueToString(value)
+            val constantRepr = ValueStringConverter.valueToString(arg.defaultValue as Value<*>)
             constantsEncoderBuilder.addValue(constantRepr)
         }
     }

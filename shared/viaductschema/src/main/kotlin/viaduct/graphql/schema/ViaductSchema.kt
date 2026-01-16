@@ -1,5 +1,7 @@
 package viaduct.graphql.schema
 
+import graphql.language.NullValue
+import graphql.language.Value
 import viaduct.utils.collections.BitVector
 
 /**
@@ -51,16 +53,14 @@ import viaduct.utils.collections.BitVector
  * entries and the fake type.
  *
  * There are a number of places in these classes where we need to
- * represent "real values."  For example, the arguments provided to
- * an applied directive, the default value of an input field, and the
- * arguments passed to a field in a selection-set: these all need a
- * representation of real values.  This set of classes is agnostic
- * about how that representation is done.  It uses [Any?] as the type
- * of real values, and does not further specify what that means.  As
- * a result, for example, the invariant checker for
- * [ViaductSchema] does not interrogate those values.
- * Implementations of these classes should document the specific way
- * they represent real values.
+ * represent constant values, in particular the default values of
+ * input fields and arguments as well as the values of
+ * arguments to applied directives.  [ViaductSchema] uses GraphQL
+ * Java's [Value<*>] classes to represent these values.  Keep in
+ * mind that these type represent _syntactic_ constants, not
+ * semantic ones.  Thus, for example, a [ObjectValue] constant
+ * is used to represent both a constant for an GraphQL input
+ * type as well as a constant for a JSON scalar.
  */
 interface ViaductSchema {
     /** Map of all type definitions in the schema. */
@@ -136,22 +136,30 @@ interface ViaductSchema {
      * (e.g., a type-definition, field-definition, etc.).  Implementations
      * of this type must implement "value type" semantics, meaning [equals]
      * and [hashCode] are based on value equality, not on reference equality.
+     *
+     * AppliedDirectives are "dense", meaning there is a value for
+     * _every_ argument of the directive, including "missing" ones for
+     * arguments that either have a default or are nullable.  This is
+     * consistent with [ViaductSchema] being for valid schemas, in
+     * which case there needs to be values for all arguments.  This
+     * dense representation means consumers don't have to chase down
+     * directive definitions and apply defauling logic to them.
      */
     interface AppliedDirective {
         val name: String
-        val arguments: Map<String, Any?>
+        val arguments: Map<String, Value<*>>
 
         companion object {
             /**
              * This function is used to create an Anonymous Object of the AppliedDirective interface
              * @param name The value to be put for the name of the AppliedDirective
-             * @param arguments A Map of String, Any to be put as arguments
+             * @param arguments A Map of String, Value to be put as arguments
              *
              * @return an Anonymous Object of the AppliedDirective instantiated with the parameters.
              */
             fun of(
                 name: String,
-                arguments: Map<String, Any?>
+                arguments: Map<String, Value<*>>
             ) = object : AppliedDirective {
                 override val name = name
                 override val arguments = arguments
@@ -200,7 +208,7 @@ interface ViaductSchema {
 
         interface Field : Selection {
             val fieldName: String
-            val arguments: Map<String, Any?>
+            val arguments: Map<String, Value<*>>
         }
     }
 
@@ -419,21 +427,23 @@ interface ViaductSchema {
         val type: TypeExpr<out TypeDef>
         override val sourceLocation get() = containingDef.sourceLocation
 
-        /** Returns the default value; throws NoSuchElementException if none is explicit in the schema. */
-        val defaultValue: Any?
+        /**
+         * Returns the default value; throws NoSuchElementException if none is explicit in the schema.
+         */
+        val defaultValue: Value<*>
 
         /** Returns true if there's an explicitly defined default. */
         val hasDefault: Boolean
 
-        /** Returns the explicit default value if there is one, or null if the field
+        /** Returns the explicit default value if there is one, or NullValue if the field
          *  is a nullable field of a non-Object containing definition.
          *  Throws NoSuchElementException for the rest.
          */
-        val effectiveDefaultValue
+        val effectiveDefaultValue: Value<*>
             get() =
                 when {
                     hasDefault -> defaultValue
-                    type.isNullable && (containingDef as? TypeDef)?.isOutput != true -> null
+                    type.isNullable && (containingDef as? TypeDef)?.isOutput != true -> NullValue.of()
                     else -> throw NoSuchElementException("No default value for ${this.describe()}")
                 }
 

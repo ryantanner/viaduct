@@ -14,7 +14,6 @@ import graphql.language.InputObjectTypeDefinition
 import graphql.language.IntValue
 import graphql.language.InterfaceTypeDefinition
 import graphql.language.NullValue
-import graphql.language.ObjectField
 import graphql.language.ObjectTypeDefinition
 import graphql.language.ObjectValue
 import graphql.language.ScalarTypeDefinition
@@ -459,8 +458,7 @@ private class GraphQLJavaSchemaBuilder(
         val reason = deprecated.arguments["reason"]
         return when (reason) {
             is StringValue -> reason.value
-            is String -> reason
-            null -> "No longer supported" // GraphQL spec default
+            is NullValue, null -> "No longer supported" // GraphQL spec default
             else -> reason.toString()
         }
     }
@@ -469,7 +467,7 @@ private class GraphQLJavaSchemaBuilder(
      * Converts a ViaductSchema.AppliedDirective to a graphql-java GraphQLAppliedDirective.
      *
      * Note: The argument values in ViaductSchema.AppliedDirective.arguments are stored as
-     * graphql.language.Value<*> objects when using ValueConverter.default.
+     * graphql.language.Value<*> objects.
      */
     internal fun convertAppliedDirective(source: ViaductSchema.AppliedDirective): GraphQLAppliedDirective {
         // Look up the directive definition to get argument types
@@ -479,9 +477,6 @@ private class GraphQLJavaSchemaBuilder(
             .name(source.name)
             .apply {
                 source.arguments.forEach { (name, value) ->
-                    // Convert the value to a graphql.language.Value if it isn't already
-                    val literalValue = toGraphQLValue(value)
-
                     // Get the argument type from the directive definition, or use String as fallback
                     val argType = directiveDef?.args?.find { it.name == name }?.type?.let {
                         inputTypeExpr(it)
@@ -491,7 +486,7 @@ private class GraphQLJavaSchemaBuilder(
                         GraphQLAppliedDirectiveArgument.newArgument()
                             .name(name)
                             .type(argType)
-                            .valueLiteral(literalValue)
+                            .valueLiteral(value)
                             .build()
                     )
                 }
@@ -571,43 +566,8 @@ private class GraphQLJavaSchemaBuilder(
 }
 
 /**
- * Converts a value from ViaductSchema representation back to graphql-java Value<*>.
- *
- * Values must already be graphql.language.Value<*> types, not Kotlin primitives.
- * The only exceptions are:
- * - null → NullValue
- * - List<*> → ArrayValue (elements recursively converted)
- * - Map<String, *> → ObjectValue (values recursively converted)
+ * Converts a ViaductSchema default value (which is a graphql.language.Value<*>) back to
+ * graphql-java Value<*>. This is a place holder: in the future we will be replacing
+ * graphql-java's Value<*> classes with our own, and this will then be needed.
  */
-@Suppress("UNCHECKED_CAST")
-private fun toGraphQLValue(value: Any?): Value<*> {
-    return when (value) {
-        // Already a Value - just return it
-        is Value<*> -> value
-
-        // Null
-        null -> NullValue.of()
-
-        // List
-        is List<*> -> ArrayValue.newArrayValue()
-            .values(value.map { toGraphQLValue(it) })
-            .build()
-
-        // Map (for input objects)
-        is Map<*, *> -> ObjectValue.newObjectValue()
-            .objectFields(
-                (value as Map<String, *>).map { (k, v) ->
-                    ObjectField.newObjectField()
-                        .name(k)
-                        .value(toGraphQLValue(v))
-                        .build()
-                }
-            )
-            .build()
-
-        else -> throw IllegalArgumentException(
-            "Unsupported value type for conversion: ${value::class}. " +
-                "Values must already be graphql.language.Value types, not Kotlin primitives."
-        )
-    }
-}
+private fun toGraphQLValue(value: Value<*>): Value<*> = value

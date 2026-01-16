@@ -1,8 +1,11 @@
 package viaduct.graphql.schema.graphqljava
 
 import graphql.language.Directive
+import graphql.language.NullValue
 import graphql.language.Type
 import graphql.language.TypeName
+import graphql.language.Value
+import graphql.schema.GraphQLAppliedDirective
 import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirective
 import graphql.schema.GraphQLDirectiveContainer
@@ -29,7 +32,6 @@ import viaduct.utils.collections.BitVector
 internal class GraphQLSchemaDecoder(
     private val schema: GraphQLSchema,
     private val types: Map<String, GJSchema.TypeDef>,
-    private val valueConverter: ValueConverter
 ) {
     // Cache for union membership and interface implementors (computed once)
     private val unionMembership: Map<String, List<GJSchema.Union>> by lazy {
@@ -98,27 +100,47 @@ internal class GraphQLSchemaDecoder(
     fun decodeSourceLocation(def: graphql.language.Node<*>?): ViaductSchema.SourceLocation? = def?.sourceLocation?.sourceName?.let { ViaductSchema.SourceLocation(it) }
 
     fun decodeAppliedDirectives(container: GraphQLDirectiveContainer): List<ViaductSchema.AppliedDirective> =
-        container.appliedDirectives.map { directive ->
+        container.appliedDirectives.map { appliedDirective ->
+            val directiveDef = schema.getDirective(appliedDirective.name)
+                ?: error("Directive @${appliedDirective.name} not found in schema.")
             ViaductSchema.AppliedDirective.of(
-                name = directive.name,
-                arguments = directive.arguments.associate { arg ->
-                    arg.name to valueConverter.convert(decodeTypeExpr(arg.type), arg.argumentValue)
+                name = appliedDirective.name,
+                arguments = directiveDef.arguments.associate { argDef ->
+                    argDef.name to decodeAppliedDirectiveArg(appliedDirective, argDef)
                 }
             )
         }
+
+    private fun decodeAppliedDirectiveArg(
+        appliedDirective: GraphQLAppliedDirective,
+        argDef: GraphQLArgument
+    ): Value<*> {
+        val appliedArg = appliedDirective.getArgument(argDef.name)
+        val type = decodeTypeExpr(argDef.type)
+        val convertedValue = when {
+            appliedArg != null -> ValueConverter.convert(type, appliedArg.argumentValue)
+            argDef.hasSetDefaultValue() -> ValueConverter.convert(type, argDef.argumentDefaultValue)
+            else -> null
+        }
+        return convertedValue ?: NullValue.of().also {
+            require(type.isNullable) {
+                "No value for non-nullable argument ${argDef.name} on @${appliedDirective.name}"
+            }
+        }
+    }
 
     private fun decodeAppliedDirectivesFromLang(directives: List<Directive>): List<ViaductSchema.AppliedDirective> =
         directives.map { dir ->
             val def = schema.getDirective(dir.name)?.definition
                 ?: error("Directive @${dir.name} not found in schema.")
-            dir.toAppliedDirective(def, valueConverter) { decodeTypeExprFromLang(it) }
+            dir.toAppliedDirective(def) { decodeTypeExprFromLang(it) }
         }
 
     fun decodeHasDefault(arg: GraphQLArgument): Boolean = arg.hasSetDefaultValue()
 
-    fun decodeDefaultValue(arg: GraphQLArgument): Any? =
+    fun decodeDefaultValue(arg: GraphQLArgument): Value<*>? =
         if (arg.hasSetDefaultValue()) {
-            valueConverter.convert(decodeTypeExpr(arg.type), arg.argumentDefaultValue)
+            ValueConverter.convert(decodeTypeExpr(arg.type), arg.argumentDefaultValue)
         } else {
             null
         }
@@ -286,7 +308,7 @@ internal class GraphQLSchemaDecoder(
     ): GJSchema.InputField {
         val hasDefault = fieldDef.hasSetDefaultValue()
         val defaultValue = if (hasDefault) {
-            valueConverter.convert(decodeTypeExpr(fieldDef.type), fieldDef.inputFieldDefaultValue)
+            ValueConverter.convert(decodeTypeExpr(fieldDef.type), fieldDef.inputFieldDefaultValue)
         } else {
             null
         }

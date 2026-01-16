@@ -2,6 +2,7 @@
 
 package viaduct.graphql.schema.graphqljava
 
+import graphql.language.Value
 import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirective
 import graphql.schema.GraphQLEnumType
@@ -26,24 +27,10 @@ import viaduct.graphql.schema.parseWrappers
 import viaduct.utils.collections.BitVector
 import viaduct.utils.timer.Timer
 
-/** This is an implementation of the [ViaductSchema] classes that uses the
- *  `graphql.schema` classes from the graphql-java library as the underlying
- *  representation.
- *
- *  The [ViaductSchema] docs indicate that implementations should document
- *  how they represent "real" values for things like applied-directive arguments
- *  and input-field defaults.  As this class is based on graphql-java, it uses
- *  graphql-java's [graphql.language.Value] classes for this purpose, with a few
- *  twists.  First, with its [graphql.schema.InputValueWithState] class, graphql-java
- *  attempts to preserve the distinction between fields that have been explicitly set,
- *  and those that are null because they are nullable and have not been set.  We don't
- *  attempt to maintain this distinction.
- *
- *  Second, graphql-java has the type [graphql.language.NullValue] to represent an
- *  explicitly-set null value.  At the top level we convert these to actual null values
- *  (which is why our representation of "real values" is `Value<*>?` rather than `Value<*>`).
- *  However, we do _not_ do this recursively: if the top-level value is a list, for example,
- *  [graphql.language.NullValue] can be present as a list element.
+/**
+ * This is an implementation of [ViaductSchema] that constructs the
+ * [ViaductSchema] from a [GraphQLSchema] object and makes elements
+ * of that underlying schema available via [Def.def] properties.
  */
 class GJSchema internal constructor(
     override val types: Map<String, TypeDef>,
@@ -165,7 +152,7 @@ class GJSchema internal constructor(
             val directives = schema.directives.associate { it.name to Directive(it, it.name) }
 
             // Phase 2: Create decoder and populate all types and directives
-            val decoder = GraphQLSchemaDecoder(schema, types, ValueConverter.default)
+            val decoder = GraphQLSchemaDecoder(schema, types)
 
             types.values.forEach { typeDef ->
                 when (typeDef) {
@@ -233,12 +220,12 @@ class GJSchema internal constructor(
         // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
-        protected abstract val mDefaultValue: Any?
+        protected abstract val mDefaultValue: Value<*>?
 
-        override val defaultValue: Any?
+        override val defaultValue: Value<*>
             get() =
                 if (hasDefault) {
-                    mDefaultValue
+                    mDefaultValue!!
                 } else {
                     throw NoSuchElementException("No default value for ${this.describe()}")
                 }
@@ -253,7 +240,7 @@ class GJSchema internal constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Arg(), ViaductSchema.DirectiveArg
 
     class FieldArg internal constructor(
@@ -263,7 +250,7 @@ class GJSchema internal constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Arg(), ViaductSchema.FieldArg
 
     class EnumValue internal constructor(
@@ -289,7 +276,7 @@ class GJSchema internal constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
         argsFactory: (OutputField) -> List<FieldArg>,
     ) : Field() {
         // isOverride must be lazy because it accesses containingDef.supers which may not be populated yet
@@ -305,7 +292,7 @@ class GJSchema internal constructor(
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Any?,
+        override val mDefaultValue: Value<*>?,
     ) : Field() {
         // isOverride must be lazy because it accesses containingDef.supers which may not be populated yet
         override val isOverride by lazy { ViaductSchema.isOverride(this) }

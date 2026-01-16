@@ -3,7 +3,9 @@ package viaduct.graphql.schema.test
 import graphql.language.ArrayValue
 import graphql.language.IntValue
 import graphql.language.Node
+import graphql.language.NullValue
 import graphql.language.StringValue
+import graphql.language.Value
 import java.lang.IllegalArgumentException
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.invariants.InvariantChecker
@@ -68,7 +70,7 @@ class SchemaDiff(
             expectedDir.arguments.entries,
             actualDir.arguments.entries,
             "ARG",
-            Map.Entry<String, Any?>::key
+            Map.Entry<String, Value<*>>::key
         ).forEach {
             checker.withContext(it.first.key) {
                 checker.isTrue(areNodesEqual(it.first.value, it.second.value), "ARG_VALUE_AGREES")
@@ -302,6 +304,9 @@ class SchemaDiff(
                 }
             }
             is StringValue -> node.value?.toLongOrNull()
+            // NullValue instances are semantically equal regardless of identity.
+            // Return a sentinel object so that all NullValues compare equal with ==.
+            is NullValue -> NullValue::class
             else -> node
         }
 

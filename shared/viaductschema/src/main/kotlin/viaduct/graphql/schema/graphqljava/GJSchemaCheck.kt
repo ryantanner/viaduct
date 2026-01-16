@@ -1,6 +1,10 @@
 package viaduct.graphql.schema.graphqljava
 
 import graphql.language.Node
+import graphql.language.NullValue
+import graphql.language.Value
+import graphql.schema.GraphQLAppliedDirective
+import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirectiveContainer
 import graphql.schema.GraphQLNamedType
 import graphql.schema.GraphQLSchema
@@ -12,7 +16,6 @@ class GJSchemaCheck(
     private val schema: GJSchema,
     private val gjSchema: GraphQLSchema,
 ) {
-    private val valueConverter: ValueConverter = ValueConverter.default
     private val check = InvariantChecker()
 
     fun assertEmpty(separator: String) = check.assertEmpty(separator)
@@ -36,17 +39,19 @@ class GJSchemaCheck(
         check.isEqualTo(def.name, name, "NAME_AGREEMENT")
         if (def is GraphQLDirectiveContainer) {
             check.containsExactlyElementsIn(
-                (def as GraphQLDirectiveContainer).appliedDirectives.map { directive ->
-                    val args =
-                        if (0 < directive.arguments.size) {
-                            "(${
-                                directive.arguments.sortedBy { it.name }.joinToString(", ") {
-                                    "${it.name}: ${valueConverter.convert(schema.toTypeExpr(it.type), it.argumentValue)}"
-                                } })"
-                        } else {
-                            ""
+                (def as GraphQLDirectiveContainer).appliedDirectives.map { appliedDirective ->
+                    // Get directive definition to iterate over ALL arguments (not just explicitly provided ones)
+                    val directiveDef = gjSchema.getDirective(appliedDirective.name)
+                        ?: error("Directive @${appliedDirective.name} not found in schema.")
+                    val argsString = if (directiveDef.arguments.isNotEmpty()) {
+                        val args = directiveDef.arguments.sortedBy { it.name }.joinToString(", ") { argDef ->
+                            "${argDef.name}: ${convertAppliedDirectiveArg(appliedDirective, argDef)}"
                         }
-                    "@${directive.name}$args"
+                        "($args)"
+                    } else {
+                        ""
+                    }
+                    "@${appliedDirective.name}$argsString"
                 },
                 appliedDirectives.map { it.toString() },
                 "APPLIED_DIRECTIVES_AGREE"
@@ -139,6 +144,28 @@ class GJSchemaCheck(
         check.popContext()
     }
 
+    /**
+     * Convert an applied directive argument to a Value, handling missing arguments
+     * by using defaults or NullValue for nullable types.
+     */
+    private fun convertAppliedDirectiveArg(
+        appliedDirective: GraphQLAppliedDirective,
+        argDef: GraphQLArgument
+    ): Value<*> {
+        val appliedArg = appliedDirective.getArgument(argDef.name)
+        val type = schema.toTypeExpr(argDef.type)
+        val convertedValue = when {
+            appliedArg != null -> ValueConverter.convert(type, appliedArg.argumentValue)
+            argDef.hasSetDefaultValue() -> ValueConverter.convert(type, argDef.argumentDefaultValue)
+            else -> null
+        }
+        return convertedValue ?: NullValue.of().also {
+            require(type.isNullable) {
+                "No value for non-nullable argument ${argDef.name} on @${appliedDirective.name}"
+            }
+        }
+    }
+
     private fun checkDefaultValue(
         actual: ViaductSchema.HasDefaultValue,
         check: InvariantChecker
@@ -152,11 +179,12 @@ class GJSchemaCheck(
                 .doesNotThrow("HAS_DEFAULT") {
                     actual.defaultValue
                 }.ifNoThrow { default ->
-                    if (default == null) {
+                    if (default is NullValue) {
                         check.isTrue(actual.type.isNullable, "DEFAULT_NULLABLE")
-                    }
-                    valueConverter.javaClassFor(actual.type)?.let {
-                        check.isInstanceOf(it.kotlin, default, "DEFAULT_CORRECT_TYPE")
+                    } else {
+                        ValueConverter.javaClassFor(actual.type).let {
+                            check.isInstanceOf(it.kotlin, default, "DEFAULT_CORRECT_TYPE")
+                        }
                     }
                 }
         }
