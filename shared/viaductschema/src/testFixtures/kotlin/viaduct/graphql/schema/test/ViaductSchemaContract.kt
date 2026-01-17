@@ -621,4 +621,29 @@ interface ViaductSchemaContract {
             assertNull(this.subscriptionTypeDef)
         }
     }
+
+    @Test
+    fun `test containingSchema referential integrity`() {
+        makeSchema(
+            """
+            directive @d1 on OBJECT
+            type Query { foo: String }
+            enum E { A }
+            input I { a: Int }
+            interface A { a: String }
+            scalar S
+            type T implements A { a: String }
+            union U = Query | T
+            """.trimIndent()
+        ).apply {
+            // Every TypeDef's containingSchema should be this schema
+            for ((name, typeDef) in this.types) {
+                assertSame(this, typeDef.containingSchema, "TypeDef $name containingSchema")
+            }
+            // Every Directive's containingSchema should be this schema
+            for ((name, directive) in this.directives) {
+                assertSame(this, directive.containingSchema, "Directive $name containingSchema")
+            }
+        }
+    }
 }

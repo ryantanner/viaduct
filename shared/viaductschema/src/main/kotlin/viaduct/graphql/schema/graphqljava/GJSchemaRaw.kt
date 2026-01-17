@@ -151,25 +151,31 @@ internal fun gjSchemaRawFromRegistry(
         val scalarExtensions = registry.scalarTypeExtensions()
         val unionExtensions = registry.unionTypeExtensions()
 
+        val schema = SchemaWithData()
+
         // Phase 1: Create all TypeDef and Directive shells (with def and extensionDefs in data)
-        val result = buildMap<String, SchemaWithData.TypeDef>(registry.types().size + registry.scalars().size) {
+        val types = buildMap<String, SchemaWithData.TypeDef>(registry.types().size + registry.scalars().size) {
             registry.types().values.forEach { graphqlDef ->
                 val typeDef: SchemaWithData.TypeDef? = when (graphqlDef) {
                     is EnumTypeDefinition -> SchemaWithData.Enum(
+                        schema,
                         graphqlDef.name,
                         TypeDefData(graphqlDef, enumExtensions[graphqlDef.name] ?: emptyList())
                     )
                     is InputObjectTypeDefinition -> SchemaWithData.Input(
+                        schema,
                         graphqlDef.name,
                         TypeDefData(graphqlDef, inputObjectExtensions[graphqlDef.name] ?: emptyList())
                     )
                     is InterfaceTypeDefinition -> SchemaWithData.Interface(
+                        schema,
                         graphqlDef.name,
                         TypeDefData(graphqlDef, interfaceExtensions[graphqlDef.name] ?: emptyList())
                     )
                     is ObjectTypeDefinition ->
                         if (graphqlDef.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL) {
                             SchemaWithData.Object(
+                                schema,
                                 graphqlDef.name,
                                 TypeDefData(graphqlDef, objectExtensions[graphqlDef.name] ?: emptyList())
                             )
@@ -177,6 +183,7 @@ internal fun gjSchemaRawFromRegistry(
                             null
                         }
                     is UnionTypeDefinition -> SchemaWithData.Union(
+                        schema,
                         graphqlDef.name,
                         TypeDefData(graphqlDef, unionExtensions[graphqlDef.name] ?: emptyList())
                     )
@@ -192,6 +199,7 @@ internal fun gjSchemaRawFromRegistry(
                 put(
                     scalarDef.name,
                     SchemaWithData.Scalar(
+                        schema,
                         scalarDef.name,
                         TypeDefData(scalarDef, scalarExtensions[scalarDef.name] ?: emptyList())
                     )
@@ -200,45 +208,45 @@ internal fun gjSchemaRawFromRegistry(
         }
 
         val directives = registry.directiveDefinitions.entries.associate {
-            it.key to SchemaWithData.Directive(it.value.name, it.value)
+            it.key to SchemaWithData.Directive(schema, it.value.name, it.value)
         }
 
         // Phase 2: Populate all TypeDefs and Directives using the decoder
-        val decoder = TypeDefinitionRegistryDecoder(registry, result, directives)
+        val decoder = TypeDefinitionRegistryDecoder(registry, types, directives)
 
         registry.types().values.forEach { def ->
             when (def) {
                 is EnumTypeDefinition -> {
-                    val enumDef = result[def.name] as SchemaWithData.Enum
+                    val enumDef = types[def.name] as SchemaWithData.Enum
                     enumDef.populate(decoder.createEnumExtensions(enumDef))
                 }
                 is InputObjectTypeDefinition -> {
-                    val inputDef = result[def.name] as SchemaWithData.Input
+                    val inputDef = types[def.name] as SchemaWithData.Input
                     inputDef.populate(decoder.createInputExtensions(inputDef))
                 }
                 is InterfaceTypeDefinition -> {
-                    val interfaceDef = result[def.name] as SchemaWithData.Interface
+                    val interfaceDef = types[def.name] as SchemaWithData.Interface
                     val possibleObjectTypes = (membersMap[def.name] ?: emptySet())
                         .filterIsInstance<ObjectTypeDefinition>()
-                        .map { result[it.name] as SchemaWithData.Object }
+                        .map { types[it.name] as SchemaWithData.Object }
                         .toSet()
                     interfaceDef.populate(decoder.createInterfaceExtensions(interfaceDef), possibleObjectTypes)
                 }
                 is ObjectTypeDefinition -> {
                     if (def.name != ViaductSchema.VIADUCT_IGNORE_SYMBOL) {
-                        val objectDef = result[def.name] as SchemaWithData.Object
-                        val unions = (unionsMap[def.name] ?: emptySet()).map { result[it] as SchemaWithData.Union }
+                        val objectDef = types[def.name] as SchemaWithData.Object
+                        val unions = (unionsMap[def.name] ?: emptySet()).map { types[it] as SchemaWithData.Union }
                         objectDef.populate(decoder.createObjectExtensions(objectDef), unions)
                     }
                 }
                 is UnionTypeDefinition -> {
-                    val unionDef = result[def.name] as SchemaWithData.Union
+                    val unionDef = types[def.name] as SchemaWithData.Union
                     unionDef.populate(decoder.createUnionExtensions(unionDef))
                 }
             }
         }
         registry.scalars().values.forEach { def ->
-            val scalarDef = result[def.name] as SchemaWithData.Scalar
+            val scalarDef = types[def.name] as SchemaWithData.Scalar
             scalarDef.populate(decoder.createScalarExtensions(scalarDef))
         }
 
@@ -247,11 +255,12 @@ internal fun gjSchemaRawFromRegistry(
         }
 
         val schemaDef = registry.schemaDefinition().orElse(null)
-        val queryTypeDef = rootDef(result, schemaDef, "Query")
-        val mutationTypeDef = rootDef(result, schemaDef, "Mutation")
-        val subscriptionTypeDef = rootDef(result, schemaDef, "Subscription")
+        val queryTypeDef = rootDef(types, schemaDef, "Query")
+        val mutationTypeDef = rootDef(types, schemaDef, "Mutation")
+        val subscriptionTypeDef = rootDef(types, schemaDef, "Subscription")
 
-        SchemaWithData(directives, result, queryTypeDef, mutationTypeDef, subscriptionTypeDef)
+        schema.populate(directives, types, queryTypeDef, mutationTypeDef, subscriptionTypeDef)
+        schema
     }
 
 private fun rootDef(

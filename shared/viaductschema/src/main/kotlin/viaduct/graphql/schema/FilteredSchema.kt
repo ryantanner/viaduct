@@ -30,18 +30,20 @@ internal fun <T : ViaductSchema.TypeDef> filteredSchema(
     mutationTypeNameFromBaseSchema: String?,
     subscriptionTypeNameFromBaseSchema: String?
 ): SchemaWithData {
+    val schema = SchemaWithData()
+
     // Phase 1: Create all TypeDef shells (no filter or defs passed to constructors)
     val defs = buildMap {
         schemaEntries
             .filter { (_, value) -> filter.includeTypeDef(value) }
             .forEach { (k, v) ->
                 val shell: SchemaWithData.TypeDef = when (v) {
-                    is ViaductSchema.Enum -> SchemaWithData.Enum(v.name, v)
-                    is ViaductSchema.Input -> SchemaWithData.Input(v.name, v)
-                    is ViaductSchema.Interface -> SchemaWithData.Interface(v.name, v)
-                    is ViaductSchema.Object -> SchemaWithData.Object(v.name, v)
-                    is ViaductSchema.Union -> SchemaWithData.Union(v.name, v)
-                    is ViaductSchema.Scalar -> SchemaWithData.Scalar(v.name, v)
+                    is ViaductSchema.Enum -> SchemaWithData.Enum(schema, v.name, v)
+                    is ViaductSchema.Input -> SchemaWithData.Input(schema, v.name, v)
+                    is ViaductSchema.Interface -> SchemaWithData.Interface(schema, v.name, v)
+                    is ViaductSchema.Object -> SchemaWithData.Object(schema, v.name, v)
+                    is ViaductSchema.Union -> SchemaWithData.Union(schema, v.name, v)
+                    is ViaductSchema.Scalar -> SchemaWithData.Scalar(schema, v.name, v)
                     else -> throw IllegalArgumentException("Unexpected type definition $v")
                 }
                 put(k, shell)
@@ -50,7 +52,7 @@ internal fun <T : ViaductSchema.TypeDef> filteredSchema(
 
     // Create directive shells
     val directives = directiveEntries.associate { (k, v) ->
-        k to SchemaWithData.Directive(v.name, v)
+        k to SchemaWithData.Directive(schema, v.name, v)
     }
 
     // Phase 2: Create decoder and populate all types and directives
@@ -102,7 +104,8 @@ internal fun <T : ViaductSchema.TypeDef> filteredSchema(
         return result as? SchemaWithData.Object
     }
 
-    val schema = SchemaWithData(
+    // Populate schema
+    schema.populate(
         directives,
         defs,
         rootDef(queryTypeNameFromBaseSchema),

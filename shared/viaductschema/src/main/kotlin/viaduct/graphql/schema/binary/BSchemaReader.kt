@@ -12,11 +12,13 @@ import viaduct.graphql.schema.ViaductSchema
  */
 internal fun readBSchema(input: InputStream): SchemaWithData {
     return BInputStream(input, MAX_STRING_LEN).use { data ->
+        val schema = SchemaWithData()
+
         // Decode header first to get counts for pre-sizing
         val header = HeaderSection.decode(data)
 
         // Decode sections
-        val identifiers = IdentifiersDecoder.fromFile(data, header)
+        val identifiers = IdentifiersDecoder.fromFile(data, header, schema)
         val sourceLocations = SourceLocationsDecoder(data, header)
         val constants = ConstantsDecoder.fromFile(data, header, identifiers)
         val types = TypeExpressionsDecoder(data, header, identifiers)
@@ -24,13 +26,14 @@ internal fun readBSchema(input: InputStream): SchemaWithData {
         // Decode definitions
         val definitions = DefinitionsDecoder(data, identifiers, types, sourceLocations, constants)
 
-        SchemaWithData(
+        schema.populate(
             identifiers.directives,
             identifiers.types,
             definitions.queryTypeDef,
             definitions.mutationTypeDef,
             definitions.subscriptionTypeDef
         )
+        schema
     }
 }
 
@@ -57,11 +60,13 @@ internal class IdentifiersDecoder(
          *
          * @param data The input stream positioned at the start of the identifiers section
          * @param header The decoded header containing counts
+         * @param schema The schema stub to pass to created definitions
          * @return A new IdentifiersDecoder instance
          */
         fun fromFile(
             data: BInputStream,
-            header: HeaderSection
+            header: HeaderSection,
+            schema: SchemaWithData
         ): IdentifiersDecoder {
             // Read Identifiers section
             data.validateMagicNumber(MAGIC_IDENTIFIERS, "identifiers")
@@ -78,13 +83,13 @@ internal class IdentifiersDecoder(
                 val stubWord = StubRefPlus(data.readInt())
                 val name = identifierTable.keyAt(stubWord.getIdentifierIndex())
                 when (val kindCode = stubWord.getKindCode()) {
-                    K_DIRECTIVE -> SchemaWithData.Directive(name).also { mDirectives[name] = it }
-                    K_ENUM -> SchemaWithData.Enum(name).also { mTypes[name] = it }
-                    K_INPUT -> SchemaWithData.Input(name).also { mTypes[name] = it }
-                    K_INTERFACE -> SchemaWithData.Interface(name).also { mTypes[name] = it }
-                    K_OBJECT -> SchemaWithData.Object(name).also { mTypes[name] = it }
-                    K_SCALAR -> SchemaWithData.Scalar(name).also { mTypes[name] = it }
-                    K_UNION -> SchemaWithData.Union(name).also { mTypes[name] = it }
+                    K_DIRECTIVE -> SchemaWithData.Directive(schema, name).also { mDirectives[name] = it }
+                    K_ENUM -> SchemaWithData.Enum(schema, name).also { mTypes[name] = it }
+                    K_INPUT -> SchemaWithData.Input(schema, name).also { mTypes[name] = it }
+                    K_INTERFACE -> SchemaWithData.Interface(schema, name).also { mTypes[name] = it }
+                    K_OBJECT -> SchemaWithData.Object(schema, name).also { mTypes[name] = it }
+                    K_SCALAR -> SchemaWithData.Scalar(schema, name).also { mTypes[name] = it }
+                    K_UNION -> SchemaWithData.Union(schema, name).also { mTypes[name] = it }
                     else -> throw InvalidFileFormatException("Invalid kind code in definition stub ($kindCode)")
                 }
             }

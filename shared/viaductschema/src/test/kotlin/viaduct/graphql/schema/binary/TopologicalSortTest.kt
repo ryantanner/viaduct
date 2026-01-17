@@ -203,6 +203,7 @@ class TopologicalSortTest {
         override val name: String,
         override val args: Collection<ViaductSchema.DirectiveArg>
     ) : ViaductSchema.Directive {
+        override val containingSchema: ViaductSchema = ViaductSchema.Empty
         override val isRepeatable: Boolean = false
         override val allowedLocations: Set<ViaductSchema.Directive.Location> = emptySet()
         override val appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>> = emptyList()

@@ -23,6 +23,7 @@ class AppliedDirectiveTest {
 
     /** Minimal mock directive for testing AppliedDirective */
     private class MockDirective(override val name: String) : ViaductSchema.Directive {
+        override val containingSchema: ViaductSchema = ViaductSchema.Empty
         override val args: Collection<ViaductSchema.DirectiveArg> = emptyList()
         override val isRepeatable: Boolean = false
         override val allowedLocations: Set<ViaductSchema.Directive.Location> = emptySet()

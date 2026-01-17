@@ -66,24 +66,26 @@ internal fun gjSchemaFromRegistry(
 
 /** Create a ViaductSchema from a validated graphql-java schema. */
 internal fun gjSchemaFromSchema(schema: GraphQLSchema): SchemaWithData {
+    val result = SchemaWithData()
+
     // Phase 1: Create all TypeDef and Directive shells (just underlying def and name in data)
     val types = mutableMapOf<String, SchemaWithData.TypeDef>()
     for (def in schema.allTypesAsList) {
         // Skip introspection types - they're graphql-java implementation details
         if (def.name.startsWith("__")) continue
         val typeDef = when (def) {
-            is GraphQLScalarType -> SchemaWithData.Scalar(def.name, def)
-            is GraphQLEnumType -> SchemaWithData.Enum(def.name, def)
-            is GraphQLUnionType -> SchemaWithData.Union(def.name, def)
-            is GraphQLInterfaceType -> SchemaWithData.Interface(def.name, def)
-            is GraphQLObjectType -> SchemaWithData.Object(def.name, def)
-            is GraphQLInputObjectType -> SchemaWithData.Input(def.name, def)
+            is GraphQLScalarType -> SchemaWithData.Scalar(result, def.name, def)
+            is GraphQLEnumType -> SchemaWithData.Enum(result, def.name, def)
+            is GraphQLUnionType -> SchemaWithData.Union(result, def.name, def)
+            is GraphQLInterfaceType -> SchemaWithData.Interface(result, def.name, def)
+            is GraphQLObjectType -> SchemaWithData.Object(result, def.name, def)
+            is GraphQLInputObjectType -> SchemaWithData.Input(result, def.name, def)
             else -> throw RuntimeException("Unexpected GraphQL type: $def")
         }
         types[def.name] = typeDef
     }
 
-    val directives = schema.directives.associate { it.name to SchemaWithData.Directive(it.name, it) }
+    val directives = schema.directives.associate { it.name to SchemaWithData.Directive(result, it.name, it) }
 
     // Phase 2: Create decoder and populate all types and directives
     val decoder = GraphQLSchemaDecoder(schema, types, directives)
@@ -109,13 +111,14 @@ internal fun gjSchemaFromSchema(schema: GraphQLSchema): SchemaWithData {
         decoder.populate(directive)
     }
 
-    // Determine root types
+    // Determine root types and populate schema
     val queryTypeDef = rootDef(types, schema.queryType?.name, "Query")
         ?: throw IllegalStateException("Query name (${schema.queryType?.name}) not found.")
     val mutationTypeDef = rootDef(types, schema.mutationType?.name, "Mutation")
     val subscriptionTypeDef = rootDef(types, schema.subscriptionType?.name, "Subscription")
 
-    return SchemaWithData(directives, types, queryTypeDef, mutationTypeDef, subscriptionTypeDef)
+    result.populate(directives, types, queryTypeDef, mutationTypeDef, subscriptionTypeDef)
+    return result
 }
 
 private fun rootDef(

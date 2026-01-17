@@ -15,13 +15,15 @@ import viaduct.graphql.schema.ViaductSchema
  * 2. Once a type has been populated, calling populate() again throws IllegalStateException
  */
 class PopulateOnceTest {
+    private val schema = SchemaWithData()
+
     // ========================================================================
     // Tests for accessing unpopulated types
     // ========================================================================
 
     @Test
     fun `accessing unpopulated Directive throws helpful error`() {
-        val directive = SchemaWithData.Directive("TestDirective")
+        val directive = SchemaWithData.Directive(schema, "TestDirective")
 
         val exception = shouldThrow<IllegalStateException> {
             directive.isRepeatable
@@ -32,7 +34,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Scalar throws helpful error`() {
-        val scalar = SchemaWithData.Scalar("TestScalar")
+        val scalar = SchemaWithData.Scalar(schema, "TestScalar")
 
         val exception = shouldThrow<IllegalStateException> {
             scalar.appliedDirectives
@@ -43,7 +45,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Scalar sourceLocation throws helpful error`() {
-        val scalar = SchemaWithData.Scalar("TestScalar")
+        val scalar = SchemaWithData.Scalar(schema, "TestScalar")
 
         val exception = shouldThrow<IllegalStateException> {
             scalar.sourceLocation
@@ -54,7 +56,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Enum throws helpful error`() {
-        val enumType = SchemaWithData.Enum("TestEnum")
+        val enumType = SchemaWithData.Enum(schema, "TestEnum")
 
         val exception = shouldThrow<IllegalStateException> {
             enumType.extensions
@@ -65,7 +67,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Union throws helpful error`() {
-        val union = SchemaWithData.Union("TestUnion")
+        val union = SchemaWithData.Union(schema, "TestUnion")
 
         val exception = shouldThrow<IllegalStateException> {
             union.extensions
@@ -76,7 +78,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Interface throws helpful error`() {
-        val iface = SchemaWithData.Interface("TestInterface")
+        val iface = SchemaWithData.Interface(schema, "TestInterface")
 
         val exception = shouldThrow<IllegalStateException> {
             iface.extensions
@@ -87,7 +89,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Input throws helpful error`() {
-        val input = SchemaWithData.Input("TestInput")
+        val input = SchemaWithData.Input(schema, "TestInput")
 
         val exception = shouldThrow<IllegalStateException> {
             input.extensions
@@ -98,7 +100,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Object throws helpful error`() {
-        val obj = SchemaWithData.Object("TestObject")
+        val obj = SchemaWithData.Object(schema, "TestObject")
 
         val exception = shouldThrow<IllegalStateException> {
             obj.extensions
@@ -113,7 +115,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Directive throws helpful error`() {
-        val directive = SchemaWithData.Directive("TestDirective")
+        val directive = SchemaWithData.Directive(schema, "TestDirective")
 
         // First populate succeeds
         directive.populate(
@@ -138,7 +140,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Scalar throws helpful error`() {
-        val scalar = SchemaWithData.Scalar("TestScalar")
+        val scalar = SchemaWithData.Scalar(schema, "TestScalar")
 
         val ext = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
             def = scalar,
@@ -161,7 +163,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Enum throws helpful error`() {
-        val enumType = SchemaWithData.Enum("TestEnum")
+        val enumType = SchemaWithData.Enum(schema, "TestEnum")
 
         // First populate succeeds
         val ext = ViaductSchema.Extension.of<SchemaWithData.Enum, SchemaWithData.EnumValue>(
@@ -183,7 +185,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Union throws helpful error`() {
-        val union = SchemaWithData.Union("TestUnion")
+        val union = SchemaWithData.Union(schema, "TestUnion")
 
         // First populate succeeds
         val ext = ViaductSchema.Extension.of<SchemaWithData.Union, SchemaWithData.Object>(
@@ -205,7 +207,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Interface throws helpful error`() {
-        val iface = SchemaWithData.Interface("TestInterface")
+        val iface = SchemaWithData.Interface(schema, "TestInterface")
 
         // First populate succeeds
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Interface, SchemaWithData.Field>(
@@ -228,7 +230,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Input throws helpful error`() {
-        val input = SchemaWithData.Input("TestInput")
+        val input = SchemaWithData.Input(schema, "TestInput")
 
         // First populate succeeds
         val ext = ViaductSchema.Extension.of<SchemaWithData.Input, SchemaWithData.Field>(
@@ -250,7 +252,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Object throws helpful error`() {
-        val obj = SchemaWithData.Object("TestObject")
+        val obj = SchemaWithData.Object(schema, "TestObject")
 
         // First populate succeeds
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(
@@ -281,7 +283,7 @@ class PopulateOnceTest {
         // returns setOf(this) even when accessed through the TypeDef base class.
         // This works because Object.possibleObjectTypes overrides the base class
         // implementation.
-        val obj = SchemaWithData.Object("TestObject")
+        val obj = SchemaWithData.Object(schema, "TestObject")
 
         // Access through the concrete type
         obj.possibleObjectTypes.shouldNotBeEmpty()

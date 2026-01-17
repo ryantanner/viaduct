@@ -319,6 +319,40 @@ abstract class ViaductSchemaSubtypeContract {
     @EnabledIf("noMissingClasses")
     fun `Union extensions have the expected subtype of Extension`() = assertExtensionsSubtypes("Union", "Object")
 
+    // From containingSchema
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Directive returns schema implementation type`() = assertIsSubtype(returnType("Directive.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of TypeDef returns schema implementation type`() = assertIsSubtype(returnType("TypeDef.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Scalar returns schema implementation type`() = assertIsSubtype(returnType("Scalar.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Enum returns schema implementation type`() = assertIsSubtype(returnType("Enum.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Union returns schema implementation type`() = assertIsSubtype(returnType("Union.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Interface returns schema implementation type`() = assertIsSubtype(returnType("Interface.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Object returns schema implementation type`() = assertIsSubtype(returnType("Object.containingSchema"), getSchemaClass().starProjectedType)
+
+    @Test
+    @EnabledIf("noMissingClasses")
+    fun `containingSchema of Input returns schema implementation type`() = assertIsSubtype(returnType("Input.containingSchema"), getSchemaClass().starProjectedType)
+
     companion object {
         val MANDATORY_CLASS_NAMES =
             listOf(

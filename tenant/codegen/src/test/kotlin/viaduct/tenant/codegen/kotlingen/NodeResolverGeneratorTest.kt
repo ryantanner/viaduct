@@ -72,6 +72,7 @@ class NodeResolverGeneratorTest {
 
     private fun mockTypeDef(name: String): ViaductSchema.TypeDef {
         return object : ViaductSchema.TypeDef {
+            override val containingSchema: ViaductSchema = ViaductSchema.Empty
             override val name = name
             override val kind = ViaductSchema.TypeDefKind.OBJECT
             override val appliedDirectives = listOf(mockAppliedDirective())
@@ -95,6 +96,7 @@ class NodeResolverGeneratorTest {
 
     private fun mockDirective(): ViaductSchema.Directive {
         return object : ViaductSchema.Directive {
+            override val containingSchema: ViaductSchema = ViaductSchema.Empty
             override val name = "resolver"
 
             override fun hasAppliedDirective(name: String): Boolean {

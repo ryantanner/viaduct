@@ -28,13 +28,14 @@ import viaduct.graphql.schema.binary.extensions.fromBinaryFile
  * schema is constructed.
  */
 class DecodingErrorHandlingTest {
+    private val schema = SchemaWithData()
     // ========================================================================
     // Test #1: Missing directive definition for applied directive
     // ========================================================================
 
     @Test
     fun `Applied directive on type references non-existent directive`() {
-        val obj = SchemaWithData.Object("MyObject")
+        val obj = SchemaWithData.Object(schema, "MyObject")
 
         // Create an applied directive referencing a directive that doesn't exist
         val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("nonExistent"), emptyMap())
@@ -56,8 +57,8 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Applied directive on field references non-existent directive`() {
-        val obj = SchemaWithData.Object("Query")
-        val stringType = SchemaWithData.Scalar("String")
+        val obj = SchemaWithData.Object(schema, "Query")
+        val stringType = SchemaWithData.Scalar(schema, "String")
         val stringExt = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
             def = stringType,
             memberFactory = { emptyList() },
@@ -98,7 +99,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Applied directive on scalar references non-existent directive`() {
-        val scalar = SchemaWithData.Scalar("MyScalar")
+        val scalar = SchemaWithData.Scalar(schema, "MyScalar")
 
         val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("nonExistent"), emptyMap())
         val extension = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
@@ -117,7 +118,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Applied directive on enum value references non-existent directive`() {
-        val enumType = SchemaWithData.Enum("Status")
+        val enumType = SchemaWithData.Enum(schema, "Status")
 
         val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("nonExistent"), emptyMap())
 
@@ -149,9 +150,9 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Interface possibleObjectTypes contains non-Object type`() {
-        val iface = SchemaWithData.Interface("MyInterface")
-        val scalar = SchemaWithData.Scalar("NotAnObject")
-        val stringType = SchemaWithData.Scalar("String")
+        val iface = SchemaWithData.Interface(schema, "MyInterface")
+        val scalar = SchemaWithData.Scalar(schema, "NotAnObject")
+        val stringType = SchemaWithData.Scalar(schema, "String")
 
         // Set up interface with a field
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Interface, SchemaWithData.Field>(
@@ -179,9 +180,9 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Object implements non-Interface type`() {
-        val obj = SchemaWithData.Object("MyObject")
-        val scalar = SchemaWithData.Scalar("NotAnInterface")
-        val stringType = SchemaWithData.Scalar("String")
+        val obj = SchemaWithData.Object(schema, "MyObject")
+        val scalar = SchemaWithData.Scalar(schema, "NotAnInterface")
+        val stringType = SchemaWithData.Scalar(schema, "String")
 
         assertThrows<InvalidSchemaException> {
             // Try to create extension with a Scalar in supers (should be Interface)
@@ -212,8 +213,8 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Union contains non-Object member`() {
-        val union = SchemaWithData.Union("MyUnion")
-        val scalar = SchemaWithData.Scalar("NotAnObject")
+        val union = SchemaWithData.Union(schema, "MyUnion")
+        val scalar = SchemaWithData.Scalar(schema, "NotAnObject")
 
         assertThrows<InvalidSchemaException> {
             // Use unsafe cast to bypass compile-time type checking
@@ -238,7 +239,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Applied directive has argument not defined in directive definition`() {
-        val directive = SchemaWithData.Directive("myDirective")
+        val directive = SchemaWithData.Directive(schema, "myDirective")
         // Directive has no arguments defined
         directive.populate(
             isRepeatable = false,
@@ -249,8 +250,8 @@ class DecodingErrorHandlingTest {
 
         val directives = mapOf("myDirective" to directive)
 
-        val obj = SchemaWithData.Object("Query")
-        val stringType = SchemaWithData.Scalar("String")
+        val obj = SchemaWithData.Object(schema, "Query")
+        val stringType = SchemaWithData.Scalar(schema, "String")
         val stringExt = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
             def = stringType,
             memberFactory = { emptyList() },
@@ -573,7 +574,7 @@ class DecodingErrorHandlingTest {
     @Test
     fun `Type reference to wrong kind throws InvalidFileFormatException`() {
         // When decoding, if we expect an Object but get a Scalar, etc.
-        val scalar = SchemaWithData.Scalar("MyScalar")
+        val scalar = SchemaWithData.Scalar(schema, "MyScalar")
         val types = mapOf("MyScalar" to scalar as SchemaWithData.TypeDef)
 
         // Simulate decoding expecting Object but finding Scalar
@@ -596,7 +597,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Enum with empty extensions throws IllegalArgumentException`() {
-        val enumType = SchemaWithData.Enum("Status")
+        val enumType = SchemaWithData.Enum(schema, "Status")
 
         val exception = assertThrows<IllegalArgumentException> {
             enumType.populate(emptyList())
@@ -606,7 +607,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Union with empty extensions throws IllegalArgumentException`() {
-        val unionType = SchemaWithData.Union("Result")
+        val unionType = SchemaWithData.Union(schema, "Result")
 
         val exception = assertThrows<IllegalArgumentException> {
             unionType.populate(emptyList())
@@ -616,7 +617,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Input with empty extensions throws IllegalArgumentException`() {
-        val inputType = SchemaWithData.Input("InputData")
+        val inputType = SchemaWithData.Input(schema, "InputData")
 
         val exception = assertThrows<IllegalArgumentException> {
             inputType.populate(emptyList())
@@ -626,7 +627,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Interface with empty extensions throws IllegalArgumentException`() {
-        val interfaceType = SchemaWithData.Interface("Node")
+        val interfaceType = SchemaWithData.Interface(schema, "Node")
 
         val exception = assertThrows<IllegalArgumentException> {
             interfaceType.populate(emptyList(), emptySet())
@@ -636,7 +637,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Object with empty extensions throws IllegalArgumentException`() {
-        val objectType = SchemaWithData.Object("User")
+        val objectType = SchemaWithData.Object(schema, "User")
 
         val exception = assertThrows<IllegalArgumentException> {
             objectType.populate(emptyList(), emptyList())
@@ -650,7 +651,7 @@ class DecodingErrorHandlingTest {
 
     @Test
     fun `Valid applied directive passes validation`() {
-        val directive = SchemaWithData.Directive("myDirective")
+        val directive = SchemaWithData.Directive(schema, "myDirective")
         directive.populate(
             isRepeatable = false,
             allowedLocations = setOf(ViaductSchema.Directive.Location.FIELD_DEFINITION),
@@ -660,8 +661,8 @@ class DecodingErrorHandlingTest {
 
         val directives = mapOf("myDirective" to directive)
 
-        val obj = SchemaWithData.Object("Query")
-        val stringType = SchemaWithData.Scalar("String")
+        val obj = SchemaWithData.Object(schema, "Query")
+        val stringType = SchemaWithData.Scalar(schema, "String")
         val stringExt = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
             def = stringType,
             memberFactory = { emptyList() },
@@ -701,6 +702,7 @@ class DecodingErrorHandlingTest {
     /** Helper to create mock directives for testing AppliedDirective */
     private fun mockDirective(name: String) =
         object : ViaductSchema.Directive {
+            override val containingSchema: ViaductSchema = ViaductSchema.Empty
             override val name = name
             override val args: Collection<ViaductSchema.DirectiveArg> = emptyList()
             override val isRepeatable: Boolean = false

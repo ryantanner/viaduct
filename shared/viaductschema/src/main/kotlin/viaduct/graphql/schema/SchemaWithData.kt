@@ -22,13 +22,34 @@ import graphql.language.Value
  * associated with schema nodes. However, consumers should generally work through
  * the [ViaductSchema] interface and flavor-specific extension properties.
  */
-internal class SchemaWithData(
-    override val directives: Map<String, Directive>,
-    override val types: Map<String, TypeDef>,
-    override val queryTypeDef: Object?,
-    override val mutationTypeDef: Object?,
-    override val subscriptionTypeDef: Object?,
-) : ViaductSchema {
+internal class SchemaWithData : ViaductSchema {
+    private var mDirectives: Map<String, Directive>? = null
+    private var mTypes: Map<String, TypeDef>? = null
+    private var mQueryTypeDef: Object? = null
+    private var mMutationTypeDef: Object? = null
+    private var mSubscriptionTypeDef: Object? = null
+
+    override val directives: Map<String, Directive> get() = guardedGet(mDirectives)
+    override val types: Map<String, TypeDef> get() = guardedGet(mTypes)
+    override val queryTypeDef: Object? get() = guardedGetNullable(mQueryTypeDef, mDirectives)
+    override val mutationTypeDef: Object? get() = guardedGetNullable(mMutationTypeDef, mDirectives)
+    override val subscriptionTypeDef: Object? get() = guardedGetNullable(mSubscriptionTypeDef, mDirectives)
+
+    internal fun populate(
+        directives: Map<String, Directive>,
+        types: Map<String, TypeDef>,
+        queryTypeDef: Object?,
+        mutationTypeDef: Object?,
+        subscriptionTypeDef: Object?,
+    ) {
+        check(mDirectives == null) { "Schema has already been populated; populate() can only be called once" }
+        mDirectives = directives
+        mTypes = types
+        mQueryTypeDef = queryTypeDef
+        mMutationTypeDef = mutationTypeDef
+        mSubscriptionTypeDef = subscriptionTypeDef
+    }
+
     override fun toString() = types.toString()
 
     //
@@ -139,6 +160,7 @@ internal class SchemaWithData(
     //
 
     class Directive internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : TopLevelDef(), ViaductSchema.Directive {
@@ -172,6 +194,8 @@ internal class SchemaWithData(
     //
 
     sealed class TypeDef protected constructor() : TopLevelDef(), ViaductSchema.TypeDef {
+        abstract override val containingSchema: SchemaWithData
+
         override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef> = ViaductSchema.TypeExpr(this)
 
         open override val possibleObjectTypes: Set<Object> get() = emptySet()
@@ -182,6 +206,7 @@ internal class SchemaWithData(
     //
 
     class Scalar internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Scalar {
@@ -199,6 +224,7 @@ internal class SchemaWithData(
     }
 
     class Enum internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Enum {
@@ -223,6 +249,7 @@ internal class SchemaWithData(
     }
 
     class Union internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Union {
@@ -274,6 +301,7 @@ internal class SchemaWithData(
     }
 
     class Interface internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : OutputRecord(), ViaductSchema.Interface {
@@ -316,6 +344,7 @@ internal class SchemaWithData(
     }
 
     class Input internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : Record(), ViaductSchema.Input {
@@ -338,6 +367,7 @@ internal class SchemaWithData(
     }
 
     class Object internal constructor(
+        override val containingSchema: SchemaWithData,
         override val name: String,
         override val data: Any? = null,
     ) : OutputRecord(), ViaductSchema.Object {
@@ -385,6 +415,16 @@ internal class SchemaWithData(
 }
 
 // Helper functions (private to the file)
+private inline fun <T> SchemaWithData.guardedGet(v: T?): T = checkNotNull(v) { "Schema has not been populated; call populate() first" }
+
+private inline fun <T> SchemaWithData.guardedGetNullable(
+    v: T?,
+    sentinel: Any?
+): T? {
+    check(sentinel != null) { "Schema has not been populated; call populate() first" }
+    return v
+}
+
 private inline fun <T> SchemaWithData.TopLevelDef.guardedGet(v: T?): T = checkNotNull(v) { "${this.name} has not been populated; call populate() first" }
 
 private inline fun <T> SchemaWithData.TopLevelDef.guardedGetNullable(

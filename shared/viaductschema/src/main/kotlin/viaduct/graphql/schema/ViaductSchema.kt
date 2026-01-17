@@ -234,6 +234,7 @@ interface ViaductSchema {
     }
 
     interface Directive : TopLevelDef {
+        val containingSchema: ViaductSchema
         override val name: String
         val args: Collection<DirectiveArg>
         val allowedLocations: Set<Location>
@@ -345,6 +346,7 @@ interface ViaductSchema {
     interface TopLevelDef : Def
 
     interface TypeDef : TopLevelDef {
+        val containingSchema: ViaductSchema
         val kind: TypeDefKind
         val extensions: Collection<Extension<TypeDef, Def>>
 
