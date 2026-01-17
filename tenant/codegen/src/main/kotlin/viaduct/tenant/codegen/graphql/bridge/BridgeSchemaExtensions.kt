@@ -23,7 +23,7 @@ fun ViaductSchema.Def.isInScope(scope: String): Boolean {
     }
 }
 
-private fun Iterable<ViaductSchema.AppliedDirective>.includesScope(scope: String): Boolean {
+private fun Iterable<ViaductSchema.AppliedDirective<*>>.includesScope(scope: String): Boolean {
     // If a definition is in a non-private scope, it's automatically also in the private version of that scope, e.g.
     // scope(to: ["listing-block"]) is the same as scope(to: ["listing-block", "listing-block:private"]).
     // So if the given scope is :private, expand the check in case the :private scope wasn't explicitly set.

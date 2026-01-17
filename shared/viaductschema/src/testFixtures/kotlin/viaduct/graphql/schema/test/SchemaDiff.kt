@@ -62,8 +62,8 @@ class SchemaDiff(
     }
 
     private fun visitAppliedDirective(
-        expectedDir: ViaductSchema.AppliedDirective,
-        actualDir: ViaductSchema.AppliedDirective
+        expectedDir: ViaductSchema.AppliedDirective<*>,
+        actualDir: ViaductSchema.AppliedDirective<*>
     ) {
         sameNames(
             expectedDir.arguments.entries,
@@ -111,7 +111,7 @@ class SchemaDiff(
                 expectedDef.appliedDirectives,
                 actualDef.appliedDirectives,
                 "DIRECTIVE",
-                ViaductSchema.AppliedDirective::name
+                ViaductSchema.AppliedDirective<*>::name
             ).forEach {
                 checker.withContext(it.first.name) { visitAppliedDirective(it.first, it.second) }
             }
@@ -209,7 +209,7 @@ class SchemaDiff(
                             exp.containingDef.appliedDirectives,
                             act.containingDef.appliedDirectives,
                             "EXTENSION_APPLIED_DIRECTIVE",
-                            ViaductSchema.AppliedDirective::name
+                            ViaductSchema.AppliedDirective<*>::name
                         ).forEach {
                             checker.withContext(it.first.name) { visitAppliedDirective(it.first, it.second) }
                         }
@@ -223,7 +223,7 @@ class SchemaDiff(
                             exp.containingDef.appliedDirectives,
                             act.containingDef.appliedDirectives,
                             "EXTENSION_APPLIED_DIRECTIVE",
-                            ViaductSchema.AppliedDirective::name
+                            ViaductSchema.AppliedDirective<*>::name
                         ).forEach {
                             checker.withContext(it.first.name) { visitAppliedDirective(it.first, it.second) }
                         }

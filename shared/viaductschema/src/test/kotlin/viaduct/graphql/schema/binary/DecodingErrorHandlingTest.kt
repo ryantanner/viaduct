@@ -37,7 +37,7 @@ class DecodingErrorHandlingTest {
         val obj = SchemaWithData.Object("MyObject")
 
         // Create an applied directive referencing a directive that doesn't exist
-        val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
+        val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("nonExistent"), emptyMap())
 
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(
             def = obj,
@@ -68,7 +68,7 @@ class DecodingErrorHandlingTest {
         stringType.populate(listOf(stringExt))
 
         // Create a field with an applied directive that doesn't exist
-        val appliedDirective = ViaductSchema.AppliedDirective.of("missingDirective", emptyMap())
+        val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("missingDirective"), emptyMap())
 
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(
             def = obj,
@@ -100,7 +100,7 @@ class DecodingErrorHandlingTest {
     fun `Applied directive on scalar references non-existent directive`() {
         val scalar = SchemaWithData.Scalar("MyScalar")
 
-        val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
+        val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("nonExistent"), emptyMap())
         val extension = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
             def = scalar,
             memberFactory = { emptyList() },
@@ -119,7 +119,7 @@ class DecodingErrorHandlingTest {
     fun `Applied directive on enum value references non-existent directive`() {
         val enumType = SchemaWithData.Enum("Status")
 
-        val appliedDirective = ViaductSchema.AppliedDirective.of("nonExistent", emptyMap())
+        val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("nonExistent"), emptyMap())
 
         val ext = ViaductSchema.Extension.of<SchemaWithData.Enum, SchemaWithData.EnumValue>(
             def = enumType,
@@ -262,7 +262,7 @@ class DecodingErrorHandlingTest {
 
         // Create applied directive with an argument that doesn't exist in definition
         val appliedDirective = ViaductSchema.AppliedDirective.of(
-            "myDirective",
+            mockDirective("myDirective"),
             mapOf("unknownArg" to StringValue.of("value")) // This arg doesn't exist!
         )
 
@@ -671,7 +671,7 @@ class DecodingErrorHandlingTest {
         )
         stringType.populate(listOf(stringExt))
 
-        val appliedDirective = ViaductSchema.AppliedDirective.of("myDirective", emptyMap())
+        val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective("myDirective"), emptyMap())
 
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(
             def = obj,
@@ -697,4 +697,17 @@ class DecodingErrorHandlingTest {
         // Should not throw
         directives.validateAppliedDirectives(obj)
     }
+
+    /** Helper to create mock directives for testing AppliedDirective */
+    private fun mockDirective(name: String) =
+        object : ViaductSchema.Directive {
+            override val name = name
+            override val args: Collection<ViaductSchema.DirectiveArg> = emptyList()
+            override val isRepeatable: Boolean = false
+            override val allowedLocations: Set<ViaductSchema.Directive.Location> = emptySet()
+            override val appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>> = emptyList()
+            override val sourceLocation: ViaductSchema.SourceLocation? = null
+
+            override fun describe() = "MockDirective<$name>"
+        }
 }

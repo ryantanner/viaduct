@@ -32,6 +32,7 @@ import viaduct.utils.collections.BitVector
 internal class GraphQLSchemaDecoder(
     private val schema: GraphQLSchema,
     private val types: Map<String, SchemaWithData.TypeDef>,
+    private val directives: Map<String, SchemaWithData.Directive>,
 ) {
     // Cache for union membership and interface implementors (computed once)
     private val unionMembership: Map<String, List<SchemaWithData.Union>> by lazy {
@@ -99,13 +100,15 @@ internal class GraphQLSchemaDecoder(
 
     fun decodeSourceLocation(def: graphql.language.Node<*>?): ViaductSchema.SourceLocation? = def?.sourceLocation?.sourceName?.let { ViaductSchema.SourceLocation(it) }
 
-    fun decodeAppliedDirectives(container: GraphQLDirectiveContainer): List<ViaductSchema.AppliedDirective> =
+    fun decodeAppliedDirectives(container: GraphQLDirectiveContainer): List<ViaductSchema.AppliedDirective<*>> =
         container.appliedDirectives.map { appliedDirective ->
-            val directiveDef = schema.getDirective(appliedDirective.name)
+            val gjDirectiveDef = schema.getDirective(appliedDirective.name)
                 ?: error("Directive @${appliedDirective.name} not found in schema.")
+            val directiveDef = directives[appliedDirective.name]
+                ?: error("Directive @${appliedDirective.name} not found in directives map.")
             ViaductSchema.AppliedDirective.of(
-                name = appliedDirective.name,
-                arguments = directiveDef.arguments.associate { argDef ->
+                directive = directiveDef,
+                arguments = gjDirectiveDef.arguments.associate { argDef ->
                     argDef.name to decodeAppliedDirectiveArg(appliedDirective, argDef)
                 }
             )
@@ -129,11 +132,13 @@ internal class GraphQLSchemaDecoder(
         }
     }
 
-    private fun decodeAppliedDirectivesFromLang(directives: List<Directive>): List<ViaductSchema.AppliedDirective> =
-        directives.map { dir ->
+    private fun decodeAppliedDirectivesFromLang(langDirectives: List<Directive>): List<ViaductSchema.AppliedDirective<*>> =
+        langDirectives.map { dir ->
             val def = schema.getDirective(dir.name)?.definition
                 ?: error("Directive @${dir.name} not found in schema.")
-            dir.toAppliedDirective(def) { decodeTypeExprFromLang(it) }
+            val directiveDef = directives[dir.name]
+                ?: error("Directive @${dir.name} not found in directives map.")
+            dir.toAppliedDirective(def, directiveDef) { decodeTypeExprFromLang(it) }
         }
 
     fun decodeHasDefault(arg: GraphQLArgument): Boolean = arg.hasSetDefaultValue()
@@ -263,7 +268,7 @@ internal class GraphQLSchemaDecoder(
     private fun createEnumValue(
         evDef: GraphQLEnumValueDefinition,
         containingExtension: ViaductSchema.Extension<SchemaWithData.Enum, SchemaWithData.EnumValue>,
-        appliedDirectives: List<ViaductSchema.AppliedDirective>
+        appliedDirectives: List<ViaductSchema.AppliedDirective<*>>
     ) = SchemaWithData.EnumValue(containingExtension, evDef.name, appliedDirectives, evDef)
 
     // ========== Input ==========
@@ -304,7 +309,7 @@ internal class GraphQLSchemaDecoder(
     private fun createInputField(
         fieldDef: GraphQLInputObjectField,
         containingExtension: ViaductSchema.Extension<SchemaWithData.Input, SchemaWithData.Field>,
-        appliedDirectives: List<ViaductSchema.AppliedDirective>
+        appliedDirectives: List<ViaductSchema.AppliedDirective<*>>
     ): SchemaWithData.Field {
         val hasDefault = fieldDef.hasSetDefaultValue()
         val defaultValue = if (hasDefault) {
@@ -481,7 +486,7 @@ internal class GraphQLSchemaDecoder(
     private fun createOutputField(
         fieldDef: GraphQLFieldDefinition,
         containingExtension: ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
-        appliedDirectives: List<ViaductSchema.AppliedDirective>
+        appliedDirectives: List<ViaductSchema.AppliedDirective<*>>
     ): SchemaWithData.Field {
         return SchemaWithData.Field(
             containingExtension,

@@ -301,7 +301,7 @@ fun ViaductSchema.HasDefaultValue.inputValueDefinition() =
         .directives(appliedDirectives.map { it.toDirectiveForTypeDefinition() })
         .build()
 
-fun ViaductSchema.AppliedDirective.toDirectiveForTypeDefinition() =
+fun ViaductSchema.AppliedDirective<*>.toDirectiveForTypeDefinition() =
     Directive
         .newDirective()
         .name(name)

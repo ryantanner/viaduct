@@ -142,10 +142,10 @@ interface ViaductSchema {
         )
 
     /**
-     * The name and arguments of a directive applied to a schema element
-     * (e.g., a type-definition, field-definition, etc.).  Implementations
-     * of this type must implement "value type" semantics, meaning [equals]
-     * and [hashCode] are based on value equality, not on reference equality.
+     * The directive and arguments of a directive applied to a schema element
+     * (e.g., a type-definition, field-definition, etc.).  This is a
+     * data class with value-type semantics: [equals] and [hashCode]
+     * are based on value equality, not on reference equality.
      *
      * AppliedDirectives are "dense", meaning there is a value for
      * _every_ argument of the directive, including "missing" ones for
@@ -154,54 +154,40 @@ interface ViaductSchema {
      * which case there needs to be values for all arguments.  This
      * dense representation means consumers don't have to chase down
      * directive definitions and apply defauling logic to them.
+     *
+     * The type parameter [D] allows implementations to preserve type
+     * information about the directive definition.
      */
-    interface AppliedDirective {
-        val name: String
+    data class AppliedDirective<out D : ViaductSchema.Directive> private constructor(
+        val directive: D,
         val arguments: Map<String, Value<*>>
+    ) {
+        val name: String get() = directive.name
+
+        override fun toString() =
+            "@$name${
+                if (arguments.entries.isNotEmpty()) {
+                    "(${
+                        arguments.entries.sortedBy { it.key }.joinToString(", ") {
+                            "${it.key}: ${it.value}"
+                        }
+                    })"
+                } else {
+                    ""
+                }
+            }"
 
         companion object {
             /**
-             * This function is used to create an Anonymous Object of the AppliedDirective interface
-             * @param name The value to be put for the name of the AppliedDirective
-             * @param arguments A Map of String, Value to be put as arguments
-             *
-             * @return an Anonymous Object of the AppliedDirective instantiated with the parameters.
+             * Factory method to create an AppliedDirective.
+             * @param directive The directive definition
+             * @param arguments A Map of argument names to values
+             * @return An AppliedDirective instance
              */
-            fun of(
-                name: String,
+            fun <D : ViaductSchema.Directive> of(
+                directive: D,
                 arguments: Map<String, Value<*>>
-            ) = object : AppliedDirective {
-                override val name = name
-                override val arguments = arguments
-
-                override fun equals(other: Any?): Boolean {
-                    if (other === this) {
-                        return true
-                    }
-                    if (other == null || other !is AppliedDirective) {
-                        return false
-                    }
-                    if (name != other.name) {
-                        return false
-                    }
-                    return arguments == other.arguments
-                }
-
-                override fun hashCode(): Int = name.hashCode() + 31 * arguments.hashCode()
-
-                override fun toString() =
-                    "@$name${
-                        if (arguments.entries.isNotEmpty()) {
-                            "(${
-                                arguments.entries.sortedBy { it.key }.joinToString(", ") {
-                                    "${it.key}: ${it.value}"
-                                }
-                            })"
-                        } else {
-                            ""
-                        }
-                    }"
-            }
+            ) = AppliedDirective(directive, arguments)
         }
     }
 
@@ -210,7 +196,7 @@ interface ViaductSchema {
      */
     interface Selection {
         val subselections: Collection<Selection>
-        val directives: Collection<ViaductSchema.AppliedDirective>
+        val directives: Collection<ViaductSchema.AppliedDirective<*>>
 
         interface Conditional : Selection {
             val condition: TypeDef
@@ -253,7 +239,7 @@ interface ViaductSchema {
         val allowedLocations: Set<Location>
         val isRepeatable: Boolean
 
-        override val appliedDirectives: Collection<ViaductSchema.AppliedDirective>
+        override val appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>
 
         override fun describe() = "Directive<$name>[${if (isRepeatable) "repeatable on" else ""} ${allowedLocations.joinToString("| ")}]"
 
@@ -292,7 +278,7 @@ interface ViaductSchema {
         val def: D
         val members: Collection<M>
         val isBase: Boolean
-        val appliedDirectives: Collection<ViaductSchema.AppliedDirective>
+        val appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>
         val sourceLocation: SourceLocation?
 
         fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }
@@ -302,7 +288,7 @@ interface ViaductSchema {
                 def: D,
                 memberFactory: (Extension<D, M>) -> Collection<M>,
                 isBase: Boolean,
-                appliedDirectives: Collection<ViaductSchema.AppliedDirective>,
+                appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>,
                 sourceLocation: SourceLocation? = null
             ) = object : Extension<D, M> {
                 override val def = def
@@ -322,7 +308,7 @@ interface ViaductSchema {
                 def: D,
                 memberFactory: (Extension<D, M>) -> Collection<M>,
                 isBase: Boolean,
-                appliedDirectives: Collection<ViaductSchema.AppliedDirective>,
+                appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>,
                 supers: Collection<Interface>,
                 sourceLocation: SourceLocation? = null
             ) = object : ExtensionWithSupers<D, M> {
@@ -342,7 +328,7 @@ interface ViaductSchema {
      */
     interface Def {
         val name: String
-        val appliedDirectives: Collection<ViaductSchema.AppliedDirective>
+        val appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>
         val sourceLocation: SourceLocation?
 
         fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }

@@ -1,6 +1,5 @@
 package viaduct.tenant.codegen.kotlingen
 
-import graphql.language.Value
 import java.io.File
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -102,7 +101,7 @@ class NodeResolverGeneratorTest {
                 TODO("Not yet implemented")
             }
 
-            override val appliedDirectives: Collection<ViaductSchema.AppliedDirective>
+            override val appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>
                 get() = TODO("Not yet implemented")
             override val sourceLocation: ViaductSchema.SourceLocation?
                 get() = TODO("Not yet implemented")
@@ -113,10 +112,7 @@ class NodeResolverGeneratorTest {
         }
     }
 
-    private fun mockAppliedDirective(): ViaductSchema.AppliedDirective {
-        return object : ViaductSchema.AppliedDirective {
-            override val name = "mockDirective"
-            override val arguments = emptyMap<String, Value<*>>()
-        }
+    private fun mockAppliedDirective(): ViaductSchema.AppliedDirective<*> {
+        return ViaductSchema.AppliedDirective.of(mockDirective(), emptyMap())
     }
 }

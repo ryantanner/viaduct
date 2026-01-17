@@ -86,7 +86,7 @@ internal fun gjSchemaFromSchema(schema: GraphQLSchema): SchemaWithData {
     val directives = schema.directives.associate { it.name to SchemaWithData.Directive(it.name, it) }
 
     // Phase 2: Create decoder and populate all types and directives
-    val decoder = GraphQLSchemaDecoder(schema, types)
+    val decoder = GraphQLSchemaDecoder(schema, types, directives)
 
     types.values.forEach { typeDef ->
         when (typeDef) {

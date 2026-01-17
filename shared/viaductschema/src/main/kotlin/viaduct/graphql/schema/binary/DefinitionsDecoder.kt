@@ -196,7 +196,7 @@ internal class DefinitionsDecoder(
     fun <D, T> decodeFieldOrArg(
         container: D,
         refPlus: FieldRefPlus,
-        create: (D, String, ViaductSchema.TypeExpr<SchemaWithData.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Value<*>?) -> T,
+        create: (D, String, ViaductSchema.TypeExpr<SchemaWithData.TypeDef>, List<ViaductSchema.AppliedDirective<*>>, Boolean, Value<*>?) -> T,
     ): T {
         // Read in binary format order: name, appliedDirectives, type, hasDefault, defaultValue
         val name = identifiers.get(refPlus.getIndex())
@@ -250,7 +250,7 @@ internal class DefinitionsDecoder(
      */
     fun <D, T> decodeInputLikeFieldList(
         container: D,
-        create: (D, String, ViaductSchema.TypeExpr<SchemaWithData.TypeDef>, List<ViaductSchema.AppliedDirective>, Boolean, Value<*>?) -> T,
+        create: (D, String, ViaductSchema.TypeExpr<SchemaWithData.TypeDef>, List<ViaductSchema.AppliedDirective<*>>, Boolean, Value<*>?) -> T,
     ): List<T> {
         var v = data.readInt()
         if (v == EMPTY_LIST_MARKER) return emptyList()
@@ -276,12 +276,10 @@ internal class DefinitionsDecoder(
      * | Argument not explicitly specified, has no default, but is nullable | NullValue
      * | Other                                                              | Nothing, key not defined
      *
-     * **Note on Missing Directive Definitions**: If the directive definition is not available
-     * (which can happen for applied directives on directive definition arguments due to circular
-     * dependencies), we use only the explicitly provided arguments. In this case, the encoder
-     * ensures ALL arguments are encoded explicitly (no omission optimization).
+     * Directives are encoded in topological order (dependencies first), so the directive
+     * definition is always available when decoding applied directives.
      */
-    fun decodeAppliedDirectives(hasAppliedDirectives: Boolean): List<ViaductSchema.AppliedDirective> {
+    fun decodeAppliedDirectives(hasAppliedDirectives: Boolean): List<ViaductSchema.AppliedDirective<*>> {
         if (!hasAppliedDirectives) return emptyList()
 
         return buildList {
@@ -308,11 +306,15 @@ internal class DefinitionsDecoder(
                 }
 
                 // Build final arguments map using directive definition for defaults.
-                // If the directive definition is not yet available (can happen with circular
-                // directive dependencies), we use only the explicit args. The encoder ensures
-                // that in such cases, ALL arguments are encoded explicitly.
+                // Directive definitions should always be available because directives are encoded
+                // in topological order (dependencies first).
                 val directiveDef = identifiers.directives[directiveName]
-                val finalArgs: Map<String, Value<*>> = if (directiveDef != null && directiveDef.args.isNotEmpty()) {
+                    ?: throw InvalidFileFormatException(
+                        "Directive definition not found for @$directiveName. " +
+                            "This indicates a malformed binary file."
+                    )
+
+                val finalArgs: Map<String, Value<*>> = if (directiveDef.args.isNotEmpty()) {
                     buildMap {
                         for (argDef in directiveDef.args) {
                             when {
@@ -327,13 +329,10 @@ internal class DefinitionsDecoder(
                         }
                     }
                 } else {
-                    // Directive definition not available (or has no args).
-                    // Use explicit args directly. This handles circular directive dependencies
-                    // where @A's arg has @B applied and @B's arg has @A applied.
                     explicitArgs
                 }
 
-                add(ViaductSchema.AppliedDirective.of(directiveName, finalArgs))
+                add(ViaductSchema.AppliedDirective.of(directiveDef, finalArgs))
             } while (refPlus.hasNext())
         }
     }
@@ -462,7 +461,7 @@ internal class DefinitionsDecoder(
  * and that their arguments match the definition.
  */
 private fun Map<String, SchemaWithData.Directive>.validateAppliedDirectives(
-    appliedDirectives: Collection<ViaductSchema.AppliedDirective>,
+    appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>,
     context: String
 ) {
     for (applied in appliedDirectives) {

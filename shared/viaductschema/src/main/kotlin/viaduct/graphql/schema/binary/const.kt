@@ -18,7 +18,7 @@ internal const val HEADER_SIZE_IN_WORDS = 16
 internal const val MAGIC_NUMBER: Int = 0xA75F2B1C.toInt()
 
 /** File format version using semantic versioning (major.minor in bytes 1.0). */
-internal const val FILE_VERSION: Int = 0x00000002
+internal const val FILE_VERSION: Int = 0x00000003
 
 /**
  * File version unused bits mask (bits 16-31 unused).

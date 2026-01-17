@@ -204,7 +204,7 @@ internal fun gjSchemaRawFromRegistry(
         }
 
         // Phase 2: Populate all TypeDefs and Directives using the decoder
-        val decoder = TypeDefinitionRegistryDecoder(registry, result)
+        val decoder = TypeDefinitionRegistryDecoder(registry, result, directives)
 
         registry.types().values.forEach { def ->
             when (def) {
@@ -278,13 +278,14 @@ private fun rootDef(
     return result
 }
 
-internal fun Directive.toAppliedDirective(
+internal fun <D : ViaductSchema.Directive> Directive.toAppliedDirective(
     def: DirectiveDefinition,
+    directiveDef: D,
     typeExprConverter: (Type<*>) -> ViaductSchema.TypeExpr<*>
-): ViaductSchema.AppliedDirective {
+): ViaductSchema.AppliedDirective<D> {
     val args = def.inputValueDefinitions
     return ViaductSchema.AppliedDirective.of(
-        this.name,
+        directiveDef,
         args.fold(mutableMapOf<String, Value<*>>()) { m, arg ->
             val t = typeExprConverter(arg.type)
             val v: Value<*> =

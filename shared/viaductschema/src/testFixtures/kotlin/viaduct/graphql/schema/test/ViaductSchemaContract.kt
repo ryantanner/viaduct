@@ -536,7 +536,7 @@ interface ViaductSchemaContract {
     @Test
     fun `test extensionAppliedDirectives`() {
         fun assertions(
-            extensionAppliedDirectives: Iterable<ViaductSchema.AppliedDirective>,
+            extensionAppliedDirectives: Iterable<ViaductSchema.AppliedDirective<*>>,
             a1Value: String
         ) {
             assertEquals(1, extensionAppliedDirectives.count())

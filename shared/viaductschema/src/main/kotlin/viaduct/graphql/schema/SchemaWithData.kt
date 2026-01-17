@@ -81,7 +81,7 @@ internal class SchemaWithData(
         override val containingDef: Directive,
         override val name: String,
         override val type: ViaductSchema.TypeExpr<TypeDef>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val hasDefault: Boolean,
         override val mDefaultValue: Value<*>?,
         override val data: Any? = null,
@@ -91,7 +91,7 @@ internal class SchemaWithData(
         override val containingDef: Field,
         override val name: String,
         override val type: ViaductSchema.TypeExpr<TypeDef>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val hasDefault: Boolean,
         override val mDefaultValue: Value<*>?,
         override val data: Any? = null,
@@ -100,7 +100,7 @@ internal class SchemaWithData(
     class EnumValue internal constructor(
         override val containingExtension: ViaductSchema.Extension<Enum, EnumValue>,
         override val name: String,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val data: Any? = null,
     ) : Def(), ViaductSchema.EnumValue {
         override val containingDef: Enum get() = containingExtension.def
@@ -110,7 +110,7 @@ internal class SchemaWithData(
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         override val name: String,
         override val type: ViaductSchema.TypeExpr<TypeDef>,
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val hasDefault: Boolean,
         override val mDefaultValue: Value<*>?,
         override val data: Any? = null,
@@ -121,7 +121,7 @@ internal class SchemaWithData(
             containingExtension: ViaductSchema.Extension<Record, Field>,
             name: String,
             type: ViaductSchema.TypeExpr<TypeDef>,
-            appliedDirectives: List<ViaductSchema.AppliedDirective>,
+            appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
             hasDefault: Boolean,
             defaultValue: Value<*>?,
             data: Any? = null,
@@ -150,7 +150,7 @@ internal class SchemaWithData(
         override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mArgs)
         override val isRepeatable: Boolean get() = guardedGet(mIsRepeatable)
         override val allowedLocations: Set<ViaductSchema.Directive.Location> get() = guardedGet(mAllowedLocations)
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = emptyList()
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = emptyList()
         override val args: List<DirectiveArg> get() = guardedGet(mArgs)
 
         internal fun populate(
@@ -188,7 +188,7 @@ internal class SchemaWithData(
         private var mExtensions: List<ViaductSchema.Extension<Scalar, Nothing>>? = null
 
         override val extensions: List<ViaductSchema.Extension<Scalar, Nothing>> get() = guardedGet(mExtensions)
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = extensions.flatMap { it.appliedDirectives }
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = extensions.flatMap { it.appliedDirectives }
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
 
         internal fun populate(extensions: List<ViaductSchema.Extension<Scalar, Nothing>>) {
@@ -202,12 +202,12 @@ internal class SchemaWithData(
         override val name: String,
         override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Enum {
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective<*>>? = null
         private var mExtensions: List<ViaductSchema.Extension<Enum, EnumValue>>? = null
         private var mValues: List<EnumValue>? = null
 
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = guardedGet(mAppliedDirectives)
         override val extensions: List<ViaductSchema.Extension<Enum, EnumValue>> get() = guardedGet(mExtensions)
         override val values: List<EnumValue> get() = guardedGet(mValues)
 
@@ -226,12 +226,12 @@ internal class SchemaWithData(
         override val name: String,
         override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Union {
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective<*>>? = null
         private var mExtensions: List<ViaductSchema.Extension<Union, Object>>? = null
         private var mPossibleObjectTypes: Set<Object>? = null
 
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = guardedGet(mAppliedDirectives)
         override val extensions: List<ViaductSchema.Extension<Union, Object>> get() = guardedGet(mExtensions)
         override val possibleObjectTypes: Set<Object> get() = guardedGet(mPossibleObjectTypes)
 
@@ -277,14 +277,14 @@ internal class SchemaWithData(
         override val name: String,
         override val data: Any? = null,
     ) : OutputRecord(), ViaductSchema.Interface {
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective<*>>? = null
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
         private var mFields: List<Field>? = null
         private var mSupers: List<Interface>? = null
         private var mPossibleObjectTypes: Set<Object>? = null
 
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = guardedGet(mAppliedDirectives)
         override val extensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>> get() = guardedGet(mExtensions)
         override val fields: List<Field> get() = guardedGet(mFields)
         override val supers: List<Interface> get() = guardedGet(mSupers)
@@ -319,12 +319,12 @@ internal class SchemaWithData(
         override val name: String,
         override val data: Any? = null,
     ) : Record(), ViaductSchema.Input {
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective<*>>? = null
         private var mExtensions: List<ViaductSchema.Extension<Input, Field>>? = null
         private var mFields: List<Field>? = null
 
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = guardedGet(mAppliedDirectives)
         override val extensions: List<ViaductSchema.Extension<Input, Field>> get() = guardedGet(mExtensions)
         override val fields: List<Field> get() = guardedGet(mFields)
 
@@ -343,14 +343,14 @@ internal class SchemaWithData(
     ) : OutputRecord(), ViaductSchema.Object {
         override val possibleObjectTypes = setOf(this)
 
-        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
+        private var mAppliedDirectives: List<ViaductSchema.AppliedDirective<*>>? = null
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>>? = null
         private var mFields: List<Field>? = null
         private var mSupers: List<Interface>? = null
         private var mUnions: List<Union>? = null
 
         override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = guardedGet(mAppliedDirectives)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>> get() = guardedGet(mAppliedDirectives)
         override val extensions: List<ViaductSchema.ExtensionWithSupers<Object, Field>> get() = guardedGet(mExtensions)
         override val fields: List<Field> get() = guardedGet(mFields)
         override val supers: List<Interface> get() = guardedGet(mSupers)

@@ -163,7 +163,7 @@ This compositional structure means the format is built from ~5 primitives rather
   - Bits 8-15: Major version
   - Bits 16-31: Unused (must be zero)
 
-**Current Version** - `0x00000002` (major=0, minor=2)
+**Current Version** - `0x00000003` (major=0, minor=3)
 
 ---
 
@@ -565,6 +565,10 @@ The definitions section encodes both directive definitions and type definitions.
 
 The section begins with the magic number `0x44454653` ("DEFS"), followed by definitions.
 
+**Definition Ordering**: All directive definitions are encoded before any type definitions. This ensures that when decoding applied directives on type definitions (or their fields, arguments, etc.), the referenced directive definition has always been decoded and populated.
+
+Within the directive definitions, directives are encoded in topological order based on their dependencies. A directive A depends on directive B if A has @B applied to any of its arguments. This ensures that when decoding applied directives on directive definition arguments, the referenced directive definition is available. The GraphQL spec prohibits circular directive references, so a valid topological ordering always exists.
+
 ### General Structure
 
 Each definition begins with a **Name Reference Word**:
@@ -825,9 +829,7 @@ The decoder reconstructs omitted arguments using the directive definition:
 | Argument not explicitly specified, has no default, but is nullable | Null                       |
 | Other (required, no default)                                       | Nothing, key not defined   |
 
-**Exception for Directive Definition Arguments**: Applied directives on directive definition arguments always encode ALL their arguments explicitly, without omission. This is necessary because directive definitions may have circular dependencies (e.g., directive @A's argument has @B applied, and @B's argument has @A applied). Since the directive definition may not be available when decoding these applied directives, the decoder cannot rely on defaults.
-
-**Decoder Handling of Missing Definitions**: When decoding an applied directive whose definition is not yet available (which can happen for applied directives on directive definition arguments), the decoder uses only the explicitly provided arguments without attempting to fill in defaults.
+**Note**: Since directives are encoded in topological order (see Section 9), the decoder is guaranteed to have access to any referenced directive definition when decoding applied directives. This allows argument omission optimization to work uniformly for all applied directives.
 
 ---
 

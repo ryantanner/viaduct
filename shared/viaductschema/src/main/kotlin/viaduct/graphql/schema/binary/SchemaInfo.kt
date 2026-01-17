@@ -182,7 +182,7 @@ internal class SchemaInfo(
     //
     // Second-level visit functions
 
-    private fun visitAppliedDirectives(appliedDirectives: Collection<ViaductSchema.AppliedDirective>) {
+    private fun visitAppliedDirectives(appliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>) {
         for (ad in appliedDirectives) {
             addIdentifier(ad.name)
             for ((argName, argValue) in ad.arguments) {

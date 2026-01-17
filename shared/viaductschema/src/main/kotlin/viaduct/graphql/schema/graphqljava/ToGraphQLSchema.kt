@@ -429,7 +429,7 @@ private class GraphQLJavaSchemaBuilder(
      * Extracts the deprecation reason from applied directives.
      * Returns the reason string if @deprecated is present, null otherwise.
      */
-    private fun extractDeprecation(directives: Collection<ViaductSchema.AppliedDirective>): String? {
+    private fun extractDeprecation(directives: Collection<ViaductSchema.AppliedDirective<*>>): String? {
         val deprecated = directives.find { it.name == "deprecated" } ?: return null
         val reason = deprecated.arguments["reason"]
         return when (reason) {
@@ -445,7 +445,7 @@ private class GraphQLJavaSchemaBuilder(
      * Note: The argument values in ViaductSchema.AppliedDirective.arguments are stored as
      * graphql.language.Value<*> objects.
      */
-    internal fun convertAppliedDirective(source: ViaductSchema.AppliedDirective): GraphQLAppliedDirective {
+    internal fun convertAppliedDirective(source: ViaductSchema.AppliedDirective<*>): GraphQLAppliedDirective {
         // Look up the directive definition to get argument types
         val directiveDef = inputSchema.directives[source.name]
 

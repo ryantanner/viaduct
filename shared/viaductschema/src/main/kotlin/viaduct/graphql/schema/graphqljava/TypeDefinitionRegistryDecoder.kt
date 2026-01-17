@@ -19,6 +19,7 @@ import viaduct.graphql.schema.ViaductSchema
 internal class TypeDefinitionRegistryDecoder(
     private val registry: TypeDefinitionRegistry,
     private val types: Map<String, SchemaWithData.TypeDef>,
+    private val directives: Map<String, SchemaWithData.Directive>,
 ) {
     // ========== Core Decoding Primitives ==========
 
@@ -33,12 +34,14 @@ internal class TypeDefinitionRegistryDecoder(
 
     fun decodeSourceLocation(node: Node<*>?): ViaductSchema.SourceLocation? = node?.sourceLocation?.sourceName?.let { ViaductSchema.SourceLocation(it) }
 
-    fun decodeAppliedDirectives(directives: List<Directive>): List<ViaductSchema.AppliedDirective> = directives.map { decodeAppliedDirective(it) }
+    fun decodeAppliedDirectives(langDirectives: List<Directive>): List<ViaductSchema.AppliedDirective<*>> = langDirectives.map { decodeAppliedDirective(it) }
 
-    private fun decodeAppliedDirective(dir: Directive): ViaductSchema.AppliedDirective {
+    private fun decodeAppliedDirective(dir: Directive): ViaductSchema.AppliedDirective<*> {
         val def = registry.getDirectiveDefinition(dir.name).orElse(null)
             ?: error("Directive @${dir.name} not found in schema.")
-        return dir.toAppliedDirective(def) { decodeTypeExpr(it) }
+        val directiveDef = directives[dir.name]
+            ?: error("Directive @${dir.name} not found in directives map.")
+        return dir.toAppliedDirective(def, directiveDef) { decodeTypeExpr(it) }
     }
 
     fun decodeHasDefault(ivd: InputValueDefinition): Boolean = ivd.defaultValue != null

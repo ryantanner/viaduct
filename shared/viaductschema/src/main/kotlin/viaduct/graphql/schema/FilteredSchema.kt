@@ -54,7 +54,7 @@ internal fun <T : ViaductSchema.TypeDef> filteredSchema(
     }
 
     // Phase 2: Create decoder and populate all types and directives
-    val decoder = FilteredSchemaDecoder(filter, defs)
+    val decoder = FilteredSchemaDecoder(filter, defs, directives)
 
     for (typeDef in defs.values) {
         when (typeDef) {
@@ -123,11 +123,22 @@ internal fun <T : ViaductSchema.TypeDef> filteredSchema(
  */
 internal class FilteredSchemaDecoder(
     private val filter: SchemaFilter,
-    private val filteredTypes: Map<String, SchemaWithData.TypeDef>
+    private val filteredTypes: Map<String, SchemaWithData.TypeDef>,
+    private val filteredDirectives: Map<String, SchemaWithData.Directive>,
 ) {
     // ========== Core: Type Resolution ==========
 
     fun getFilteredType(name: String): SchemaWithData.TypeDef? = filteredTypes[name]
+
+    /**
+     * Remap applied directives to use the filtered schema's directive definitions.
+     */
+    private fun remapAppliedDirectives(unfilteredAppliedDirectives: Collection<ViaductSchema.AppliedDirective<*>>): List<ViaductSchema.AppliedDirective<*>> =
+        unfilteredAppliedDirectives.map { ad ->
+            val filteredDirective = filteredDirectives[ad.name]
+                ?: error("Directive @${ad.name} not found in filtered directives map.")
+            ViaductSchema.AppliedDirective.of(filteredDirective, ad.arguments)
+        }
 
     // ========== Scalar ==========
 
@@ -138,7 +149,7 @@ internal class FilteredSchemaDecoder(
                 def = scalar,
                 memberFactory = { emptyList() },
                 isBase = unfilteredExt.isBase,
-                appliedDirectives = unfilteredExt.appliedDirectives,
+                appliedDirectives = remapAppliedDirectives(unfilteredExt.appliedDirectives),
                 sourceLocation = unfilteredExt.sourceLocation
             )
         }
@@ -154,10 +165,10 @@ internal class FilteredSchemaDecoder(
                 memberFactory = { ext ->
                     unfilteredExt.members
                         .filter(filter::includeEnumValue)
-                        .map { SchemaWithData.EnumValue(ext, it.name, it.appliedDirectives.toList(), it) }
+                        .map { SchemaWithData.EnumValue(ext, it.name, remapAppliedDirectives(it.appliedDirectives), it) }
                 },
                 isBase = unfilteredExt == unfilteredDef.extensions.first(),
-                appliedDirectives = unfilteredExt.appliedDirectives,
+                appliedDirectives = remapAppliedDirectives(unfilteredExt.appliedDirectives),
                 sourceLocation = unfilteredExt.sourceLocation
             )
         }
@@ -176,7 +187,7 @@ internal class FilteredSchemaDecoder(
                         .map { createField(it, ext) }
                 },
                 isBase = unfilteredExt == unfilteredDef.extensions.first(),
-                appliedDirectives = unfilteredExt.appliedDirectives,
+                appliedDirectives = remapAppliedDirectives(unfilteredExt.appliedDirectives),
                 sourceLocation = unfilteredExt.sourceLocation
             )
         }
@@ -195,7 +206,7 @@ internal class FilteredSchemaDecoder(
                         .map { filteredTypes[it.name] as SchemaWithData.Object }
                 },
                 isBase = unfilteredExt == unfilteredDef.extensions.first(),
-                appliedDirectives = unfilteredExt.appliedDirectives,
+                appliedDirectives = remapAppliedDirectives(unfilteredExt.appliedDirectives),
                 sourceLocation = unfilteredExt.sourceLocation
             )
         }
@@ -221,7 +232,7 @@ internal class FilteredSchemaDecoder(
                         .map { createField(it, ext) }
                 },
                 isBase = unfilteredExt == unfilteredDef.extensions.first(),
-                appliedDirectives = unfilteredExt.appliedDirectives,
+                appliedDirectives = remapAppliedDirectives(unfilteredExt.appliedDirectives),
                 sourceLocation = unfilteredExt.sourceLocation,
                 supers = newSupers
             )
@@ -273,7 +284,7 @@ internal class FilteredSchemaDecoder(
                         .map { createField(it, ext) }
                 },
                 isBase = unfilteredExt == unfilteredDef.extensions.first(),
-                appliedDirectives = unfilteredExt.appliedDirectives,
+                appliedDirectives = remapAppliedDirectives(unfilteredExt.appliedDirectives),
                 sourceLocation = unfilteredExt.sourceLocation,
                 supers = newSupers
             )
@@ -311,7 +322,7 @@ internal class FilteredSchemaDecoder(
             containingExtension,
             unfilteredField.name,
             typeExpr,
-            unfilteredField.appliedDirectives.toList(),
+            remapAppliedDirectives(unfilteredField.appliedDirectives),
             unfilteredField.hasDefault,
             if (unfilteredField.hasDefault) unfilteredField.defaultValue else null,
             unfilteredField,
@@ -329,7 +340,7 @@ internal class FilteredSchemaDecoder(
                 field,
                 arg.name,
                 typeExpr,
-                arg.appliedDirectives.toList(),
+                remapAppliedDirectives(arg.appliedDirectives),
                 arg.hasDefault,
                 if (arg.hasDefault) arg.defaultValue else null,
                 arg
@@ -345,7 +356,7 @@ internal class FilteredSchemaDecoder(
             directive,
             unfilteredArg.name,
             typeExpr,
-            unfilteredArg.appliedDirectives.toList(),
+            remapAppliedDirectives(unfilteredArg.appliedDirectives),
             unfilteredArg.hasDefault,
             if (unfilteredArg.hasDefault) unfilteredArg.defaultValue else null,
             unfilteredArg
