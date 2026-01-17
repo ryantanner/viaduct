@@ -1,15 +1,16 @@
 package viaduct.graphql.schema.binary
 
 import java.io.InputStream
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 
 /**
  * Reads a binary-encoded schema from the input stream.
  *
  * @param input The input stream containing the binary schema data
- * @return A BSchema representation of the binary schema
+ * @return A ViaductSchema representation of the binary schema
  */
-internal fun readBSchema(input: InputStream): BSchema {
+internal fun readBSchema(input: InputStream): SchemaWithData {
     return BInputStream(input, MAX_STRING_LEN).use { data ->
         // Decode header first to get counts for pre-sizing
         val header = HeaderSection.decode(data)
@@ -23,7 +24,7 @@ internal fun readBSchema(input: InputStream): BSchema {
         // Decode definitions
         val definitions = DefinitionsDecoder(data, identifiers, types, sourceLocations, constants)
 
-        BSchema(
+        SchemaWithData(
             identifiers.directives,
             identifiers.types,
             definitions.queryTypeDef,
@@ -46,9 +47,9 @@ internal fun readBSchema(input: InputStream): BSchema {
  */
 internal class IdentifiersDecoder(
     private val identifiers: IdentifierTable,
-    val indexedDefs: Array<BSchema.TopLevelDef>,
-    val directives: Map<String, BSchema.Directive>,
-    val types: Map<String, BSchema.TypeDef>
+    val indexedDefs: Array<SchemaWithData.TopLevelDef>,
+    val directives: Map<String, SchemaWithData.Directive>,
+    val types: Map<String, SchemaWithData.TypeDef>
 ) {
     companion object {
         /**
@@ -70,20 +71,20 @@ internal class IdentifiersDecoder(
             // Read Definition Stubs section
             data.validateMagicNumber(MAGIC_DEFINITION_STUBS, "definition stubs")
 
-            val mDirectives = LinkedHashMap<String, BSchema.Directive>(((header.directiveCount / 0.75f) + 1).toInt(), 0.75f)
-            val mTypes = LinkedHashMap<String, BSchema.TypeDef>(((header.typeDefCount / 0.75f) + 1).toInt(), 0.75f)
+            val mDirectives = LinkedHashMap<String, SchemaWithData.Directive>(((header.directiveCount / 0.75f) + 1).toInt(), 0.75f)
+            val mTypes = LinkedHashMap<String, SchemaWithData.TypeDef>(((header.typeDefCount / 0.75f) + 1).toInt(), 0.75f)
 
             val indexedDefs = Array(header.definitionStubCount) { defIdx ->
                 val stubWord = StubRefPlus(data.readInt())
                 val name = identifierTable.keyAt(stubWord.getIdentifierIndex())
                 when (val kindCode = stubWord.getKindCode()) {
-                    K_DIRECTIVE -> BSchema.Directive(name).also { mDirectives[name] = it }
-                    K_ENUM -> BSchema.Enum(name).also { mTypes[name] = it }
-                    K_INPUT -> BSchema.Input(name).also { mTypes[name] = it }
-                    K_INTERFACE -> BSchema.Interface(name).also { mTypes[name] = it }
-                    K_OBJECT -> BSchema.Object(name).also { mTypes[name] = it }
-                    K_SCALAR -> BSchema.Scalar(name).also { mTypes[name] = it }
-                    K_UNION -> BSchema.Union(name).also { mTypes[name] = it }
+                    K_DIRECTIVE -> SchemaWithData.Directive(name).also { mDirectives[name] = it }
+                    K_ENUM -> SchemaWithData.Enum(name).also { mTypes[name] = it }
+                    K_INPUT -> SchemaWithData.Input(name).also { mTypes[name] = it }
+                    K_INTERFACE -> SchemaWithData.Interface(name).also { mTypes[name] = it }
+                    K_OBJECT -> SchemaWithData.Object(name).also { mTypes[name] = it }
+                    K_SCALAR -> SchemaWithData.Scalar(name).also { mTypes[name] = it }
+                    K_UNION -> SchemaWithData.Union(name).also { mTypes[name] = it }
                     else -> throw InvalidFileFormatException("Invalid kind code in definition stub ($kindCode)")
                 }
             }
@@ -143,9 +144,9 @@ internal class TypeExpressionsDecoder(
     identifiers: IdentifiersDecoder,
 ) {
     /** Get type expression by index (will apply IDX_MASK) */
-    fun get(index: Int): ViaductSchema.TypeExpr<BSchema.TypeDef> = typeExprs[index and IDX_MASK]
+    fun get(index: Int): ViaductSchema.TypeExpr<SchemaWithData.TypeDef> = typeExprs[index and IDX_MASK]
 
-    val typeExprs: Array<ViaductSchema.TypeExpr<BSchema.TypeDef>>
+    val typeExprs: Array<ViaductSchema.TypeExpr<SchemaWithData.TypeDef>>
 
     init {
         // Read Type Expressions section
@@ -158,7 +159,7 @@ internal class TypeExpressionsDecoder(
         typeExprs = Array(header.typeExprCount) {
             val firstWord = TexprWordOne(data.readInt())
             val typeDefName = identifiers.get(firstWord.typeIndex())
-            val typeDef: BSchema.TypeDef = identifiers.types[typeDefName]
+            val typeDef: SchemaWithData.TypeDef = identifiers.types[typeDefName]
                 ?: throw NoSuchElementException("Type def not found ($typeDefName).")
             ViaductSchema.TypeExpr(
                 typeDef,

@@ -30,13 +30,13 @@ class BlackBoxToRegistryTest {
         val registry = SchemaParser().parse(fullSdl)
 
         // Create GJSchemaRaw from registry (no graphql-java validation)
-        val originalSchema = GJSchemaRaw.fromRegistry(registry)
+        val originalSchema = gjSchemaRawFromRegistry(registry)
 
         // Convert to TDRegistry
         val roundTrippedRegistry = originalSchema.toRegistry(TypeDefinitionRegistryOptions.NO_STUBS)
 
         // Create GJSchemaRaw from round-tripped registry
-        val roundTrippedSchema = GJSchemaRaw.fromRegistry(roundTrippedRegistry)
+        val roundTrippedSchema = gjSchemaRawFromRegistry(roundTrippedRegistry)
 
         // Compare original vs round-tripped
         val checker = InvariantChecker()

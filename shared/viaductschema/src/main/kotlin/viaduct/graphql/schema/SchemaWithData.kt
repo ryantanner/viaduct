@@ -1,34 +1,66 @@
-package viaduct.graphql.schema.binary
+package viaduct.graphql.schema
 
 import graphql.language.Value
-import viaduct.graphql.schema.ViaductSchema
 
-internal class BSchema(
+/**
+ * A unified implementation of [ViaductSchema] that stores optional auxiliary data
+ * associated with each schema node via a generic [data] property.
+ *
+ * This class consolidates what were previously separate implementations (BSchema,
+ * GJSchema, GJSchemaRaw, FilteredSchema) into a single class hierarchy. Each
+ * "flavor" of schema is distinguished by what it stores in [data]:
+ *
+ * - Binary format (formerly BSchema): `data` is null for all nodes
+ * - GraphQL-Java validated (formerly GJSchema): `data` holds GraphQL* types
+ * - GraphQL-Java raw (formerly GJSchemaRaw): `data` holds graphql.language.* types
+ * - Filtered (formerly FilteredSchema): `data` holds the unfiltered ViaductSchema.Def
+ *
+ * Factory functions and type-safe extension properties for accessing [data] are
+ * provided in the respective flavor's module.
+ *
+ * This class is public to support implementations that expose auxiliary data
+ * associated with schema nodes. However, consumers should generally work through
+ * the [ViaductSchema] interface and flavor-specific extension properties.
+ */
+class SchemaWithData(
     override val directives: Map<String, Directive>,
     override val types: Map<String, TypeDef>,
     override val queryTypeDef: Object?,
     override val mutationTypeDef: Object?,
     override val subscriptionTypeDef: Object?,
 ) : ViaductSchema {
+    override fun toString() = types.toString()
+
     //
     // [Def] related classes
+    //
 
-    sealed class Def : ViaductSchema.Def {
+    sealed class Def protected constructor() : ViaductSchema.Def {
+        abstract val data: Any?
+
         override fun hasAppliedDirective(name: String) = appliedDirectives.any { it.name == name }
 
         override fun toString() = describe()
+
+        /**
+         * Unwrap all layers of filtering.
+         * If [data] contains a [ViaductSchema.Def], recursively unwrap it.
+         * Otherwise return this.
+         */
+        override fun unwrapAll(): ViaductSchema.Def = (data as? ViaductSchema.Def)?.unwrapAll() ?: this
     }
 
     /**
      * Base class for top-level definitions that appear in a schema (Directive and TypeDef).
      */
-    sealed class TopLevelDef : Def(), ViaductSchema.TopLevelDef
+    sealed class TopLevelDef protected constructor() : Def(), ViaductSchema.TopLevelDef
 
     //
     // "Contained" things:
     // [Arg], [Field] and [EnumValue] and related classes
+    //
 
-    sealed class HasDefaultValue : Def(), ViaductSchema.HasDefaultValue {
+    sealed class HasDefaultValue protected constructor() : Def(), ViaductSchema.HasDefaultValue {
         // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
@@ -43,15 +75,16 @@ internal class BSchema(
                 }
     }
 
-    sealed class Arg : HasDefaultValue(), ViaductSchema.Arg
+    sealed class Arg protected constructor() : HasDefaultValue(), ViaductSchema.Arg
 
-    class DirectiveArg(
+    class DirectiveArg internal constructor(
         override val containingDef: Directive,
         override val name: String,
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         override val mDefaultValue: Value<*>?,
+        override val data: Any? = null,
     ) : Arg(), ViaductSchema.DirectiveArg
 
     class FieldArg internal constructor(
@@ -61,47 +94,53 @@ internal class BSchema(
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         override val mDefaultValue: Value<*>?,
+        override val data: Any? = null,
     ) : Arg(), ViaductSchema.FieldArg
 
     class EnumValue internal constructor(
         override val containingExtension: ViaductSchema.Extension<Enum, EnumValue>,
         override val name: String,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
+        override val data: Any? = null,
     ) : Def(), ViaductSchema.EnumValue {
-        override val containingDef get() = containingExtension.def
+        override val containingDef: Enum get() = containingExtension.def
     }
 
-    class Field(
+    class Field internal constructor(
         override val containingExtension: ViaductSchema.Extension<Record, Field>,
         override val name: String,
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective>,
         override val hasDefault: Boolean,
         override val mDefaultValue: Value<*>?,
-        argsFactory: (Field) -> List<FieldArg>,
+        override val data: Any? = null,
+        argsFactory: (Field) -> List<FieldArg> = { emptyList() },
     ) : HasDefaultValue(), ViaductSchema.Field {
         /** Secondary constructor for fields without arguments (e.g., input fields). */
-        constructor(
+        internal constructor(
             containingExtension: ViaductSchema.Extension<Record, Field>,
             name: String,
             type: ViaductSchema.TypeExpr<TypeDef>,
             appliedDirectives: List<ViaductSchema.AppliedDirective>,
             hasDefault: Boolean,
             defaultValue: Value<*>?,
-        ) : this(containingExtension, name, type, appliedDirectives, hasDefault, defaultValue, { emptyList() })
+            data: Any? = null,
+        ) : this(containingExtension, name, type, appliedDirectives, hasDefault, defaultValue, data, { emptyList() })
 
         override val args: List<FieldArg> = argsFactory(this)
 
         override val isOverride: Boolean by lazy { ViaductSchema.isOverride(this) }
 
-        override val containingDef get() = containingExtension.def
+        override val containingDef: Record get() = containingExtension.def
     }
 
     //
     // [Directive] concrete class
+    //
 
-    class Directive(
+    class Directive internal constructor(
         override val name: String,
+        override val data: Any? = null,
     ) : TopLevelDef(), ViaductSchema.Directive {
         private var mSourceLocation: ViaductSchema.SourceLocation? = null
         private var mIsRepeatable: Boolean? = null
@@ -111,10 +150,8 @@ internal class BSchema(
         override val sourceLocation: ViaductSchema.SourceLocation? get() = guardedGetNullable(mSourceLocation, mArgs)
         override val isRepeatable: Boolean get() = guardedGet(mIsRepeatable)
         override val allowedLocations: Set<ViaductSchema.Directive.Location> get() = guardedGet(mAllowedLocations)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = emptyList()
         override val args: List<DirectiveArg> get() = guardedGet(mArgs)
-
-        // Always empty for Directives
-        override val appliedDirectives = emptyList<ViaductSchema.AppliedDirective>()
 
         internal fun populate(
             isRepeatable: Boolean,
@@ -132,8 +169,9 @@ internal class BSchema(
 
     //
     // [TypeDef] related classes
+    //
 
-    sealed class TypeDef : TopLevelDef(), ViaductSchema.TypeDef {
+    sealed class TypeDef protected constructor() : TopLevelDef(), ViaductSchema.TypeDef {
         override fun asTypeExpr(): ViaductSchema.TypeExpr<TypeDef> = ViaductSchema.TypeExpr(this)
 
         open override val possibleObjectTypes: Set<Object> get() = emptySet()
@@ -141,9 +179,28 @@ internal class BSchema(
 
     //
     // Non-[Record] [TypeDef] concrete classes
+    //
 
-    class Enum(
-        override val name: String
+    class Scalar internal constructor(
+        override val name: String,
+        override val data: Any? = null,
+    ) : TypeDef(), ViaductSchema.Scalar {
+        private var mExtensions: List<ViaductSchema.Extension<Scalar, Nothing>>? = null
+
+        override val extensions: List<ViaductSchema.Extension<Scalar, Nothing>> get() = guardedGet(mExtensions)
+        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = extensions.flatMap { it.appliedDirectives }
+        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
+
+        internal fun populate(extensions: List<ViaductSchema.Extension<Scalar, Nothing>>) {
+            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
+            require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
+            mExtensions = extensions
+        }
+    }
+
+    class Enum internal constructor(
+        override val name: String,
+        override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Enum {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.Extension<Enum, EnumValue>>? = null
@@ -165,24 +222,9 @@ internal class BSchema(
         override fun value(name: String) = values.find { name == it.name }
     }
 
-    class Scalar(
-        override val name: String
-    ) : TypeDef(), ViaductSchema.Scalar {
-        private var mExtensions: List<ViaductSchema.Extension<Scalar, Nothing>>? = null
-
-        override val extensions: List<ViaductSchema.Extension<Scalar, Nothing>> get() = guardedGet(mExtensions)
-        override val appliedDirectives: List<ViaductSchema.AppliedDirective> get() = extensions.flatMap { it.appliedDirectives }
-        override val sourceLocation: ViaductSchema.SourceLocation? get() = extensions.first().sourceLocation
-
-        internal fun populate(extensions: List<ViaductSchema.Extension<Scalar, Nothing>>) {
-            check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
-            require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
-            mExtensions = extensions
-        }
-    }
-
-    class Union(
-        override val name: String
+    class Union internal constructor(
+        override val name: String,
+        override val data: Any? = null,
     ) : TypeDef(), ViaductSchema.Union {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.Extension<Union, Object>>? = null
@@ -196,16 +238,14 @@ internal class BSchema(
         internal fun populate(extensions: List<ViaductSchema.Extension<Union, Object>>) {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
             require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
-            // Validate that all members are actually Object types
+            // Validate that all members are actually Object instances
+            // Cast to Collection<*> to avoid JVM type checks during iteration
             for (ext in extensions) {
-                @Suppress("UNCHECKED_CAST")
-                val membersAsAny = ext.members as List<*>
-                for (member in membersAsAny) {
-                    if (member != null && member !is Object) {
-                        val typeName = (member as? TypeDef)?.name ?: member.toString()
+                for (member in ext.members as Collection<*>) {
+                    if (member !is Object) {
+                        val typeName = (member as? ViaductSchema.TypeDef)?.name ?: member.toString()
                         throw InvalidSchemaException(
-                            "Union $name contains $typeName which is not an Object type " +
-                                "(got ${member.javaClass.simpleName})"
+                            "Union $name contains member $typeName which is not an Object (got ${member?.javaClass?.simpleName})"
                         )
                     }
                 }
@@ -218,8 +258,9 @@ internal class BSchema(
 
     //
     // [Record] and its concrete classes
+    //
 
-    sealed class Record : TypeDef(), ViaductSchema.Record {
+    sealed class Record protected constructor() : TypeDef(), ViaductSchema.Record {
         abstract override val fields: List<Field>
 
         override fun field(name: String) = fields.find { name == it.name }
@@ -227,13 +268,14 @@ internal class BSchema(
         override fun field(path: Iterable<String>): Field = ViaductSchema.field(this, path)
     }
 
-    sealed class OutputRecord : Record(), ViaductSchema.OutputRecord {
+    sealed class OutputRecord protected constructor() : Record(), ViaductSchema.OutputRecord {
         abstract override val extensions: List<ViaductSchema.ExtensionWithSupers<OutputRecord, Field>>
         abstract override val supers: List<Interface>
     }
 
-    class Interface(
-        override val name: String
+    class Interface internal constructor(
+        override val name: String,
+        override val data: Any? = null,
     ) : OutputRecord(), ViaductSchema.Interface {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.ExtensionWithSupers<Interface, Field>>? = null
@@ -254,35 +296,16 @@ internal class BSchema(
         ) {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
             require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
-
-            // Validate that all supers are actually Interface types
-            for (ext in extensions) {
-                @Suppress("UNCHECKED_CAST")
-                val supersAsAny = ext.supers as Collection<*>
-                for (superType in supersAsAny) {
-                    if (superType != null && superType !is Interface) {
-                        val typeName = (superType as? TypeDef)?.name ?: superType.toString()
-                        throw InvalidSchemaException(
-                            "Type $name implements $typeName which is not an Interface type " +
-                                "(got ${superType.javaClass.simpleName})"
-                        )
-                    }
-                }
-            }
-
-            // Validate that all possibleObjectTypes are actually Object types
-            @Suppress("UNCHECKED_CAST")
-            val possibleObjectTypesAsAny = possibleObjectTypes as Set<*>
-            for (obj in possibleObjectTypesAsAny) {
-                if (obj != null && obj !is Object) {
-                    val typeName = (obj as? TypeDef)?.name ?: obj.toString()
+            // Validate possibleObjectTypes contains actual Object instances
+            // Cast to Set<*> to avoid JVM type checks during iteration
+            for (objType in possibleObjectTypes as Set<*>) {
+                if (objType !is Object) {
+                    val typeName = (objType as? ViaductSchema.TypeDef)?.name ?: objType.toString()
                     throw InvalidSchemaException(
-                        "Interface $name possibleObjectTypes contains $typeName which is not an Object type " +
-                            "(got ${obj.javaClass.simpleName})"
+                        "Interface $name possibleObjectTypes contains $typeName which is not an Object (got ${objType?.javaClass?.simpleName})"
                     )
                 }
             }
-
             mExtensions = extensions
             mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
             mFields = extensions.flatMap { it.members }
@@ -292,8 +315,9 @@ internal class BSchema(
         }
     }
 
-    class Input(
-        override val name: String
+    class Input internal constructor(
+        override val name: String,
+        override val data: Any? = null,
     ) : Record(), ViaductSchema.Input {
         private var mAppliedDirectives: List<ViaductSchema.AppliedDirective>? = null
         private var mExtensions: List<ViaductSchema.Extension<Input, Field>>? = null
@@ -313,8 +337,9 @@ internal class BSchema(
         }
     }
 
-    class Object(
-        override val name: String
+    class Object internal constructor(
+        override val name: String,
+        override val data: Any? = null,
     ) : OutputRecord(), ViaductSchema.Object {
         override val possibleObjectTypes = setOf(this)
 
@@ -337,22 +362,18 @@ internal class BSchema(
         ) {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
             require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
-
-            // Validate that all supers are actually Interface types
+            // Validate that all supers are actually Interface instances
+            // Cast to Collection<*> to avoid JVM type checks during iteration
             for (ext in extensions) {
-                @Suppress("UNCHECKED_CAST")
-                val supersAsAny = ext.supers as Collection<*>
-                for (superType in supersAsAny) {
-                    if (superType != null && superType !is Interface) {
-                        val typeName = (superType as? TypeDef)?.name ?: superType.toString()
+                for (superType in ext.supers as Collection<*>) {
+                    if (superType !is Interface) {
+                        val typeName = (superType as? ViaductSchema.TypeDef)?.name ?: superType.toString()
                         throw InvalidSchemaException(
-                            "Type $name implements $typeName which is not an Interface type " +
-                                "(got ${superType.javaClass.simpleName})"
+                            "Object $name implements $typeName which is not an Interface (got ${superType?.javaClass?.simpleName})"
                         )
                     }
                 }
             }
-
             mExtensions = extensions
             mAppliedDirectives = extensions.flatMap { it.appliedDirectives }
             mFields = extensions.flatMap { it.members }
@@ -363,86 +384,13 @@ internal class BSchema(
     }
 }
 
-private inline fun <T> BSchema.TopLevelDef.guardedGet(v: T?): T = checkNotNull(v) { "${this.name} has not been populated; call populate() first" }
+// Helper functions (private to the file)
+private inline fun <T> SchemaWithData.TopLevelDef.guardedGet(v: T?): T = checkNotNull(v) { "${this.name} has not been populated; call populate() first" }
 
-private inline fun <T> BSchema.TopLevelDef.guardedGetNullable(
+private inline fun <T> SchemaWithData.TopLevelDef.guardedGetNullable(
     v: T?,
     sentinel: Any?
 ): T? {
     check(sentinel != null) { "${this.name} has not been populated; call populate() first" }
     return v
-}
-
-/**
- * Validates that all applied directives reference existing directive definitions
- * and that their arguments match the definition.
- */
-internal fun Map<String, BSchema.Directive>.validateAppliedDirectives(
-    appliedDirectives: Collection<ViaductSchema.AppliedDirective>,
-    context: String
-) {
-    for (applied in appliedDirectives) {
-        val definition = this[applied.name]
-            ?: throw InvalidSchemaException(
-                "Applied directive @${applied.name} on $context references non-existent directive definition"
-            )
-        // Validate that all arguments in applied directive exist in definition
-        for (argName in applied.arguments.keys) {
-            if (definition.args.none { it.name == argName }) {
-                throw InvalidSchemaException(
-                    "Applied directive @${applied.name} on $context has argument '$argName' " +
-                        "not defined in directive definition"
-                )
-            }
-        }
-    }
-}
-
-/**
- * Validates all applied directives on a type definition (including its extensions and members).
- * This is exposed for testing purposes.
- */
-internal fun Map<String, BSchema.Directive>.validateAppliedDirectives(typeDef: BSchema.TypeDef) {
-    when (typeDef) {
-        is BSchema.Scalar -> {
-            validateAppliedDirectives(typeDef.appliedDirectives, "scalar ${typeDef.name}")
-        }
-        is BSchema.Enum -> {
-            for (ext in typeDef.extensions) {
-                validateAppliedDirectives(ext.appliedDirectives, "type ${typeDef.name}")
-                for (member in ext.members) {
-                    validateAppliedDirectives(member.appliedDirectives, member.describe())
-                }
-            }
-        }
-        is BSchema.Union -> {
-            for (ext in typeDef.extensions) {
-                validateAppliedDirectives(ext.appliedDirectives, "type ${typeDef.name}")
-            }
-        }
-        is BSchema.Interface -> {
-            for (ext in typeDef.extensions) {
-                validateAppliedDirectives(ext.appliedDirectives, "type ${typeDef.name}")
-                for (member in ext.members) {
-                    validateAppliedDirectives(member.appliedDirectives, member.describe())
-                }
-            }
-        }
-        is BSchema.Input -> {
-            for (ext in typeDef.extensions) {
-                validateAppliedDirectives(ext.appliedDirectives, "type ${typeDef.name}")
-                for (member in ext.members) {
-                    validateAppliedDirectives(member.appliedDirectives, member.describe())
-                }
-            }
-        }
-        is BSchema.Object -> {
-            for (ext in typeDef.extensions) {
-                validateAppliedDirectives(ext.appliedDirectives, "type ${typeDef.name}")
-                for (member in ext.members) {
-                    validateAppliedDirectives(member.appliedDirectives, member.describe())
-                }
-            }
-        }
-    }
 }

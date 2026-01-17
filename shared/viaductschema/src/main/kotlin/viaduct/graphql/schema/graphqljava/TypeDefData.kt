@@ -1,0 +1,12 @@
+package viaduct.graphql.schema.graphqljava
+
+import graphql.language.TypeDefinition
+
+/**
+ * Holds the graphql-java type definition and its extension definitions.
+ * Used as the [SchemaWithData.TypeDef.data] value for GJSchemaRaw-style schemas.
+ */
+data class TypeDefData<out D : TypeDefinition<*>, out E : TypeDefinition<*>>(
+    val def: D,
+    val extensionDefs: List<E>
+)

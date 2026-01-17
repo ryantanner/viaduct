@@ -2,18 +2,26 @@
 
 package viaduct.graphql.schema.graphqljava.extensions
 
-import viaduct.graphql.schema.graphqljava.GJSchema
+import graphql.schema.GraphQLEnumType
+import graphql.schema.GraphQLFieldDefinition
+import graphql.schema.GraphQLInputObjectField
+import graphql.schema.GraphQLInputObjectType
+import graphql.schema.GraphQLInterfaceType
+import graphql.schema.GraphQLObjectType
+import graphql.schema.GraphQLScalarType
+import graphql.schema.GraphQLUnionType
+import viaduct.graphql.schema.SchemaWithData
 
-val GJSchema.Field.isPresentation: Boolean
+val SchemaWithData.Field.isPresentation: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/presentation") ?: false
 
-val GJSchema.TypeDef.isPresentation: Boolean
+val SchemaWithData.TypeDef.isPresentation: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/presentation") ?: false
 
-val GJSchema.Field.isData: Boolean
+val SchemaWithData.Field.isData: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/data") ?: false
 
-val GJSchema.TypeDef.isData: Boolean
+val SchemaWithData.TypeDef.isData: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/data") ?: false
 
 /** Returns the tenant that defines a field.  The result is typically
@@ -26,11 +34,13 @@ val GJSchema.TypeDef.isData: Boolean
  *  not meet our expected conventions, then the constant "NO_TENANT"
  *  is returned.
  */
-val GJSchema.Field.tenant: String
+val SchemaWithData.Field.tenant: String
     get() = extractTenant(
-        this.def.definition
-            ?.sourceLocation
-            ?.sourceName
+        when (val d = data) {
+            is GraphQLFieldDefinition -> d.definition?.sourceLocation?.sourceName
+            is GraphQLInputObjectField -> d.definition?.sourceLocation?.sourceName
+            else -> null
+        }
     )
 
 /** Returns the tenant that defines a type.  The result is typically
@@ -43,11 +53,17 @@ val GJSchema.Field.tenant: String
  *  not meet our expected conventions, then the constant "NO_TENANT"
  *  is returned.
  */
-val GJSchema.TypeDef.tenant: String
+val SchemaWithData.TypeDef.tenant: String
     get() = extractTenant(
-        this.def.definition
-            ?.sourceLocation
-            ?.sourceName
+        when (val d = data) {
+            is GraphQLScalarType -> d.definition?.sourceLocation?.sourceName
+            is GraphQLEnumType -> d.definition?.sourceLocation?.sourceName
+            is GraphQLObjectType -> d.definition?.sourceLocation?.sourceName
+            is GraphQLInterfaceType -> d.definition?.sourceLocation?.sourceName
+            is GraphQLInputObjectType -> d.definition?.sourceLocation?.sourceName
+            is GraphQLUnionType -> d.definition?.sourceLocation?.sourceName
+            else -> null
+        }
     )
 
 /** Does the actual work of extracting a tenant name (e.g.,
@@ -85,11 +101,11 @@ private val tenantFinder by lazy {
  *  tenant of the field-definition is the tenant of the containing
  *  type.
  */
-val GJSchema.Field.inExtension: Boolean
+val SchemaWithData.Field.inExtension: Boolean
     get() = this.tenant != this.containingDef.tenant
 
 /** Returns true iff field is defined in one module but has a type defined
  *  in another.
  */
-val GJSchema.Field.hasExternalType: Boolean
+val SchemaWithData.Field.hasExternalType: Boolean
     get() = this.tenant != this.type.baseTypeDef.tenant

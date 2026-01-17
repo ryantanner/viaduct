@@ -10,6 +10,7 @@ import graphql.schema.GraphQLUnionType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 
 /** Tests for error checking in GJSchema TypeDef classes. */
@@ -17,7 +18,7 @@ class GJSchemaErrorTest {
     @Test
     fun `accessing unpopulated Scalar throws helpful error`() {
         val def = GraphQLScalarType.newScalar().name("TestScalar").coercing(Scalars.GraphQLString.coercing).build()
-        val scalar = GJSchema.Scalar(def, def.name)
+        val scalar = SchemaWithData.Scalar(def.name, def)
 
         val exception = shouldThrow<IllegalStateException> {
             scalar.appliedDirectives
@@ -29,7 +30,7 @@ class GJSchemaErrorTest {
     @Test
     fun `accessing unpopulated Enum throws helpful error`() {
         val def = GraphQLEnumType.newEnum().name("TestEnum").build()
-        val enum = GJSchema.Enum(def, def.name)
+        val enum = SchemaWithData.Enum(def.name, def)
 
         val exception = shouldThrow<IllegalStateException> {
             enum.values
@@ -43,7 +44,7 @@ class GJSchemaErrorTest {
         // GraphQLUnionType requires at least one member type
         val memberType = GraphQLObjectType.newObject().name("Member").build()
         val def = GraphQLUnionType.newUnionType().name("TestUnion").possibleType(memberType).build()
-        val union = GJSchema.Union(def, def.name)
+        val union = SchemaWithData.Union(def.name, def)
 
         val exception = shouldThrow<IllegalStateException> {
             union.possibleObjectTypes
@@ -55,7 +56,7 @@ class GJSchemaErrorTest {
     @Test
     fun `accessing unpopulated Interface throws helpful error`() {
         val def = GraphQLInterfaceType.newInterface().name("TestInterface").build()
-        val iface = GJSchema.Interface(def, def.name)
+        val iface = SchemaWithData.Interface(def.name, def)
 
         val exception = shouldThrow<IllegalStateException> {
             iface.fields
@@ -67,7 +68,7 @@ class GJSchemaErrorTest {
     @Test
     fun `accessing unpopulated Object throws helpful error`() {
         val def = GraphQLObjectType.newObject().name("TestObject").build()
-        val obj = GJSchema.Object(def, def.name)
+        val obj = SchemaWithData.Object(def.name, def)
 
         val exception = shouldThrow<IllegalStateException> {
             obj.fields
@@ -79,7 +80,7 @@ class GJSchemaErrorTest {
     @Test
     fun `accessing unpopulated Input throws helpful error`() {
         val def = GraphQLInputObjectType.newInputObject().name("TestInput").build()
-        val input = GJSchema.Input(def, def.name)
+        val input = SchemaWithData.Input(def.name, def)
 
         val exception = shouldThrow<IllegalStateException> {
             input.fields
@@ -91,10 +92,10 @@ class GJSchemaErrorTest {
     @Test
     fun `calling populate twice on Scalar throws helpful error`() {
         val def = GraphQLScalarType.newScalar().name("TestScalar").coercing(Scalars.GraphQLString.coercing).build()
-        val scalar = GJSchema.Scalar(def, def.name)
+        val scalar = SchemaWithData.Scalar(def.name, def)
 
         val extensions = listOf(
-            ViaductSchema.Extension.of<GJSchema.Scalar, Nothing>(
+            ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
                 def = scalar,
                 memberFactory = { emptyList() },
                 isBase = true,
@@ -117,14 +118,24 @@ class GJSchemaErrorTest {
     @Test
     fun `calling populate twice on Enum throws helpful error`() {
         val def = GraphQLEnumType.newEnum().name("TestEnum").build()
-        val enum = GJSchema.Enum(def, def.name)
+        val enum = SchemaWithData.Enum(def.name, def)
+
+        val extensions = listOf(
+            ViaductSchema.Extension.of<SchemaWithData.Enum, SchemaWithData.EnumValue>(
+                def = enum,
+                memberFactory = { emptyList() },
+                isBase = true,
+                appliedDirectives = emptyList(),
+                sourceLocation = null
+            )
+        )
 
         // First populate succeeds
-        enum.populate(emptyList())
+        enum.populate(extensions)
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            enum.populate(emptyList())
+            enum.populate(extensions)
         }
         exception.message shouldContain "TestEnum"
         exception.message shouldContain "populate"
@@ -135,14 +146,24 @@ class GJSchemaErrorTest {
         // GraphQLUnionType requires at least one member type
         val memberType = GraphQLObjectType.newObject().name("Member").build()
         val def = GraphQLUnionType.newUnionType().name("TestUnion").possibleType(memberType).build()
-        val union = GJSchema.Union(def, def.name)
+        val union = SchemaWithData.Union(def.name, def)
+
+        val extensions = listOf(
+            ViaductSchema.Extension.of<SchemaWithData.Union, SchemaWithData.Object>(
+                def = union,
+                memberFactory = { emptyList() },
+                isBase = true,
+                appliedDirectives = emptyList(),
+                sourceLocation = null
+            )
+        )
 
         // First populate succeeds
-        union.populate(emptyList())
+        union.populate(extensions)
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            union.populate(emptyList())
+            union.populate(extensions)
         }
         exception.message shouldContain "TestUnion"
         exception.message shouldContain "populate"
@@ -151,14 +172,25 @@ class GJSchemaErrorTest {
     @Test
     fun `calling populate twice on Interface throws helpful error`() {
         val def = GraphQLInterfaceType.newInterface().name("TestInterface").build()
-        val iface = GJSchema.Interface(def, def.name)
+        val iface = SchemaWithData.Interface(def.name, def)
+
+        val extensions = listOf(
+            ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Interface, SchemaWithData.Field>(
+                def = iface,
+                memberFactory = { emptyList() },
+                isBase = true,
+                appliedDirectives = emptyList(),
+                sourceLocation = null,
+                supers = emptyList()
+            )
+        )
 
         // First populate succeeds
-        iface.populate(emptyList(), emptySet())
+        iface.populate(extensions, emptySet())
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            iface.populate(emptyList(), emptySet())
+            iface.populate(extensions, emptySet())
         }
         exception.message shouldContain "TestInterface"
         exception.message shouldContain "populate"
@@ -167,14 +199,25 @@ class GJSchemaErrorTest {
     @Test
     fun `calling populate twice on Object throws helpful error`() {
         val def = GraphQLObjectType.newObject().name("TestObject").build()
-        val obj = GJSchema.Object(def, def.name)
+        val obj = SchemaWithData.Object(def.name, def)
+
+        val extensions = listOf(
+            ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(
+                def = obj,
+                memberFactory = { emptyList() },
+                isBase = true,
+                appliedDirectives = emptyList(),
+                sourceLocation = null,
+                supers = emptyList()
+            )
+        )
 
         // First populate succeeds
-        obj.populate(emptyList(), emptyList())
+        obj.populate(extensions, emptyList())
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            obj.populate(emptyList(), emptyList())
+            obj.populate(extensions, emptyList())
         }
         exception.message shouldContain "TestObject"
         exception.message shouldContain "populate"
@@ -183,14 +226,24 @@ class GJSchemaErrorTest {
     @Test
     fun `calling populate twice on Input throws helpful error`() {
         val def = GraphQLInputObjectType.newInputObject().name("TestInput").build()
-        val input = GJSchema.Input(def, def.name)
+        val input = SchemaWithData.Input(def.name, def)
+
+        val extensions = listOf(
+            ViaductSchema.Extension.of<SchemaWithData.Input, SchemaWithData.Field>(
+                def = input,
+                memberFactory = { emptyList() },
+                isBase = true,
+                appliedDirectives = emptyList(),
+                sourceLocation = null
+            )
+        )
 
         // First populate succeeds
-        input.populate(emptyList())
+        input.populate(extensions)
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            input.populate(emptyList())
+            input.populate(extensions)
         }
         exception.message shouldContain "TestInput"
         exception.message shouldContain "populate"

@@ -12,8 +12,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
+import viaduct.graphql.schema.graphqljava.gjSchemaFromFiles
+import viaduct.graphql.schema.graphqljava.gjSchemaFromRegistry
 import viaduct.graphql.schema.graphqljava.readTypes
 
 internal class ExtensionsTest {
@@ -22,8 +24,8 @@ internal class ExtensionsTest {
         type Query { foo: T1 }
     """.trimIndent()
 
-    private fun mockFieldWithSourceLoc(pathStr: String): GJSchema.Field {
-        val field = mockk<GJSchema.Field>()
+    private fun mockFieldWithSourceLoc(pathStr: String): SchemaWithData.Field {
+        val field = mockk<SchemaWithData.Field>()
         val sourceLoc = ViaductSchema.SourceLocation(pathStr)
         every { field.sourceLocation } returns sourceLoc
         return field
@@ -55,7 +57,7 @@ internal class ExtensionsTest {
 
     @Test
     fun testTenantExtractionWhenNoTenant() {
-        val field = GJSchema.fromRegistry(readTypes(sdl))
+        val field = gjSchemaFromRegistry(readTypes(sdl))
         val tenant = field.types.values
             .first()
             .tenant
@@ -64,37 +66,37 @@ internal class ExtensionsTest {
 
     @Test
     fun testTypeDefWhenNoPresentation() {
-        val schema = GJSchema.fromRegistry(readTypes(sdl))
+        val schema = gjSchemaFromRegistry(readTypes(sdl))
         val typeDefs = schema.types.values
         assertTrue(typeDefs.none { it.isPresentation })
     }
 
     @Test
     fun testTypeDefWhenNoData() {
-        val field = GJSchema.fromRegistry(readTypes(sdl))
+        val field = gjSchemaFromRegistry(readTypes(sdl))
         val typeDefs = field.types.values
         assertTrue(typeDefs.none { it.isData })
     }
 
     @Test
     fun testExtractingTenantFromTypeDefWhenTenantMatchesRegex() {
-        val typeDefs = GJSchema.fromFiles(listOf(buildSchemaFileWithTenantMatchingStructure())).types.values
+        val typeDefs = gjSchemaFromFiles(listOf(buildSchemaFileWithTenantMatchingStructure())).types.values
         assertTrue(typeDefs.any { it.tenant == "data/user/product" })
     }
 
     @Test
     fun testExtractingTenantFromFieldWhenNoTenantFound() {
         val field = spyk(mockFieldWithSourceLoc("repo/schema/other/someFile"))
-        val def = mockk<GraphQLInputObjectField>(relaxed = true)
-        every { field.def } returns def
+        val gjDef = mockk<GraphQLInputObjectField>(relaxed = true)
+        every { field.data } returns gjDef
         assertEquals("NO_TENANT", field.tenant)
     }
 
     @Test
     fun testInExtension() {
         val field = spyk(mockFieldWithSourceLoc("repo/schema/other/someFile"))
-        val def = mockk<GraphQLInputObjectField>(relaxed = true)
-        every { field.def } returns def
+        val gjDef = mockk<GraphQLInputObjectField>(relaxed = true)
+        every { field.data } returns gjDef
         every { field.containingDef } returns mockk(relaxed = true)
         assertFalse { field.inExtension }
     }
@@ -103,17 +105,16 @@ internal class ExtensionsTest {
     fun testHasExternalType() {
         val field = spyk(mockFieldWithSourceLoc("repo/schema/other/someFile"))
 
-        val typeExpression = mockk<ViaductSchema.TypeExpr<GJSchema.TypeDef>>()
-        every { typeExpression.baseTypeDef } returns GJSchema
-            .fromFiles(
-                listOf(
-                    buildSchemaFileWithTenantMatchingStructure()
-                )
-            ).types.values
+        val typeExpression = mockk<ViaductSchema.TypeExpr<SchemaWithData.TypeDef>>()
+        every { typeExpression.baseTypeDef } returns gjSchemaFromFiles(
+            listOf(
+                buildSchemaFileWithTenantMatchingStructure()
+            )
+        ).types.values
             .first()
         every { field.type } returns typeExpression
-        val def = mockk<GraphQLInputObjectField>(relaxed = true)
-        every { field.def } returns def
+        val gjDef = mockk<GraphQLInputObjectField>(relaxed = true)
+        every { field.data } returns gjDef
         assertFalse { field.hasExternalType }
     }
 

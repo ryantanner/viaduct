@@ -14,8 +14,10 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.binary.extensions.toBinaryFile
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
+import viaduct.graphql.schema.graphqljava.readTypes
 import viaduct.tenant.codegen.bytecode.CodeGenArgs
 import viaduct.tenant.codegen.bytecode.GRTClassFilesBuilderBase
 
@@ -51,7 +53,7 @@ class SchemaObjectsBytecodeTest {
                 }
             """.trimIndent()
         )
-        GJSchemaRaw.fromSDL(sdl).toBinaryFile(binarySchemaFile)
+        ViaductSchema.fromTypeDefinitionRegistry(readTypes(sdl)).toBinaryFile(binarySchemaFile)
         generatedDir = File(tempDir, "generated").apply { mkdirs() }
         outputArchive = File(tempDir, "output.zip")
         pkgFile = File(tempDir, "package.txt").apply {

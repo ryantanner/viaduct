@@ -6,6 +6,7 @@ import graphql.schema.idl.UnExecutableSchemaGenerator
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
@@ -61,7 +62,7 @@ class Full5kSchemaTest {
 
     @Test
     fun `run GJSchemaCheck on 5k schema`() {
-        GJSchemaCheck(schema as GJSchema, gjSchema).assertEmpty("\n")
+        GJSchemaCheck(schema as SchemaWithData, gjSchema).assertEmpty("\n")
     }
 
     @Test

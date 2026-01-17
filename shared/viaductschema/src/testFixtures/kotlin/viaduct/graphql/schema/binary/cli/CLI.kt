@@ -35,12 +35,13 @@ import java.util.function.BiPredicate
 import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 import org.slf4j.LoggerFactory
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.binary.extensions.fromBinaryFile
 import viaduct.graphql.schema.binary.extensions.toBinaryFile
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
-import viaduct.graphql.schema.graphqljava.GJSchema
 import viaduct.graphql.schema.graphqljava.GraphQLSchemaExtraDiff
+import viaduct.graphql.schema.graphqljava.gjSchemaFromRegistry
 import viaduct.graphql.schema.graphqljava.readTypesFromURLs
 import viaduct.graphql.schema.graphqljava.toGraphQLSchema
 import viaduct.graphql.schema.test.SchemaDiff
@@ -448,12 +449,12 @@ private class MmDiffCommand : CliktCommand(
     }
 }
 
-private fun readGJSchema(inputPath: Path): GJSchema {
+private fun readGJSchema(inputPath: Path): SchemaWithData {
     val (schema, _) = readGJSchemaWithRegistry(inputPath)
     return schema
 }
 
-private fun readGJSchemaWithRegistry(inputPath: Path): Pair<GJSchema, TypeDefinitionRegistry> {
+private fun readGJSchemaWithRegistry(inputPath: Path): Pair<SchemaWithData, TypeDefinitionRegistry> {
     val reader =
         MultiSourceReader.newMultiSourceReader().apply {
             viaductFiles(inputPath).forEach {
@@ -466,7 +467,7 @@ private fun readGJSchemaWithRegistry(inputPath: Path): Pair<GJSchema, TypeDefini
     val registry = SchemaParser().parse(reader).apply {
         DefaultSchemaProvider.addDefaults(this, allowExisting = true)
     }
-    return GJSchema.fromRegistry(registry) to registry
+    return gjSchemaFromRegistry(registry) to registry
 }
 
 private fun viaductFiles(inputPath: Path): List<URL> = Files.find(inputPath, 100, viaductFilter).map { it.toUri().toURL() }.toList()

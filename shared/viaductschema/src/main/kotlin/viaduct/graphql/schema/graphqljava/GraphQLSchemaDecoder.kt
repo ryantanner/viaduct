@@ -7,7 +7,6 @@ import graphql.language.TypeName
 import graphql.language.Value
 import graphql.schema.GraphQLAppliedDirective
 import graphql.schema.GraphQLArgument
-import graphql.schema.GraphQLDirective
 import graphql.schema.GraphQLDirectiveContainer
 import graphql.schema.GraphQLEnumValueDefinition
 import graphql.schema.GraphQLFieldDefinition
@@ -19,6 +18,7 @@ import graphql.schema.GraphQLObjectType
 import graphql.schema.GraphQLSchema
 import graphql.schema.GraphQLType
 import graphql.schema.GraphQLTypeUtil
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.utils.collections.BitVector
 
@@ -31,13 +31,13 @@ import viaduct.utils.collections.BitVector
  */
 internal class GraphQLSchemaDecoder(
     private val schema: GraphQLSchema,
-    private val types: Map<String, GJSchema.TypeDef>,
+    private val types: Map<String, SchemaWithData.TypeDef>,
 ) {
     // Cache for union membership and interface implementors (computed once)
-    private val unionMembership: Map<String, List<GJSchema.Union>> by lazy {
-        buildMap<String, MutableList<GJSchema.Union>> {
-            types.values.filterIsInstance<GJSchema.Union>().forEach { union ->
-                union.def.types.forEach { memberType ->
+    private val unionMembership: Map<String, List<SchemaWithData.Union>> by lazy {
+        buildMap<String, MutableList<SchemaWithData.Union>> {
+            types.values.filterIsInstance<SchemaWithData.Union>().forEach { union ->
+                union.gjDef.types.forEach { memberType ->
                     getOrPut(memberType.name) { mutableListOf() }.add(union)
                 }
             }
@@ -56,7 +56,7 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Core Decoding Primitives ==========
 
-    fun decodeTypeExpr(gtype: GraphQLType): ViaductSchema.TypeExpr<GJSchema.TypeDef> {
+    fun decodeTypeExpr(gtype: GraphQLType): ViaductSchema.TypeExpr<SchemaWithData.TypeDef> {
         var baseTypeNullable = true
         var listNullable = ViaductSchema.TypeExpr.NO_WRAPPERS
 
@@ -90,7 +90,7 @@ internal class GraphQLSchemaDecoder(
         return ViaductSchema.TypeExpr(baseTypeDef, baseTypeNullable, listNullable)
     }
 
-    private fun decodeTypeExprFromLang(type: Type<*>): ViaductSchema.TypeExpr<GJSchema.TypeDef> =
+    private fun decodeTypeExprFromLang(type: Type<*>): ViaductSchema.TypeExpr<SchemaWithData.TypeDef> =
         type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
             val baseTypeDef = types[baseTypeDefName]
                 ?: error("Type not found: $baseTypeDefName")
@@ -147,17 +147,17 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Cross-Reference Computation ==========
 
-    fun computeUnions(objectDef: GJSchema.Object): List<GJSchema.Union> = unionMembership[objectDef.name] ?: emptyList()
+    fun computeUnions(objectDef: SchemaWithData.Object): List<SchemaWithData.Union> = unionMembership[objectDef.name] ?: emptyList()
 
-    fun computePossibleObjectTypes(interfaceDef: GJSchema.Interface): Set<GJSchema.Object> {
-        val result = mutableSetOf<GJSchema.Object>()
+    fun computePossibleObjectTypes(interfaceDef: SchemaWithData.Interface): Set<SchemaWithData.Object> {
+        val result = mutableSetOf<SchemaWithData.Object>()
 
         fun collectObjectTypes(implType: GraphQLNamedType) {
             if (implType.name == interfaceDef.name) {
                 throw IllegalArgumentException("Cyclical inheritance.")
             }
             when (implType) {
-                is GraphQLObjectType -> result.add(types[implType.name] as GJSchema.Object)
+                is GraphQLObjectType -> result.add(types[implType.name] as SchemaWithData.Object)
                 is GraphQLInterfaceType -> {
                     interfaceImplementors[implType.name]?.forEach { collectObjectTypes(it) }
                 }
@@ -170,8 +170,8 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Scalar ==========
 
-    fun createScalarExtensions(scalarDef: GJSchema.Scalar): List<ViaductSchema.Extension<GJSchema.Scalar, Nothing>> {
-        val gjDef = scalarDef.def
+    fun createScalarExtensions(scalarDef: SchemaWithData.Scalar): List<ViaductSchema.Extension<SchemaWithData.Scalar, Nothing>> {
+        val gjDef = scalarDef.gjDef
         // GraphQLScalarType from UnExecutableSchemaGenerator loses extension definitions
         // (extensionDefinitions is always empty), but it merges all directives from both
         // base and extensions into the scalar's appliedDirectives. So we create extensions
@@ -227,8 +227,8 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Enum ==========
 
-    fun createEnumExtensions(enumDef: GJSchema.Enum): List<ViaductSchema.Extension<GJSchema.Enum, GJSchema.EnumValue>> {
-        val gjDef = enumDef.def
+    fun createEnumExtensions(enumDef: SchemaWithData.Enum): List<ViaductSchema.Extension<SchemaWithData.Enum, SchemaWithData.EnumValue>> {
+        val gjDef = enumDef.gjDef
         return (listOf(gjDef.definition) + gjDef.extensionDefinitions).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = enumDef,
@@ -262,14 +262,14 @@ internal class GraphQLSchemaDecoder(
 
     private fun createEnumValue(
         evDef: GraphQLEnumValueDefinition,
-        containingExtension: ViaductSchema.Extension<GJSchema.Enum, GJSchema.EnumValue>,
+        containingExtension: ViaductSchema.Extension<SchemaWithData.Enum, SchemaWithData.EnumValue>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ) = GJSchema.EnumValue(evDef, containingExtension, evDef.name, appliedDirectives)
+    ) = SchemaWithData.EnumValue(containingExtension, evDef.name, appliedDirectives, evDef)
 
     // ========== Input ==========
 
-    fun createInputExtensions(inputDef: GJSchema.Input): List<ViaductSchema.Extension<GJSchema.Input, GJSchema.Field>> {
-        val gjDef = inputDef.def
+    fun createInputExtensions(inputDef: SchemaWithData.Input): List<ViaductSchema.Extension<SchemaWithData.Input, SchemaWithData.Field>> {
+        val gjDef = inputDef.gjDef
         return (listOf(gjDef.definition) + gjDef.extensionDefinitions).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = inputDef,
@@ -303,9 +303,9 @@ internal class GraphQLSchemaDecoder(
 
     private fun createInputField(
         fieldDef: GraphQLInputObjectField,
-        containingExtension: ViaductSchema.Extension<GJSchema.Input, GJSchema.Field>,
+        containingExtension: ViaductSchema.Extension<SchemaWithData.Input, SchemaWithData.Field>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ): GJSchema.InputField {
+    ): SchemaWithData.Field {
         val hasDefault = fieldDef.hasSetDefaultValue()
         val defaultValue = if (hasDefault) {
             ValueConverter.convert(decodeTypeExpr(fieldDef.type), fieldDef.inputFieldDefaultValue)
@@ -313,21 +313,21 @@ internal class GraphQLSchemaDecoder(
             null
         }
         @Suppress("UNCHECKED_CAST")
-        return GJSchema.InputField(
-            fieldDef,
-            containingExtension as ViaductSchema.Extension<GJSchema.Record, GJSchema.Field>,
+        return SchemaWithData.Field(
+            containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
             fieldDef.name,
             decodeTypeExpr(fieldDef.type),
             appliedDirectives,
             hasDefault,
             defaultValue,
+            fieldDef, // data is GraphQLInputObjectField
         )
     }
 
     // ========== Interface ==========
 
-    fun createInterfaceExtensions(interfaceDef: GJSchema.Interface): List<ViaductSchema.ExtensionWithSupers<GJSchema.Interface, GJSchema.Field>> {
-        val gjDef = interfaceDef.def
+    fun createInterfaceExtensions(interfaceDef: SchemaWithData.Interface): List<ViaductSchema.ExtensionWithSupers<SchemaWithData.Interface, SchemaWithData.Field>> {
+        val gjDef = interfaceDef.gjDef
         return (listOf(gjDef.definition) + gjDef.extensionDefinitions).map { gjLangTypeDef ->
             ViaductSchema.ExtensionWithSupers.of(
                 def = interfaceDef,
@@ -339,7 +339,7 @@ internal class GraphQLSchemaDecoder(
                                 @Suppress("UNCHECKED_CAST")
                                 createOutputField(
                                     fieldDef,
-                                    containingExtension as ViaductSchema.Extension<GJSchema.Record, GJSchema.Field>,
+                                    containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
                                     decodeAppliedDirectives(fieldDef)
                                 )
                             }
@@ -352,7 +352,7 @@ internal class GraphQLSchemaDecoder(
                                 @Suppress("UNCHECKED_CAST")
                                 createOutputField(
                                     fieldDef,
-                                    containingExtension as ViaductSchema.Extension<GJSchema.Record, GJSchema.Field>,
+                                    containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
                                     decodeAppliedDirectivesFromLang(fd.directives)
                                 )
                             }
@@ -365,9 +365,9 @@ internal class GraphQLSchemaDecoder(
                     decodeAppliedDirectives(gjDef)
                 },
                 supers = if (gjLangTypeDef == null) {
-                    gjDef.interfaces.map { types[it.name] as GJSchema.Interface }
+                    gjDef.interfaces.map { types[it.name] as SchemaWithData.Interface }
                 } else {
-                    gjLangTypeDef.implements.map { types[(it as TypeName).name] as GJSchema.Interface }
+                    gjLangTypeDef.implements.map { types[(it as TypeName).name] as SchemaWithData.Interface }
                 },
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
@@ -376,8 +376,8 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Object ==========
 
-    fun createObjectExtensions(objectDef: GJSchema.Object): List<ViaductSchema.ExtensionWithSupers<GJSchema.Object, GJSchema.Field>> {
-        val gjDef = objectDef.def
+    fun createObjectExtensions(objectDef: SchemaWithData.Object): List<ViaductSchema.ExtensionWithSupers<SchemaWithData.Object, SchemaWithData.Field>> {
+        val gjDef = objectDef.gjDef
         return (listOf(gjDef.definition) + gjDef.extensionDefinitions).map { gjLangTypeDef ->
             ViaductSchema.ExtensionWithSupers.of(
                 def = objectDef,
@@ -389,7 +389,7 @@ internal class GraphQLSchemaDecoder(
                                 @Suppress("UNCHECKED_CAST")
                                 createOutputField(
                                     fieldDef,
-                                    containingExtension as ViaductSchema.Extension<GJSchema.Record, GJSchema.Field>,
+                                    containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
                                     decodeAppliedDirectives(fieldDef)
                                 )
                             }
@@ -402,7 +402,7 @@ internal class GraphQLSchemaDecoder(
                                 @Suppress("UNCHECKED_CAST")
                                 createOutputField(
                                     fieldDef,
-                                    containingExtension as ViaductSchema.Extension<GJSchema.Record, GJSchema.Field>,
+                                    containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
                                     decodeAppliedDirectivesFromLang(fd.directives)
                                 )
                             }
@@ -415,9 +415,9 @@ internal class GraphQLSchemaDecoder(
                     decodeAppliedDirectives(gjDef)
                 },
                 supers = if (gjLangTypeDef == null) {
-                    gjDef.interfaces.map { types[it.name] as GJSchema.Interface }
+                    gjDef.interfaces.map { types[it.name] as SchemaWithData.Interface }
                 } else {
-                    gjLangTypeDef.implements.map { types[(it as TypeName).name] as GJSchema.Interface }
+                    gjLangTypeDef.implements.map { types[(it as TypeName).name] as SchemaWithData.Interface }
                 },
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
@@ -426,18 +426,18 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Union ==========
 
-    fun createUnionExtensions(unionDef: GJSchema.Union): List<ViaductSchema.Extension<GJSchema.Union, GJSchema.Object>> {
-        val gjDef = unionDef.def
+    fun createUnionExtensions(unionDef: SchemaWithData.Union): List<ViaductSchema.Extension<SchemaWithData.Union, SchemaWithData.Object>> {
+        val gjDef = unionDef.gjDef
         return (listOf(gjDef.definition) + gjDef.extensionDefinitions).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = unionDef,
                 memberFactory = { _ ->
                     if (gjLangTypeDef == null) {
-                        gjDef.types.map { types[it.name] as GJSchema.Object }
+                        gjDef.types.map { types[it.name] as SchemaWithData.Object }
                     } else {
                         gjLangTypeDef.memberTypes
                             .filter { (it as TypeName).name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                            .map { types[(it as TypeName).name] as GJSchema.Object }
+                            .map { types[(it as TypeName).name] as SchemaWithData.Object }
                     }
                 },
                 isBase = gjLangTypeDef == gjDef.definition,
@@ -453,12 +453,8 @@ internal class GraphQLSchemaDecoder(
 
     // ========== Directive ==========
 
-    fun createDirective(gjDef: GraphQLDirective): GJSchema.Directive {
-        return GJSchema.Directive(gjDef, gjDef.name)
-    }
-
-    fun populate(directive: GJSchema.Directive) {
-        val gjDef = directive.def
+    fun populate(directive: SchemaWithData.Directive) {
+        val gjDef = directive.gjDef
         val isRepeatable = gjDef.isRepeatable
         val allowedLocations = gjDef.validLocations()
             .map { ViaductSchema.Directive.Location.valueOf(it.name) }
@@ -467,14 +463,14 @@ internal class GraphQLSchemaDecoder(
             ViaductSchema.SourceLocation(it)
         }
         val args = gjDef.arguments.map { argDef ->
-            GJSchema.DirectiveArg(
-                argDef,
+            SchemaWithData.DirectiveArg(
                 directive,
                 argDef.name,
                 decodeTypeExpr(argDef.type),
                 emptyList(), // Directive args don't have applied directives
                 decodeHasDefault(argDef),
                 decodeDefaultValue(argDef),
+                argDef, // data is GraphQLArgument
             )
         }
         directive.populate(isRepeatable, allowedLocations, sourceLocation, args)
@@ -484,34 +480,34 @@ internal class GraphQLSchemaDecoder(
 
     private fun createOutputField(
         fieldDef: GraphQLFieldDefinition,
-        containingExtension: ViaductSchema.Extension<GJSchema.Record, GJSchema.Field>,
+        containingExtension: ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>,
         appliedDirectives: List<ViaductSchema.AppliedDirective>
-    ): GJSchema.OutputField {
-        return GJSchema.OutputField(
-            fieldDef,
+    ): SchemaWithData.Field {
+        return SchemaWithData.Field(
             containingExtension,
             fieldDef.name,
             decodeTypeExpr(fieldDef.type),
             appliedDirectives,
             hasDefault = false,
             mDefaultValue = null,
+            data = fieldDef, // data is GraphQLFieldDefinition
             argsFactory = { field -> createFieldArgs(field, fieldDef) }
         )
     }
 
     private fun createFieldArgs(
-        field: GJSchema.OutputField,
+        field: SchemaWithData.Field,
         fieldDef: GraphQLFieldDefinition
-    ): List<GJSchema.FieldArg> =
+    ): List<SchemaWithData.FieldArg> =
         fieldDef.arguments.map { argDef ->
-            GJSchema.FieldArg(
+            SchemaWithData.FieldArg(
                 field,
-                argDef,
                 argDef.name,
                 decodeTypeExpr(argDef.type),
                 decodeAppliedDirectives(argDef),
                 decodeHasDefault(argDef),
                 decodeDefaultValue(argDef),
+                argDef, // data is GraphQLArgument
             )
         }
 }

@@ -8,12 +8,13 @@ import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirectiveContainer
 import graphql.schema.GraphQLNamedType
 import graphql.schema.GraphQLSchema
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
 import viaduct.invariants.InvariantChecker
 
 class GJSchemaCheck(
-    private val schema: GJSchema,
+    private val schema: SchemaWithData,
     private val gjSchema: GraphQLSchema,
     private val check: InvariantChecker = InvariantChecker(),
 ) {
@@ -32,13 +33,13 @@ class GJSchemaCheck(
         checkSourceLocationInvariants()
     }
 
-    private fun Iterable<GJSchema.Def>.checkAgreement(): Unit = forEach { it.checkAgreement() }
+    private fun Iterable<SchemaWithData.Def>.checkAgreement(): Unit = forEach { it.checkAgreement() }
 
-    private fun GJSchema.Def.checkAgreement() {
-        check.isEqualTo(def.name, name, "NAME_AGREEMENT")
-        if (def is GraphQLDirectiveContainer) {
+    private fun SchemaWithData.Def.checkAgreement() {
+        check.isEqualTo(gjDef.name, name, "NAME_AGREEMENT")
+        if (gjDef is GraphQLDirectiveContainer) {
             check.containsExactlyElementsIn(
-                (def as GraphQLDirectiveContainer).appliedDirectives.map { appliedDirective ->
+                (gjDef as GraphQLDirectiveContainer).appliedDirectives.map { appliedDirective ->
                     // Get directive definition to iterate over ALL arguments (not just explicitly provided ones)
                     val directiveDef = gjSchema.getDirective(appliedDirective.name)
                         ?: error("Directive @${appliedDirective.name} not found in schema.")
@@ -59,60 +60,60 @@ class GJSchemaCheck(
 
         check.pushContext(this.name)
         when (this) {
-            is GJSchema.FieldArg -> { }
-            is GJSchema.DirectiveArg -> { }
-            is GJSchema.Enum -> {
+            is SchemaWithData.FieldArg -> { }
+            is SchemaWithData.DirectiveArg -> { }
+            is SchemaWithData.Enum -> {
                 check.containsExactlyElementsIn(
-                    def.values.map { it.name },
+                    gjDef.values.map { it.name },
                     values.map { it.name },
                     "ENUM_VALUES_AGREE"
                 )
             }
-            is GJSchema.EnumValue -> { }
-            is GJSchema.Directive -> {
+            is SchemaWithData.EnumValue -> { }
+            is SchemaWithData.Directive -> {
                 args.checkAgreement()
             }
-            is GJSchema.Field -> {
+            is SchemaWithData.Field -> {
                 args.checkAgreement()
             }
-            is GJSchema.Input -> {
+            is SchemaWithData.Input -> {
                 check.containsExactlyElementsIn(
-                    def.fields.map { it.name },
+                    gjDef.fields.map { it.name },
                     fields.map { it.name },
                     "FIELDS_AGREE"
                 )
                 fields.checkAgreement()
             }
-            is GJSchema.Interface -> {
+            is SchemaWithData.Interface -> {
                 check.containsExactlyElementsIn(
-                    def.interfaces.map { it.name },
+                    gjDef.interfaces.map { it.name },
                     supers.map { it.name },
                     "SUPERS_AGREE"
                 )
                 check.containsExactlyElementsIn(
-                    def.fields.map { it.name },
+                    gjDef.fields.map { it.name },
                     fields.map { it.name },
                     "FIELDS_AGREE"
                 )
                 fields.checkAgreement()
             }
-            is GJSchema.Object -> {
+            is SchemaWithData.Object -> {
                 check.containsExactlyElementsIn(
-                    def.interfaces.map { it.name },
+                    gjDef.interfaces.map { it.name },
                     supers.map { it.name },
                     "SUPERS_AGREE"
                 )
                 check.containsExactlyElementsIn(
-                    def.fields.map { it.name },
+                    gjDef.fields.map { it.name },
                     fields.map { it.name },
                     "FIELDS_AGREE"
                 )
                 fields.checkAgreement()
                 for (union in schema.types.values) {
-                    if (union is GJSchema.Union) {
+                    if (union is SchemaWithData.Union) {
                         if (gjSchema.isPossibleType(
                                 gjSchema.getType(union.name) as GraphQLNamedType,
-                                gjSchema.getObjectType(def.name)!!
+                                gjSchema.getObjectType(gjDef.name)!!
                             )
                         ) {
                             check.isTrue(
@@ -130,15 +131,15 @@ class GJSchemaCheck(
                     }
                 }
             }
-            is GJSchema.Scalar -> { }
-            is GJSchema.Union -> {
+            is SchemaWithData.Scalar -> { }
+            is SchemaWithData.Union -> {
                 check.containsExactlyElementsIn(
-                    def.types.map { it.name },
+                    gjDef.types.map { it.name },
                     possibleObjectTypes.map { it.name },
                     "UNION_MEMBERS_AGREE"
                 )
             }
-            else -> throw IllegalArgumentException("Unknown type ($def).")
+            else -> throw IllegalArgumentException("Unknown type ($gjDef).")
         }
         check.popContext()
     }
@@ -220,12 +221,12 @@ class GJSchemaCheck(
             check.withContext(d.name) {
                 val expectedExts: List<Node<*>?> =
                     when (d) {
-                        is GJSchema.Enum -> listOf(d.def.definition) + d.def.extensionDefinitions
-                        is GJSchema.Input -> listOf(d.def.definition) + d.def.extensionDefinitions
-                        is GJSchema.Interface -> listOf(d.def.definition) + d.def.extensionDefinitions
-                        is GJSchema.Object -> listOf(d.def.definition) + d.def.extensionDefinitions
-                        is GJSchema.Scalar -> listOf(d.def.definition) + d.def.extensionDefinitions
-                        is GJSchema.Union -> listOf(d.def.definition) + d.def.extensionDefinitions
+                        is SchemaWithData.Enum -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
+                        is SchemaWithData.Input -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
+                        is SchemaWithData.Interface -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
+                        is SchemaWithData.Object -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
+                        is SchemaWithData.Scalar -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
+                        is SchemaWithData.Union -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
                         else -> throw IllegalArgumentException("Unknown type ($d).")
                     }
                 val expectedSourceNames = expectedExts.map { it?.sourceLocation?.sourceName }.filterNotNull()

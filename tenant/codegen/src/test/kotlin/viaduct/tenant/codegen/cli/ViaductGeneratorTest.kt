@@ -224,6 +224,14 @@ class ViaductGeneratorTest {
 
     @Test
     fun `test multiple schema files`() {
+        // Disable binary schema to test the text schema path
+        flagFile.writeText(
+            """
+                viaduct_build_flags = {
+                    "enable_binary_schema": "False",
+                }
+            """.trimIndent()
+        )
         val schemaFile2 = File(tempDir, "schema2.graphql").apply {
             createNewFile()
             writeText("type Mutation { update: String }")

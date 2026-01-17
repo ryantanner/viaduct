@@ -30,11 +30,11 @@ class BlackBoxGJComparisonTest {
         val registry = SchemaParser().parse(fullSdl)
 
         // GJSchemaRaw: directly from TypeDefinitionRegistry
-        val gjSchemaRaw = GJSchemaRaw.fromRegistry(registry)
+        val gjSchemaRaw = gjSchemaRawFromRegistry(registry)
 
         // GJSchema: from GraphQLSchema (which is built from the registry)
         val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
-        val gjSchema = GJSchema.fromSchema(graphQLSchema)
+        val gjSchema = gjSchemaFromSchema(graphQLSchema)
 
         // Both should produce equivalent ViaductSchema views
         val checker = InvariantChecker()

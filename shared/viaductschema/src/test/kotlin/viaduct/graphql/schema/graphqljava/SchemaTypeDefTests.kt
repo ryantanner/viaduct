@@ -4,6 +4,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 
 /**
  * Tests for hasCustomSchema property on ViaductSchema implementations.
@@ -44,7 +47,7 @@ class SchemaTypeDefTests {
 
     @Test
     fun `GJSchemaRaw hasCustomSchema is true for custom root type names`() {
-        val schema = GJSchemaRaw.fromRegistry(readTypes(customRootTypesSdl))
+        val schema = ViaductSchema.fromTypeDefinitionRegistry(readTypes(customRootTypesSdl))
 
         assertTrue(schema.hasCustomSchema, "hasCustomSchema should be true for custom root types")
         assertEquals("CustomQuery", schema.queryTypeDef?.name)
@@ -54,7 +57,7 @@ class SchemaTypeDefTests {
 
     @Test
     fun `GJSchemaRaw hasCustomSchema is false for standard names with explicit schema block`() {
-        val schema = GJSchemaRaw.fromRegistry(readTypes(standardNamesWithSchemaSdl))
+        val schema = ViaductSchema.fromTypeDefinitionRegistry(readTypes(standardNamesWithSchemaSdl))
 
         assertFalse(schema.hasCustomSchema, "hasCustomSchema should be false for standard names even with schema block")
         assertEquals("Query", schema.queryTypeDef?.name)
@@ -64,7 +67,7 @@ class SchemaTypeDefTests {
 
     @Test
     fun `GJSchemaRaw hasCustomSchema is false without explicit schema block`() {
-        val schema = GJSchemaRaw.fromRegistry(readTypes(noSchemaBlockSdl))
+        val schema = ViaductSchema.fromTypeDefinitionRegistry(readTypes(noSchemaBlockSdl))
 
         assertFalse(schema.hasCustomSchema, "hasCustomSchema should be false when no schema block is present")
     }
@@ -73,27 +76,27 @@ class SchemaTypeDefTests {
 
     @Test
     fun `GJSchema hasCustomSchema is true for custom root type names`() {
-        val schema = GJSchema.fromRegistry(readTypes(customRootTypesSdl))
+        val schema = ViaductSchema.fromGraphQLSchema(readTypes(customRootTypesSdl))
 
         assertTrue(schema.hasCustomSchema, "hasCustomSchema should be true for custom root types")
-        assertEquals("CustomQuery", schema.queryTypeDef.name)
+        assertEquals("CustomQuery", schema.queryTypeDef?.name)
         assertEquals("CustomMutation", schema.mutationTypeDef?.name)
         assertEquals("CustomSubscription", schema.subscriptionTypeDef?.name)
     }
 
     @Test
     fun `GJSchema hasCustomSchema is false for standard names with explicit schema block`() {
-        val schema = GJSchema.fromRegistry(readTypes(standardNamesWithSchemaSdl))
+        val schema = ViaductSchema.fromGraphQLSchema(readTypes(standardNamesWithSchemaSdl))
 
         assertFalse(schema.hasCustomSchema, "hasCustomSchema should be false for standard names even with schema block")
-        assertEquals("Query", schema.queryTypeDef.name)
+        assertEquals("Query", schema.queryTypeDef?.name)
         assertEquals("Mutation", schema.mutationTypeDef?.name)
         assertEquals("Subscription", schema.subscriptionTypeDef?.name)
     }
 
     @Test
     fun `GJSchema hasCustomSchema is false without explicit schema block`() {
-        val schema = GJSchema.fromRegistry(readTypes(noSchemaBlockSdl))
+        val schema = ViaductSchema.fromGraphQLSchema(readTypes(noSchemaBlockSdl))
 
         assertFalse(schema.hasCustomSchema, "hasCustomSchema should be false when no schema block is present")
     }

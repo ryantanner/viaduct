@@ -9,6 +9,7 @@ import graphql.language.UnionTypeDefinition
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 
 /** Tests for error checking in GJSchemaRaw TypeDef classes. */
@@ -16,7 +17,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `accessing unpopulated Scalar throws helpful error`() {
         val def = ScalarTypeDefinition.newScalarTypeDefinition().name("TestScalar").build()
-        val scalar = GJSchemaRaw.Scalar(def, emptyList(), def.name)
+        val scalar = SchemaWithData.Scalar(def.name, TypeDefData(def, emptyList()))
 
         val exception = shouldThrow<IllegalStateException> {
             scalar.appliedDirectives
@@ -28,7 +29,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `accessing unpopulated Enum throws helpful error`() {
         val def = EnumTypeDefinition.newEnumTypeDefinition().name("TestEnum").build()
-        val enum = GJSchemaRaw.Enum(def, emptyList(), def.name)
+        val enum = SchemaWithData.Enum(def.name, TypeDefData(def, emptyList()))
 
         val exception = shouldThrow<IllegalStateException> {
             enum.values
@@ -40,7 +41,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `accessing unpopulated Union throws helpful error`() {
         val def = UnionTypeDefinition.newUnionTypeDefinition().name("TestUnion").build()
-        val union = GJSchemaRaw.Union(def, emptyList(), def.name)
+        val union = SchemaWithData.Union(def.name, TypeDefData(def, emptyList()))
 
         val exception = shouldThrow<IllegalStateException> {
             union.possibleObjectTypes
@@ -52,7 +53,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `accessing unpopulated Interface throws helpful error`() {
         val def = InterfaceTypeDefinition.newInterfaceTypeDefinition().name("TestInterface").build()
-        val iface = GJSchemaRaw.Interface(def, emptyList(), def.name)
+        val iface = SchemaWithData.Interface(def.name, TypeDefData(def, emptyList()))
 
         val exception = shouldThrow<IllegalStateException> {
             iface.fields
@@ -64,7 +65,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `accessing unpopulated Object throws helpful error`() {
         val def = ObjectTypeDefinition.newObjectTypeDefinition().name("TestObject").build()
-        val obj = GJSchemaRaw.Object(def, emptyList(), def.name)
+        val obj = SchemaWithData.Object(def.name, TypeDefData(def, emptyList()))
 
         val exception = shouldThrow<IllegalStateException> {
             obj.fields
@@ -76,7 +77,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `accessing unpopulated Input throws helpful error`() {
         val def = InputObjectTypeDefinition.newInputObjectDefinition().name("TestInput").build()
-        val input = GJSchemaRaw.Input(def, emptyList(), def.name)
+        val input = SchemaWithData.Input(def.name, TypeDefData(def, emptyList()))
 
         val exception = shouldThrow<IllegalStateException> {
             input.fields
@@ -88,7 +89,7 @@ class GJSchemaRawErrorTest {
     @Test
     fun `calling populate twice on Scalar throws helpful error`() {
         val def = ScalarTypeDefinition.newScalarTypeDefinition().name("TestScalar").build()
-        val scalar = GJSchemaRaw.Scalar(def, emptyList(), def.name)
+        val scalar = SchemaWithData.Scalar(def.name, TypeDefData(def, emptyList()))
 
         // First populate succeeds
         val ext = ViaductSchema.Extension.of(
@@ -111,14 +112,21 @@ class GJSchemaRawErrorTest {
     @Test
     fun `calling populate twice on Enum throws helpful error`() {
         val def = EnumTypeDefinition.newEnumTypeDefinition().name("TestEnum").build()
-        val enum = GJSchemaRaw.Enum(def, emptyList(), def.name)
+        val enum = SchemaWithData.Enum(def.name, TypeDefData(def, emptyList()))
 
         // First populate succeeds
-        enum.populate(emptyList())
+        val ext = ViaductSchema.Extension.of(
+            def = enum,
+            memberFactory = { emptyList<SchemaWithData.EnumValue>() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+        enum.populate(listOf(ext))
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            enum.populate(emptyList())
+            enum.populate(listOf(ext))
         }
         exception.message shouldContain "TestEnum"
         exception.message shouldContain "populate"
@@ -127,14 +135,21 @@ class GJSchemaRawErrorTest {
     @Test
     fun `calling populate twice on Union throws helpful error`() {
         val def = UnionTypeDefinition.newUnionTypeDefinition().name("TestUnion").build()
-        val union = GJSchemaRaw.Union(def, emptyList(), def.name)
+        val union = SchemaWithData.Union(def.name, TypeDefData(def, emptyList()))
 
         // First populate succeeds
-        union.populate(emptyList())
+        val ext = ViaductSchema.Extension.of(
+            def = union,
+            memberFactory = { emptyList<SchemaWithData.Object>() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+        union.populate(listOf(ext))
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            union.populate(emptyList())
+            union.populate(listOf(ext))
         }
         exception.message shouldContain "TestUnion"
         exception.message shouldContain "populate"
@@ -143,14 +158,22 @@ class GJSchemaRawErrorTest {
     @Test
     fun `calling populate twice on Interface throws helpful error`() {
         val def = InterfaceTypeDefinition.newInterfaceTypeDefinition().name("TestInterface").build()
-        val iface = GJSchemaRaw.Interface(def, emptyList(), def.name)
+        val iface = SchemaWithData.Interface(def.name, TypeDefData(def, emptyList()))
 
         // First populate succeeds
-        iface.populate(emptyList(), emptySet())
+        val ext = ViaductSchema.ExtensionWithSupers.of(
+            def = iface,
+            memberFactory = { emptyList<SchemaWithData.Field>() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null,
+            supers = emptyList()
+        )
+        iface.populate(listOf(ext), emptySet())
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            iface.populate(emptyList(), emptySet())
+            iface.populate(listOf(ext), emptySet())
         }
         exception.message shouldContain "TestInterface"
         exception.message shouldContain "populate"
@@ -159,14 +182,22 @@ class GJSchemaRawErrorTest {
     @Test
     fun `calling populate twice on Object throws helpful error`() {
         val def = ObjectTypeDefinition.newObjectTypeDefinition().name("TestObject").build()
-        val obj = GJSchemaRaw.Object(def, emptyList(), def.name)
+        val obj = SchemaWithData.Object(def.name, TypeDefData(def, emptyList()))
 
         // First populate succeeds
-        obj.populate(emptyList(), emptyList())
+        val ext = ViaductSchema.ExtensionWithSupers.of(
+            def = obj,
+            memberFactory = { emptyList<SchemaWithData.Field>() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null,
+            supers = emptyList()
+        )
+        obj.populate(listOf(ext), emptyList())
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            obj.populate(emptyList(), emptyList())
+            obj.populate(listOf(ext), emptyList())
         }
         exception.message shouldContain "TestObject"
         exception.message shouldContain "populate"
@@ -175,14 +206,21 @@ class GJSchemaRawErrorTest {
     @Test
     fun `calling populate twice on Input throws helpful error`() {
         val def = InputObjectTypeDefinition.newInputObjectDefinition().name("TestInput").build()
-        val input = GJSchemaRaw.Input(def, emptyList(), def.name)
+        val input = SchemaWithData.Input(def.name, TypeDefData(def, emptyList()))
 
         // First populate succeeds
-        input.populate(emptyList())
+        val ext = ViaductSchema.Extension.of(
+            def = input,
+            memberFactory = { emptyList<SchemaWithData.Field>() },
+            isBase = true,
+            appliedDirectives = emptyList(),
+            sourceLocation = null
+        )
+        input.populate(listOf(ext))
 
         // Second populate throws
         val exception = shouldThrow<IllegalStateException> {
-            input.populate(emptyList())
+            input.populate(listOf(ext))
         }
         exception.message shouldContain "TestInput"
         exception.message shouldContain "populate"

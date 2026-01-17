@@ -4,10 +4,11 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 
 /**
- * Tests for BSchema population prevention and guarded property access.
+ * Tests for SchemaWithData population prevention and guarded property access.
  *
  * These tests verify that:
  * 1. Accessing properties on an unpopulated type throws IllegalStateException
@@ -20,7 +21,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Directive throws helpful error`() {
-        val directive = BSchema.Directive("TestDirective")
+        val directive = SchemaWithData.Directive("TestDirective")
 
         val exception = shouldThrow<IllegalStateException> {
             directive.isRepeatable
@@ -31,7 +32,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Scalar throws helpful error`() {
-        val scalar = BSchema.Scalar("TestScalar")
+        val scalar = SchemaWithData.Scalar("TestScalar")
 
         val exception = shouldThrow<IllegalStateException> {
             scalar.appliedDirectives
@@ -42,7 +43,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Scalar sourceLocation throws helpful error`() {
-        val scalar = BSchema.Scalar("TestScalar")
+        val scalar = SchemaWithData.Scalar("TestScalar")
 
         val exception = shouldThrow<IllegalStateException> {
             scalar.sourceLocation
@@ -53,7 +54,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Enum throws helpful error`() {
-        val enumType = BSchema.Enum("TestEnum")
+        val enumType = SchemaWithData.Enum("TestEnum")
 
         val exception = shouldThrow<IllegalStateException> {
             enumType.extensions
@@ -64,7 +65,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Union throws helpful error`() {
-        val union = BSchema.Union("TestUnion")
+        val union = SchemaWithData.Union("TestUnion")
 
         val exception = shouldThrow<IllegalStateException> {
             union.extensions
@@ -75,7 +76,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Interface throws helpful error`() {
-        val iface = BSchema.Interface("TestInterface")
+        val iface = SchemaWithData.Interface("TestInterface")
 
         val exception = shouldThrow<IllegalStateException> {
             iface.extensions
@@ -86,7 +87,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Input throws helpful error`() {
-        val input = BSchema.Input("TestInput")
+        val input = SchemaWithData.Input("TestInput")
 
         val exception = shouldThrow<IllegalStateException> {
             input.extensions
@@ -97,7 +98,7 @@ class PopulateOnceTest {
 
     @Test
     fun `accessing unpopulated Object throws helpful error`() {
-        val obj = BSchema.Object("TestObject")
+        val obj = SchemaWithData.Object("TestObject")
 
         val exception = shouldThrow<IllegalStateException> {
             obj.extensions
@@ -112,7 +113,7 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Directive throws helpful error`() {
-        val directive = BSchema.Directive("TestDirective")
+        val directive = SchemaWithData.Directive("TestDirective")
 
         // First populate succeeds
         directive.populate(
@@ -137,9 +138,9 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Scalar throws helpful error`() {
-        val scalar = BSchema.Scalar("TestScalar")
+        val scalar = SchemaWithData.Scalar("TestScalar")
 
-        val ext = ViaductSchema.Extension.of<BSchema.Scalar, Nothing>(
+        val ext = ViaductSchema.Extension.of<SchemaWithData.Scalar, Nothing>(
             def = scalar,
             memberFactory = { emptyList() },
             isBase = true,
@@ -160,10 +161,10 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Enum throws helpful error`() {
-        val enumType = BSchema.Enum("TestEnum")
+        val enumType = SchemaWithData.Enum("TestEnum")
 
         // First populate succeeds
-        val ext = ViaductSchema.Extension.of<BSchema.Enum, BSchema.EnumValue>(
+        val ext = ViaductSchema.Extension.of<SchemaWithData.Enum, SchemaWithData.EnumValue>(
             def = enumType,
             memberFactory = { emptyList() },
             isBase = true,
@@ -182,10 +183,10 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Union throws helpful error`() {
-        val union = BSchema.Union("TestUnion")
+        val union = SchemaWithData.Union("TestUnion")
 
         // First populate succeeds
-        val ext = ViaductSchema.Extension.of<BSchema.Union, BSchema.Object>(
+        val ext = ViaductSchema.Extension.of<SchemaWithData.Union, SchemaWithData.Object>(
             def = union,
             memberFactory = { emptyList() },
             isBase = true,
@@ -204,10 +205,10 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Interface throws helpful error`() {
-        val iface = BSchema.Interface("TestInterface")
+        val iface = SchemaWithData.Interface("TestInterface")
 
         // First populate succeeds
-        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Interface, BSchema.Field>(
+        val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Interface, SchemaWithData.Field>(
             def = iface,
             memberFactory = { emptyList() },
             isBase = true,
@@ -227,10 +228,10 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Input throws helpful error`() {
-        val input = BSchema.Input("TestInput")
+        val input = SchemaWithData.Input("TestInput")
 
         // First populate succeeds
-        val ext = ViaductSchema.Extension.of<BSchema.Input, BSchema.Field>(
+        val ext = ViaductSchema.Extension.of<SchemaWithData.Input, SchemaWithData.Field>(
             def = input,
             memberFactory = { emptyList() },
             isBase = true,
@@ -249,10 +250,10 @@ class PopulateOnceTest {
 
     @Test
     fun `calling populate twice on Object throws helpful error`() {
-        val obj = BSchema.Object("TestObject")
+        val obj = SchemaWithData.Object("TestObject")
 
         // First populate succeeds
-        val ext = ViaductSchema.ExtensionWithSupers.of<BSchema.Object, BSchema.Field>(
+        val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(
             def = obj,
             memberFactory = { emptyList() },
             isBase = true,
@@ -276,17 +277,17 @@ class PopulateOnceTest {
 
     @Test
     fun `Object possibleObjectTypes is not empty when cast to TypeDefImpl`() {
-        // This test verifies that BSchema.Object.possibleObjectTypes correctly
+        // This test verifies that SchemaWithData.Object.possibleObjectTypes correctly
         // returns setOf(this) even when accessed through the TypeDef base class.
         // This works because Object.possibleObjectTypes overrides the base class
         // implementation.
-        val obj = BSchema.Object("TestObject")
+        val obj = SchemaWithData.Object("TestObject")
 
         // Access through the concrete type
         obj.possibleObjectTypes.shouldNotBeEmpty()
 
         // Access through TypeDef - should still return the Object's override
-        val asTypeDef: BSchema.TypeDef = obj
+        val asTypeDef: SchemaWithData.TypeDef = obj
         asTypeDef.possibleObjectTypes.shouldNotBeEmpty()
     }
 }

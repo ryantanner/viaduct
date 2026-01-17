@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
 import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
+import viaduct.graphql.schema.graphqljava.gjSchemaRawFromRegistry
+import viaduct.graphql.schema.toTypeExpr
 
 class SchemaDiffTest {
     @Test
@@ -386,7 +387,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should compare IntValue and StringValue for Byte scalar`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val byteType = schema.types["Byte"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
@@ -399,7 +400,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should compare IntValue and StringValue for Short scalar`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val shortType = schema.types["Short"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
@@ -412,7 +413,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should compare IntValue and StringValue for Long scalar`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val longType = schema.types["Long"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
@@ -425,7 +426,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should detect different integral values`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val intType = schema.types["Int"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
@@ -439,7 +440,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should compare single-level lists of integral values`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Long")
         val diff = SchemaDiff(schema, schema)
 
@@ -465,7 +466,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should detect different list lengths`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Int")
         val diff = SchemaDiff(schema, schema)
 
@@ -489,7 +490,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should detect different list elements`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Long")
         val diff = SchemaDiff(schema, schema)
 
@@ -512,7 +513,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should compare nested lists of integral values`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val nestedListType = schema.toTypeExpr("!!!", "Byte")
         val diff = SchemaDiff(schema, schema)
 
@@ -563,7 +564,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should detect different nested list depths`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val nestedListType = schema.toTypeExpr("!!!", "Short")
         val diff = SchemaDiff(schema, schema)
 
@@ -611,7 +612,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should handle empty lists`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Int")
         val diff = SchemaDiff(schema, schema)
 
@@ -623,7 +624,7 @@ class SchemaDiffTest {
 
     @Test
     fun `areNodesEqual should handle null values`() {
-        val schema = GJSchemaRaw.fromRegistry(SchemaParser().parse(integralScalarsSDL))
+        val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val intType = schema.types["Int"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 

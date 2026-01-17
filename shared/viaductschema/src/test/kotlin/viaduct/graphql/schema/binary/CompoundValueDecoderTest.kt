@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream
 import java.math.BigInteger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 
 /**
  * Tests for ConstantsDecoder.decodeCompoundConstant using round-trip testing.
@@ -83,7 +84,7 @@ class CompoundValueDecoderTest {
             val input = ByteArrayInputStream(output.toByteArray())
             BInputStream(input, 1024).use { data ->
                 @Suppress("UNCHECKED_CAST")
-                val emptyDefs = emptyArray<BSchema.TopLevelDef?>() as Array<BSchema.TopLevelDef>
+                val emptyDefs = emptyArray<SchemaWithData.TopLevelDef?>() as Array<SchemaWithData.TopLevelDef>
                 val identifierTable = SortedArrayIdentifierTable.fromStrings(sortedNames)
                 val identifiers = IdentifiersDecoder(
                     identifierTable,

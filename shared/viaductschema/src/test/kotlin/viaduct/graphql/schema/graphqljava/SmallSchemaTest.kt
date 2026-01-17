@@ -179,21 +179,21 @@ class SmallSchemaTest {
     @Test
     fun `GJSchema and GJSchemaRaw produce identical schemas from registry`() {
         val registry = SchemaParser().parse(testSchemaString)
-        val gjSchema = GJSchema.fromRegistry(registry)
-        val gjSchemaRaw = GJSchemaRaw.fromRegistry(registry)
+        val gjSchema = gjSchemaFromRegistry(registry)
+        val gjSchemaRaw = gjSchemaRawFromRegistry(registry)
 
         SchemaDiff(gjSchema, gjSchemaRaw).diff().assertEmpty("\n")
     }
 
     @Test
     fun `GJSchema fromSchema matches GJSchemaRaw fromRegistry`() {
-        // This test compares GJSchema.fromSchema (GraphQLSchema path) against GJSchemaRaw.fromRegistry
+        // This test compares gjSchemaFromSchema (GraphQLSchema path) against gjSchemaRawFromRegistry
         // to ensure directive arguments are consistently populated with defaults/NullValue
         val registry = SchemaParser().parse(testSchemaString)
         val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
 
-        val gjSchema = GJSchema.fromSchema(graphQLSchema)
-        val gjSchemaRaw = GJSchemaRaw.fromRegistry(registry)
+        val gjSchema = gjSchemaFromSchema(graphQLSchema)
+        val gjSchemaRaw = gjSchemaRawFromRegistry(registry)
 
         SchemaDiff(gjSchema, gjSchemaRaw).diff().assertEmpty("\n")
     }
@@ -202,7 +202,7 @@ class SmallSchemaTest {
     fun `GJSchemaCheck validates GJSchema against GraphQLSchema`() {
         val registry = SchemaParser().parse(testSchemaString)
         val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
-        val gjSchema = GJSchema.fromSchema(graphQLSchema)
+        val gjSchema = gjSchemaFromSchema(graphQLSchema)
 
         GJSchemaCheck(gjSchema, graphQLSchema).assertEmpty("\n")
     }
@@ -211,23 +211,23 @@ class SmallSchemaTest {
     fun `toRegistry roundtrip preserves schema`() {
         val originalRegistry = SchemaParser().parse(testSchemaString)
 
-        var s = GJSchema.fromRegistry(originalRegistry).toRegistry(TypeDefinitionRegistryOptions.NO_STUBS)
+        var s = gjSchemaFromRegistry(originalRegistry).toRegistry(TypeDefinitionRegistryOptions.NO_STUBS)
         s.types()
             .filter { (key, _) -> key.startsWith("__") } // introspective types not present in raw registry
             .forEach { (_, value) -> s.remove(value) }
-        var sr = GJSchemaRaw.fromRegistry(originalRegistry).toRegistry(TypeDefinitionRegistryOptions.NO_STUBS)
-        SchemaDiff(GJSchema.fromRegistry(s), GJSchemaRaw.fromRegistry(sr)).diff().assertEmpty("\n")
+        var sr = gjSchemaRawFromRegistry(originalRegistry).toRegistry(TypeDefinitionRegistryOptions.NO_STUBS)
+        SchemaDiff(gjSchemaFromRegistry(s), gjSchemaRawFromRegistry(sr)).diff().assertEmpty("\n")
 
         // test with base and extension definitions merged
-        s = GJSchema.fromRegistry(originalRegistry).toRegistryWithoutExtensionTypeDefinitions(TypeDefinitionRegistryOptions.NO_STUBS)
+        s = gjSchemaFromRegistry(originalRegistry).toRegistryWithoutExtensionTypeDefinitions(TypeDefinitionRegistryOptions.NO_STUBS)
         s.types().filter { (key, _) -> key.startsWith("__") }.forEach { (_, value) -> s.remove(value) }
-        sr = GJSchemaRaw.fromRegistry(originalRegistry).toRegistryWithoutExtensionTypeDefinitions(TypeDefinitionRegistryOptions.NO_STUBS)
-        SchemaDiff(GJSchema.fromRegistry(s), GJSchemaRaw.fromRegistry(sr)).diff().assertEmpty("\n")
+        sr = gjSchemaRawFromRegistry(originalRegistry).toRegistryWithoutExtensionTypeDefinitions(TypeDefinitionRegistryOptions.NO_STUBS)
+        SchemaDiff(gjSchemaFromRegistry(s), gjSchemaRawFromRegistry(sr)).diff().assertEmpty("\n")
     }
 
     @Test
     fun `noop filter preserves schema identity`() {
-        val schema = GJSchema.fromRegistry(SchemaParser().parse(testSchemaString))
+        val schema = gjSchemaFromRegistry(SchemaParser().parse(testSchemaString))
         val noopFilteredSchema = schema.filter(NoopSchemaFilter())
         SchemaDiff(schema, noopFilteredSchema).diff().assertEmpty("\n")
     }
@@ -277,8 +277,8 @@ class SmallSchemaTest {
         val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
 
         // Create schemas via both paths
-        val gjSchema = GJSchema.fromSchema(graphQLSchema)
-        val gjSchemaRaw = GJSchemaRaw.fromRegistry(registry)
+        val gjSchema = gjSchemaFromSchema(graphQLSchema)
+        val gjSchemaRaw = gjSchemaRawFromRegistry(registry)
 
         // Verify that the input field has effectiveDefault behavior we expect
         val gjSchemaInput = gjSchema.types["TestInput"] as viaduct.graphql.schema.ViaductSchema.Input
@@ -353,8 +353,8 @@ class SmallSchemaTest {
         val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
 
         // Create schemas via both paths
-        val gjSchema = GJSchema.fromSchema(graphQLSchema)
-        val gjSchemaRaw = GJSchemaRaw.fromRegistry(registry)
+        val gjSchema = gjSchemaFromSchema(graphQLSchema)
+        val gjSchemaRaw = gjSchemaRawFromRegistry(registry)
 
         // Verify the Long field setup is correct
         val gjSchemaInput = gjSchema.types["TestInputWithLong"] as viaduct.graphql.schema.ViaductSchema.Input

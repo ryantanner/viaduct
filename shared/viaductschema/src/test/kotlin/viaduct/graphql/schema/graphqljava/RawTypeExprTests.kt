@@ -3,6 +3,7 @@ package viaduct.graphql.schema.graphqljava
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.unparseWrappers
 
@@ -48,13 +49,13 @@ class RawTypeExprTests {
         type Query { foo: T2 }
     """
 
-    private val schema = GJSchemaRaw.fromRegistry(readTypes(TEST_SCHEMA))
+    private val schema = gjSchemaRawFromRegistry(readTypes(TEST_SCHEMA))
 
     private fun tex(f: String): String {
         val coords = f.split('.')
         val tname: String = coords[0]
         val fname: String = coords[1]
-        val tdef = schema.types[tname] as GJSchemaRaw.Record
+        val tdef = schema.types[tname] as SchemaWithData.Record
         val ftype = tdef.field(fname)!!.type
         return ftype.unparseWrappers()
     }
@@ -126,7 +127,7 @@ class RawTypeExprTests {
         val coords = f.split('.')
         val tname: String = coords[0]
         val fname: String = coords[1]
-        val tdef = schema.types[tname] as GJSchemaRaw.Record
+        val tdef = schema.types[tname] as SchemaWithData.Record
         return tdef.field(fname)!!.type
     }
 

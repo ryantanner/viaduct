@@ -1,7 +1,6 @@
 package viaduct.graphql.schema.graphqljava
 
 import graphql.language.Directive
-import graphql.language.DirectiveDefinition
 import graphql.language.FieldDefinition
 import graphql.language.InputValueDefinition
 import graphql.language.Node
@@ -9,22 +8,21 @@ import graphql.language.Type
 import graphql.language.TypeName
 import graphql.language.Value
 import graphql.schema.idl.TypeDefinitionRegistry
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 
 /**
- * Transforms graphql-java TypeDefinitionRegistry elements into ViaductSchema elements.
+ * Transforms graphql-java TypeDefinitionRegistry elements into SchemaWithData elements.
  * This class centralizes all AST-to-ViaductSchema transformation logic, separating it
  * from the populate() methods in TypeDef classes.
- *
- * Analogous to BSchema's DefinitionsDecoder.
  */
 internal class TypeDefinitionRegistryDecoder(
     private val registry: TypeDefinitionRegistry,
-    private val types: Map<String, GJSchemaRaw.TypeDef>,
+    private val types: Map<String, SchemaWithData.TypeDef>,
 ) {
     // ========== Core Decoding Primitives ==========
 
-    fun decodeTypeExpr(type: Type<*>): ViaductSchema.TypeExpr<GJSchemaRaw.TypeDef> =
+    fun decodeTypeExpr(type: Type<*>): ViaductSchema.TypeExpr<SchemaWithData.TypeDef> =
         type.toTypeExpr { baseTypeDefName, baseTypeNullable, listNullable ->
             ViaductSchema.TypeExpr(
                 types[baseTypeDefName] ?: error("Type not found: $baseTypeDefName"),
@@ -54,12 +52,12 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Scalar ==========
 
-    fun createScalarExtensions(scalarDef: GJSchemaRaw.Scalar): List<ViaductSchema.Extension<GJSchemaRaw.Scalar, Nothing>> {
-        return (listOf(scalarDef.def) + scalarDef.extensionDefs).map { gjLangTypeDef ->
+    fun createScalarExtensions(scalarDef: SchemaWithData.Scalar): List<ViaductSchema.Extension<SchemaWithData.Scalar, Nothing>> {
+        return (listOf(scalarDef.gjrDef) + scalarDef.gjrExtensionDefs).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = scalarDef,
                 memberFactory = { _ -> emptyList() },
-                isBase = gjLangTypeDef == scalarDef.def,
+                isBase = gjLangTypeDef == scalarDef.gjrDef,
                 appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
@@ -68,21 +66,21 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Enum ==========
 
-    fun createEnumExtensions(enumDef: GJSchemaRaw.Enum): List<ViaductSchema.Extension<GJSchemaRaw.Enum, GJSchemaRaw.EnumValue>> {
-        return (listOf(enumDef.def) + enumDef.extensionDefs).map { gjLangTypeDef ->
+    fun createEnumExtensions(enumDef: SchemaWithData.Enum): List<ViaductSchema.Extension<SchemaWithData.Enum, SchemaWithData.EnumValue>> {
+        return (listOf(enumDef.gjrDef) + enumDef.gjrExtensionDefs).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = enumDef,
                 memberFactory = { containingExtension ->
                     gjLangTypeDef.enumValueDefinitions.map { evd ->
-                        GJSchemaRaw.EnumValue(
-                            evd,
+                        SchemaWithData.EnumValue(
                             containingExtension,
                             evd.name,
-                            decodeAppliedDirectives(evd.directives)
+                            decodeAppliedDirectives(evd.directives),
+                            evd
                         )
                     }
                 },
-                isBase = gjLangTypeDef == enumDef.def,
+                isBase = gjLangTypeDef == enumDef.gjrDef,
                 appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
@@ -91,24 +89,24 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Input ==========
 
-    fun createInputExtensions(inputDef: GJSchemaRaw.Input): List<ViaductSchema.Extension<GJSchemaRaw.Input, GJSchemaRaw.Field>> {
-        return (listOf(inputDef.def) + inputDef.extensionDefs).map { gjLangTypeDef ->
+    fun createInputExtensions(inputDef: SchemaWithData.Input): List<ViaductSchema.Extension<SchemaWithData.Input, SchemaWithData.Field>> {
+        return (listOf(inputDef.gjrDef) + inputDef.gjrExtensionDefs).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = inputDef,
                 memberFactory = { containingExtension ->
                     gjLangTypeDef.inputValueDefinitions.map { ivd ->
-                        GJSchemaRaw.InputField(
-                            ivd,
+                        SchemaWithData.Field(
                             containingExtension,
                             ivd.name,
                             decodeTypeExpr(ivd.type),
                             decodeAppliedDirectives(ivd.directives),
                             decodeHasDefault(ivd),
                             decodeDefaultValue(ivd),
+                            ivd
                         )
                     }
                 },
-                isBase = gjLangTypeDef == inputDef.def,
+                isBase = gjLangTypeDef == inputDef.gjrDef,
                 appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
@@ -117,8 +115,8 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Interface ==========
 
-    fun createInterfaceExtensions(interfaceDef: GJSchemaRaw.Interface): List<ViaductSchema.ExtensionWithSupers<GJSchemaRaw.Interface, GJSchemaRaw.Field>> {
-        return (listOf(interfaceDef.def) + interfaceDef.extensionDefs).map { gjLangTypeDef ->
+    fun createInterfaceExtensions(interfaceDef: SchemaWithData.Interface): List<ViaductSchema.ExtensionWithSupers<SchemaWithData.Interface, SchemaWithData.Field>> {
+        return (listOf(interfaceDef.gjrDef) + interfaceDef.gjrExtensionDefs).map { gjLangTypeDef ->
             ViaductSchema.ExtensionWithSupers.of(
                 def = interfaceDef,
                 memberFactory = { containingExtension ->
@@ -128,13 +126,13 @@ internal class TypeDefinitionRegistryDecoder(
                             @Suppress("UNCHECKED_CAST")
                             createOutputField(
                                 fieldDef,
-                                containingExtension as ViaductSchema.Extension<GJSchemaRaw.Record, GJSchemaRaw.Field>
+                                containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>
                             )
                         }
                 },
-                isBase = gjLangTypeDef == interfaceDef.def,
+                isBase = gjLangTypeDef == interfaceDef.gjrDef,
                 appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
-                supers = gjLangTypeDef.implements.map { types[(it as TypeName).name] as GJSchemaRaw.Interface },
+                supers = gjLangTypeDef.implements.map { types[(it as TypeName).name] as SchemaWithData.Interface },
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
         }
@@ -142,8 +140,8 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Object ==========
 
-    fun createObjectExtensions(objectDef: GJSchemaRaw.Object): List<ViaductSchema.ExtensionWithSupers<GJSchemaRaw.Object, GJSchemaRaw.Field>> {
-        return (listOf(objectDef.def) + objectDef.extensionDefs).map { gjLangTypeDef ->
+    fun createObjectExtensions(objectDef: SchemaWithData.Object): List<ViaductSchema.ExtensionWithSupers<SchemaWithData.Object, SchemaWithData.Field>> {
+        return (listOf(objectDef.gjrDef) + objectDef.gjrExtensionDefs).map { gjLangTypeDef ->
             ViaductSchema.ExtensionWithSupers.of(
                 def = objectDef,
                 memberFactory = { containingExtension ->
@@ -153,13 +151,13 @@ internal class TypeDefinitionRegistryDecoder(
                             @Suppress("UNCHECKED_CAST")
                             createOutputField(
                                 fieldDef,
-                                containingExtension as ViaductSchema.Extension<GJSchemaRaw.Record, GJSchemaRaw.Field>
+                                containingExtension as ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>
                             )
                         }
                 },
-                isBase = gjLangTypeDef == objectDef.def,
+                isBase = gjLangTypeDef == objectDef.gjrDef,
                 appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
-                supers = gjLangTypeDef.implements.map { types[(it as TypeName).name] as GJSchemaRaw.Interface },
+                supers = gjLangTypeDef.implements.map { types[(it as TypeName).name] as SchemaWithData.Interface },
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
         }
@@ -167,16 +165,16 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Union ==========
 
-    fun createUnionExtensions(unionDef: GJSchemaRaw.Union): List<ViaductSchema.Extension<GJSchemaRaw.Union, GJSchemaRaw.Object>> {
-        return (listOf(unionDef.def) + unionDef.extensionDefs).map { gjLangTypeDef ->
+    fun createUnionExtensions(unionDef: SchemaWithData.Union): List<ViaductSchema.Extension<SchemaWithData.Union, SchemaWithData.Object>> {
+        return (listOf(unionDef.gjrDef) + unionDef.gjrExtensionDefs).map { gjLangTypeDef ->
             ViaductSchema.Extension.of(
                 def = unionDef,
                 memberFactory = { _ ->
                     gjLangTypeDef.memberTypes
                         .filter { (it as TypeName).name != ViaductSchema.VIADUCT_IGNORE_SYMBOL }
-                        .map { types[(it as TypeName).name] as GJSchemaRaw.Object }
+                        .map { types[(it as TypeName).name] as SchemaWithData.Object }
                 },
-                isBase = gjLangTypeDef == unionDef.def,
+                isBase = gjLangTypeDef == unionDef.gjrDef,
                 appliedDirectives = decodeAppliedDirectives(gjLangTypeDef.directives),
                 sourceLocation = decodeSourceLocation(gjLangTypeDef)
             )
@@ -185,12 +183,8 @@ internal class TypeDefinitionRegistryDecoder(
 
     // ========== Directive ==========
 
-    fun createDirective(def: DirectiveDefinition): GJSchemaRaw.Directive {
-        return GJSchemaRaw.Directive(def, def.name)
-    }
-
-    fun populate(directive: GJSchemaRaw.Directive) {
-        val def = directive.def
+    fun populate(directive: SchemaWithData.Directive) {
+        val def = directive.gjrDef
         val isRepeatable = def.isRepeatable
         val allowedLocations = def.directiveLocations
             .map { ViaductSchema.Directive.Location.valueOf(it.name) }
@@ -203,7 +197,7 @@ internal class TypeDefinitionRegistryDecoder(
             } else {
                 null
             }
-            GJSchemaRaw.DirectiveArg(it, directive, it.name, decodeTypeExpr(it.type), emptyList(), hasDefault, default)
+            SchemaWithData.DirectiveArg(directive, it.name, decodeTypeExpr(it.type), emptyList(), hasDefault, default, it)
         }
         directive.populate(isRepeatable, allowedLocations, sourceLocation, args)
     }
@@ -212,24 +206,24 @@ internal class TypeDefinitionRegistryDecoder(
 
     private fun createOutputField(
         fieldDef: FieldDefinition,
-        containingExtension: ViaductSchema.Extension<GJSchemaRaw.Record, GJSchemaRaw.Field>
-    ): GJSchemaRaw.OutputField {
-        return GJSchemaRaw.OutputField(
-            fieldDef,
-            containingExtension,
-            fieldDef.name,
-            decodeTypeExpr(fieldDef.type),
-            decodeAppliedDirectives(fieldDef.directives),
+        containingExtension: ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>
+    ): SchemaWithData.Field {
+        return SchemaWithData.Field(
+            containingExtension = containingExtension,
+            name = fieldDef.name,
+            type = decodeTypeExpr(fieldDef.type),
+            appliedDirectives = decodeAppliedDirectives(fieldDef.directives),
             hasDefault = false,
             mDefaultValue = null,
+            data = fieldDef,
             argsFactory = { field -> createFieldArgs(field, fieldDef) }
         )
     }
 
     private fun createFieldArgs(
-        field: GJSchemaRaw.OutputField,
+        field: SchemaWithData.Field,
         fieldDef: FieldDefinition
-    ): List<GJSchemaRaw.FieldArg> =
+    ): List<SchemaWithData.FieldArg> =
         fieldDef.inputValueDefinitions.map { ivd ->
             val hasDefault = ivd.defaultValue != null
             val default = if (hasDefault) {
@@ -237,14 +231,14 @@ internal class TypeDefinitionRegistryDecoder(
             } else {
                 null
             }
-            GJSchemaRaw.FieldArg(
+            SchemaWithData.FieldArg(
                 field,
-                ivd,
                 ivd.name,
                 decodeTypeExpr(ivd.type),
                 decodeAppliedDirectives(ivd.directives),
                 hasDefault,
                 default,
+                ivd
             )
         }
 }

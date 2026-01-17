@@ -131,7 +131,7 @@ interface ViaductSchema {
         filter: SchemaFilter,
         schemaInvariantOptions: SchemaInvariantOptions = SchemaInvariantOptions.DEFAULT,
     ): ViaductSchema =
-        FilteredSchema(
+        filteredSchema(
             filter,
             this.types.entries,
             directives.entries,

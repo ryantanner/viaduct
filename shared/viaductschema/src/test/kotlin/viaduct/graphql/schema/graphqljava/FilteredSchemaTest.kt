@@ -8,13 +8,14 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import viaduct.graphql.schema.FilteredSchema
 import viaduct.graphql.schema.SchemaFilter
 import viaduct.graphql.schema.SchemaInvariantOptions
+import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.test.SchemaDiff
+import viaduct.graphql.schema.unfilteredDef
 import viaduct.invariants.InvariantChecker
 
 // TODO - Gradle doesn't seem to like this -- strange!!
@@ -202,29 +203,29 @@ class FilteredSchemaTest {
     fun `test unfilteredDef`() {
         val filteredSchema = filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep"))
 
-        val filteredEnum = filteredSchema.types["EnumKeep"] as FilteredSchema.Enum<*>
-        filteredEnum.checkUnfilteredDef(GJSchema.Enum::class)
+        val filteredEnum = filteredSchema.types["EnumKeep"] as SchemaWithData.Enum
+        filteredEnum.checkUnfilteredDef(SchemaWithData.Enum::class)
 
-        val filteredEnumValue = filteredEnum.values.first { it.name == "A" }
-        filteredEnumValue.checkUnfilteredDef(GJSchema.EnumValue::class)
+        val filteredEnumValue = filteredEnum.values.first { it.name == "A" } as SchemaWithData.EnumValue
+        filteredEnumValue.checkUnfilteredDef(SchemaWithData.EnumValue::class)
 
-        val filteredInput = filteredSchema.types["InputKeep"] as FilteredSchema.Input<*>
-        filteredInput.checkUnfilteredDef(GJSchema.Input::class)
+        val filteredInput = filteredSchema.types["InputKeep"] as SchemaWithData.Input
+        filteredInput.checkUnfilteredDef(SchemaWithData.Input::class)
 
-        val filteredObj = filteredSchema.types["ObjectKeep"] as FilteredSchema.Object<*>
-        filteredObj.checkUnfilteredDef(GJSchema.Object::class)
+        val filteredObj = filteredSchema.types["ObjectKeep"] as SchemaWithData.Object
+        filteredObj.checkUnfilteredDef(SchemaWithData.Object::class)
 
-        val filteredField = filteredObj.field("c") as FilteredSchema.Field
-        filteredField.checkUnfilteredDef(GJSchema.Field::class)
+        val filteredField = filteredObj.field("c") as SchemaWithData.Field
+        filteredField.checkUnfilteredDef(SchemaWithData.Field::class)
 
-        val filteredArg = filteredField.args.first { it.name == "a1" }
-        filteredArg.checkUnfilteredDef(GJSchema.FieldArg::class)
+        val filteredArg = filteredField.args.first { it.name == "a1" } as SchemaWithData.FieldArg
+        filteredArg.checkUnfilteredDef(SchemaWithData.FieldArg::class)
 
-        val filteredUnion = filteredSchema.types["UnionKeep"] as FilteredSchema.Union<*>
-        filteredUnion.checkUnfilteredDef(GJSchema.Union::class)
+        val filteredUnion = filteredSchema.types["UnionKeep"] as SchemaWithData.Union
+        filteredUnion.checkUnfilteredDef(SchemaWithData.Union::class)
 
-        val filteredInterface = filteredSchema.types["InterfaceKeep"] as FilteredSchema.Interface<*>
-        filteredInterface.checkUnfilteredDef(GJSchema.Interface::class)
+        val filteredInterface = filteredSchema.types["InterfaceKeep"] as SchemaWithData.Interface
+        filteredInterface.checkUnfilteredDef(SchemaWithData.Interface::class)
     }
 
     @Test
@@ -317,7 +318,7 @@ class FilteredSchemaTest {
         }
     }
 
-    private fun FilteredSchema.Def<*>.checkUnfilteredDef(expectedUnfilteredDefClass: KClass<out ViaductSchema.Def>) {
+    private fun SchemaWithData.Def.checkUnfilteredDef(expectedUnfilteredDefClass: KClass<out ViaductSchema.Def>) {
         assertTrue(expectedUnfilteredDefClass.isInstance(this.unfilteredDef))
         assertEquals(this.name, this.unfilteredDef.name)
     }

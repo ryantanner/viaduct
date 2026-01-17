@@ -5,15 +5,20 @@ import graphql.schema.idl.TypeDefinitionRegistry
 import java.io.File
 import java.net.URL
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.graphqljava.gjSchemaFromFiles
+import viaduct.graphql.schema.graphqljava.gjSchemaFromRegistry
+import viaduct.graphql.schema.graphqljava.gjSchemaFromSchema
+import viaduct.graphql.schema.graphqljava.gjSchemaFromURLs
+import viaduct.graphql.schema.graphqljava.gjSchemaRawFromFiles
+import viaduct.graphql.schema.graphqljava.gjSchemaRawFromRegistry
+import viaduct.graphql.schema.graphqljava.gjSchemaRawFromURLs
 import viaduct.utils.timer.Timer
 
 /**
  * Creates a [GraphQLSchema] from SDL and uses it to create a
  * [ViaductSchema].
  */
-fun ViaductSchema.Companion.fromGraphQLSchema(inputFiles: List<URL>,): ViaductSchema = GJSchema.fromURLs(inputFiles)
+fun ViaductSchema.Companion.fromGraphQLSchema(inputFiles: List<URL>,): ViaductSchema = gjSchemaFromURLs(inputFiles)
 
 /**
  * Creates a [GraphQLSchema] from SDL and uses it to create a
@@ -22,7 +27,7 @@ fun ViaductSchema.Companion.fromGraphQLSchema(inputFiles: List<URL>,): ViaductSc
 fun ViaductSchema.Companion.fromGraphQLSchema(
     inputFiles: List<File>,
     timer: Timer = Timer(),
-): ViaductSchema = GJSchema.fromFiles(inputFiles, timer)
+): ViaductSchema = gjSchemaFromFiles(inputFiles, timer)
 
 /**
  * Creates a [GraphQLSchema] from [registry] and uses it to
@@ -31,16 +36,16 @@ fun ViaductSchema.Companion.fromGraphQLSchema(
 fun ViaductSchema.Companion.fromGraphQLSchema(
     registry: TypeDefinitionRegistry,
     timer: Timer = Timer(),
-): ViaductSchema = GJSchema.fromRegistry(registry, timer)
+): ViaductSchema = gjSchemaFromRegistry(registry, timer)
 
 /** Creates a [ViaductSchema] from a [GraphQLSchema]. */
-fun ViaductSchema.Companion.fromGraphQLSchema(schema: GraphQLSchema,): ViaductSchema = GJSchema.fromSchema(schema)
+fun ViaductSchema.Companion.fromGraphQLSchema(schema: GraphQLSchema,): ViaductSchema = gjSchemaFromSchema(schema)
 
 /**
  * Creates a [TypeDefinitionRegistry] from SDL and uses it to
  * create a [ViaductSchema].
  */
-fun ViaductSchema.Companion.fromTypeDefinitionRegistry(inputFiles: List<URL>,): ViaductSchema = GJSchemaRaw.fromURLs(inputFiles)
+fun ViaductSchema.Companion.fromTypeDefinitionRegistry(inputFiles: List<URL>,): ViaductSchema = gjSchemaRawFromURLs(inputFiles)
 
 /**
  * Creates a [TypeDefinitionRegistry] from SDL and uses it to
@@ -49,7 +54,7 @@ fun ViaductSchema.Companion.fromTypeDefinitionRegistry(inputFiles: List<URL>,): 
 fun ViaductSchema.Companion.fromTypeDefinitionRegistry(
     inputFiles: List<File>,
     timer: Timer = Timer(),
-): ViaductSchema = GJSchemaRaw.fromFiles(inputFiles, timer)
+): ViaductSchema = gjSchemaRawFromFiles(inputFiles, timer)
 
 /**
  * Create a [ViaductSchema] from a [TypeDefinitionRegistry]
@@ -57,4 +62,4 @@ fun ViaductSchema.Companion.fromTypeDefinitionRegistry(
 fun ViaductSchema.Companion.fromTypeDefinitionRegistry(
     registry: TypeDefinitionRegistry,
     timer: Timer = Timer(),
-): ViaductSchema = GJSchemaRaw.fromRegistry(registry, timer)
+): ViaductSchema = gjSchemaRawFromRegistry(registry, timer)

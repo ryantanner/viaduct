@@ -54,3 +54,19 @@ fun parseWrappers(wrappers: String): BitVector {
     }
     return result
 }
+
+/**
+ * Extension function to create a TypeExpr from wrapper string notation.
+ * This is the inverse of [unparseWrappers].
+ */
+fun SchemaWithData.toTypeExpr(
+    wrappers: String,
+    baseString: String
+): ViaductSchema.TypeExpr<SchemaWithData.TypeDef> {
+    val baseTypeDef = requireNotNull(this.types[baseString]) {
+        "Type not found: $baseString"
+    }
+    val listNullable = parseWrappers(wrappers)
+    val baseNullable = (wrappers.last() == '?')
+    return ViaductSchema.TypeExpr(baseTypeDef, baseNullable, listNullable)
+}
