@@ -12,6 +12,8 @@ import graphql.schema.idl.SchemaParser
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.test.BUILTIN_SCALARS
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.graphql.schema.test.mkSchemaWithSourceLocations
@@ -58,7 +60,7 @@ class ToGraphQLSchemaEdgeCaseTest {
         val sdl = """type Query { foo: String }"""
         val tdr = SchemaParser().parse(sdl)
         val originalSchema = SchemaGenerator().makeExecutableSchema(tdr, RuntimeWiring.MOCKED_WIRING)
-        val viaductSchema = GJSchema.fromSchema(originalSchema)
+        val viaductSchema = ViaductSchema.fromGraphQLSchema(originalSchema)
 
         val convertedSchema = viaductSchema.toGraphQLSchema(
             scalarsNeeded = emptySet(),
@@ -189,10 +191,10 @@ class ToGraphQLSchemaEdgeCaseTest {
         ) {
             val tdr = SchemaParser().parse(sdl)
             val expectedGraphQLSchema = SchemaGenerator().makeExecutableSchema(tdr, RuntimeWiring.MOCKED_WIRING)
-            val expectedViaductSchema = GJSchema.fromSchema(expectedGraphQLSchema)
+            val expectedViaductSchema = ViaductSchema.fromGraphQLSchema(expectedGraphQLSchema)
 
             val actualGraphQLSchema = expectedViaductSchema.toGraphQLSchema(scalarsNeeded)
-            val actualViaductSchema = GJSchema.fromSchema(actualGraphQLSchema)
+            val actualViaductSchema = ViaductSchema.fromGraphQLSchema(actualGraphQLSchema)
 
             val schemaDiffResult = SchemaDiff(expectedViaductSchema, actualViaductSchema).diff()
             schemaDiffResult.assertEmpty()
@@ -207,7 +209,7 @@ class ToGraphQLSchemaEdgeCaseTest {
         ): graphql.schema.GraphQLSchema {
             val tdr = SchemaParser().parse(sdl)
             val originalSchema = SchemaGenerator().makeExecutableSchema(tdr, RuntimeWiring.MOCKED_WIRING)
-            val viaductSchema = GJSchema.fromSchema(originalSchema)
+            val viaductSchema = ViaductSchema.fromGraphQLSchema(originalSchema)
             return viaductSchema.toGraphQLSchema(scalarsNeeded)
         }
     }

@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 
 /**
  * Tests for public API methods on binary schema types.
@@ -28,12 +30,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val enumType = bschema.types["Status"] as ViaductSchema.Enum
         val activeValue = enumType.value("ACTIVE")
@@ -51,12 +53,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val enumType = bschema.types["Color"] as ViaductSchema.Enum
         assertNull(enumType.value("YELLOW"))
@@ -75,12 +77,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val queryType = bschema.types["Query"] as ViaductSchema.Object
         val field1 = queryType.field("field1")
@@ -101,12 +103,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val userType = bschema.types["User"] as ViaductSchema.Object
         assertNull(userType.field("email"))
@@ -124,12 +126,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val enumType = bschema.types["Status"]!!
         assert(enumType.toString().contains("Status"))
@@ -153,12 +155,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val enumType = bschema.types["Status"] as ViaductSchema.Enum
         val activeValue = enumType.value("ACTIVE")!!
@@ -175,12 +177,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val queryType = bschema.types["Query"] as ViaductSchema.Object
         val field = queryType.field("user")!!
@@ -199,12 +201,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val directive = bschema.directives["deprecated"]!!
         assert(directive.toString().contains("deprecated"))
@@ -222,12 +224,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val userType = bschema.types["User"] as ViaductSchema.Record
         val field = userType.field(listOf("name"))
@@ -251,12 +253,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val userType = bschema.types["User"] as ViaductSchema.Record
         val field = userType.field(listOf("address", "street"))
@@ -279,12 +281,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val userType = bschema.types["User"] as ViaductSchema.Record
         assertThrows<IllegalArgumentException> {
@@ -305,12 +307,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         val queryType = bschema.types["Query"] as ViaductSchema.Record
         assertThrows<IllegalArgumentException> {
@@ -336,12 +338,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         // Test queryTypeDef
         assertNotNull(bschema.queryTypeDef)
@@ -366,12 +368,12 @@ class SchemaApiTest {
 
         val schema = run {
             val tdr = SchemaParser().parse("$builtins\n$sdl")
-            GJSchemaRaw.fromRegistry(tdr)
+            ViaductSchema.fromTypeDefinitionRegistry(tdr)
         }
 
         val tmp = ByteArrayOutputStream()
-        writeBSchema(schema, tmp)
-        val bschema = readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        schema.toBinaryFile(tmp)
+        val bschema = ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
 
         assertNotNull(bschema.queryTypeDef)
         assertNull(bschema.mutationTypeDef)

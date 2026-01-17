@@ -47,35 +47,11 @@ import graphql.schema.GraphQLUnionType
 import viaduct.graphql.schema.ViaductSchema
 
 /**
- * A passthrough Coercing implementation for custom scalars that just returns values as-is.
- * This is suitable for creating an unexecutable schema representation.
+ * This function is a prototype for the time being - used to take
+ * some preliminary performance measurements as we try to imporve
+ * our schema-build times.  Please don't use for production
+ * purposes!!
  */
-private object PassthroughCoercing : Coercing<Any, Any> {
-    override fun serialize(dataFetcherResult: Any): Any = dataFetcherResult
-
-    override fun parseValue(input: Any): Any = input
-
-    override fun parseLiteral(input: Any): Any = input
-
-    override fun parseLiteral(
-        input: Value<*>,
-        variables: CoercedVariables,
-        graphQLContext: GraphQLContext,
-        locale: java.util.Locale
-    ): Any? {
-        return when (input) {
-            is StringValue -> input.value
-            is IntValue -> input.value
-            is FloatValue -> input.value
-            is BooleanValue -> input.isValue
-            is NullValue -> null
-            is ArrayValue -> input.values.map { parseLiteral(it, variables, graphQLContext, locale) }
-            is ObjectValue -> input.objectFields.associate { it.name to parseLiteral(it.value, variables, graphQLContext, locale) }
-            else -> input
-        }
-    }
-}
-
 fun ViaductSchema.toGraphQLSchema(
     scalarsNeeded: Set<String> = emptySet(),
     additionalScalars: Set<String> = emptySet(),
@@ -571,3 +547,33 @@ private class GraphQLJavaSchemaBuilder(
  * graphql-java's Value<*> classes with our own, and this will then be needed.
  */
 private fun toGraphQLValue(value: Value<*>): Value<*> = value
+
+/**
+ * A passthrough Coercing implementation for custom scalars that just returns values as-is.
+ * This is suitable for creating an unexecutable schema representation.
+ */
+private object PassthroughCoercing : Coercing<Any, Any> {
+    override fun serialize(dataFetcherResult: Any): Any = dataFetcherResult
+
+    override fun parseValue(input: Any): Any = input
+
+    override fun parseLiteral(input: Any): Any = input
+
+    override fun parseLiteral(
+        input: Value<*>,
+        variables: CoercedVariables,
+        graphQLContext: GraphQLContext,
+        locale: java.util.Locale
+    ): Any? {
+        return when (input) {
+            is StringValue -> input.value
+            is IntValue -> input.value
+            is FloatValue -> input.value
+            is BooleanValue -> input.isValue
+            is NullValue -> null
+            is ArrayValue -> input.values.map { parseLiteral(it, variables, graphQLContext, locale) }
+            is ObjectValue -> input.objectFields.associate { it.name to parseLiteral(it.value, variables, graphQLContext, locale) }
+            else -> input
+        }
+    }
+}

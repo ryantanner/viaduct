@@ -7,6 +7,7 @@ import java.io.InputStream
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
 
 /**
  * Tests for error handling during binary schema decoding.
@@ -329,7 +330,7 @@ class DecodingErrorHandlingTest {
     @Test
     fun `Invalid magic number throws InvalidFileFormatException`() {
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(makeHeaderStream(0x7654_3210, FILE_VERSION))
+            ViaductSchema.fromBinaryFile(makeHeaderStream(0x7654_3210, FILE_VERSION))
         }
         assertMessageContains("Invalid magic number", exception)
     }
@@ -337,7 +338,7 @@ class DecodingErrorHandlingTest {
     @Test
     fun `Unsupported file version throws InvalidFileFormatException`() {
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(makeHeaderStream(MAGIC_NUMBER, 0x000_00200))
+            ViaductSchema.fromBinaryFile(makeHeaderStream(MAGIC_NUMBER, 0x000_00200))
         }
         assertMessageContains("Unsupported version", exception)
     }
@@ -345,7 +346,7 @@ class DecodingErrorHandlingTest {
     @Test
     fun `Max identifier length exceeded throws InvalidFileFormatException`() {
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(makeHeaderStream(MAGIC_NUMBER, FILE_VERSION, 1_000_000))
+            ViaductSchema.fromBinaryFile(makeHeaderStream(MAGIC_NUMBER, FILE_VERSION, 1_000_000))
         }
         assertMessageContains("Max identifier length", exception)
     }
@@ -410,7 +411,7 @@ class DecodingErrorHandlingTest {
 
         val input = ByteArrayInputStream(baos.toByteArray())
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(input)
+            ViaductSchema.fromBinaryFile(input)
         }
         assertMessageContains("Invalid kind code", exception)
     }
@@ -449,7 +450,7 @@ class DecodingErrorHandlingTest {
 
         val input = ByteArrayInputStream(baos.toByteArray())
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(input)
+            ViaductSchema.fromBinaryFile(input)
         }
         assertMessageContains("definition stubs", exception)
     }
@@ -491,7 +492,7 @@ class DecodingErrorHandlingTest {
 
         val input = ByteArrayInputStream(baos.toByteArray())
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(input)
+            ViaductSchema.fromBinaryFile(input)
         }
         assertMessageContains("Invalid source locations section magic", exception)
     }
@@ -545,7 +546,7 @@ class DecodingErrorHandlingTest {
 
         val input = ByteArrayInputStream(baos.toByteArray())
         val exception = assertThrows<InvalidFileFormatException> {
-            readBSchema(input)
+            ViaductSchema.fromBinaryFile(input)
         }
         assertMessageContains("Invalid type expressions section magic", exception)
     }

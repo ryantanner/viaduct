@@ -9,13 +9,14 @@
  */
 package viaduct.graphql.schema.binary
 
-import graphql.schema.GraphQLSchema
 import graphql.schema.idl.SchemaParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.BUILTIN_SCALARS
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.graphql.schema.test.mkSchemaWithSourceLocations
@@ -33,10 +34,10 @@ internal fun checkRoundTrip(
 
     // Turn into a BSchema file
     val tmp = ByteArrayOutputStream()
-    writeBSchema(expectedSchema, tmp)
+    expectedSchema.toBinaryFile(tmp)
 
     val bfile = ByteArrayInputStream(tmp.toByteArray())
-    val actual = readBSchema(bfile)
+    val actual = ViaductSchema.fromBinaryFile(bfile)
 
     // Check invariants on decoded schema
     checkBridgeSchemaInvariants(actual, checker)
@@ -58,23 +59,19 @@ internal fun assertRoundTrip(expectedSchema: ViaductSchema) {
 
 /**
  * Convenience wrapper that parses SDL and calls the core assertRoundTrip.
- * The [extras] parameter deals with strange behavior of schema builder
- * when it comes to pre-defined scalars. If you call
- * [GraphQLSchema.Builder.additionalType] on a scalar that is
- * not "used", then you (sometimes) get a "can't define a
- * type twice" error (because graphql-java adds it). However, if
- * you "use" it without adding it, you'll get a missing type
- * error. I can't figure out the rule for when you do and don't
- * need to add these types yourself.
+ *
+ * @param sdl The schema SDL to test
+ * @param extras Optional SDL to prepend (e.g., built-in scalars). Pass empty string for no extras.
+ *               When not specified, no extras are added - the SDL is assumed to be complete.
  */
 internal fun assertRoundTrip(
     sdl: String,
-    extras: String = BUILTIN_SCALARS
+    extras: String = ""
 ) {
-    val fullSdl = "$extras\n$sdl"
+    val fullSdl = if (extras.isEmpty()) sdl else "$extras\n$sdl"
     try {
         val tdr = SchemaParser().parse(fullSdl)
-        val schema = GJSchemaRaw.fromRegistry(tdr)
+        val schema = ViaductSchema.fromTypeDefinitionRegistry(tdr)
         assertRoundTrip(schema)
     } catch (e: Exception) {
         throw AssertionError("$fullSdl", e)

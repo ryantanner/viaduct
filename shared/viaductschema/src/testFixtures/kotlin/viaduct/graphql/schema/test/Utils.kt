@@ -10,7 +10,7 @@ import org.reflections.scanners.Scanners
 import org.reflections.util.ClasspathHelper
 import org.reflections.util.ConfigurationBuilder
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.graphqljava.readTypesFromURLs
 
 private val MIN_SCHEMA: String = """
@@ -25,7 +25,7 @@ private val MIN_SCHEMA: String = """
 
 """.trimIndent()
 
-fun mkSchema(schema: String): ViaductSchema = GJSchemaRaw.fromRegistry(SchemaParser().parse(MIN_SCHEMA + schema))
+fun mkSchema(schema: String): ViaductSchema = ViaductSchema.fromTypeDefinitionRegistry(SchemaParser().parse(MIN_SCHEMA + schema))
 
 fun mkGraphQLSchema(schema: String): GraphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(SchemaParser().parse(MIN_SCHEMA + schema))
 
@@ -64,7 +64,7 @@ fun loadGraphQLSchema(schemaResourcePath: String? = null): ViaductSchema {
         throw IllegalStateException("Could not find any graphqls files in the classpath ($packageWithSchema)")
     }
 
-    return GJSchemaRaw.fromRegistry(readTypesFromURLs(paths))
+    return ViaductSchema.fromTypeDefinitionRegistry(readTypesFromURLs(paths))
 }
 
 /**
@@ -114,7 +114,7 @@ fun mkSchemaWithSourceLocations(
         tdr
     }
 
-    return GJSchemaRaw.fromRegistry(finalTdr)
+    return ViaductSchema.fromTypeDefinitionRegistry(finalTdr)
 }
 
 /**

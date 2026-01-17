@@ -14,7 +14,6 @@ class SchemaDiff(
     private val expected: ViaductSchema,
     private val actual: ViaductSchema,
     private val checker: InvariantChecker = InvariantChecker(),
-    private val extraDiffs: ExtraDiffsVisitor = object : ExtraDiffsVisitor { },
     private val includeIntrospectiveTypes: Boolean = false
 ) {
     private var done = false
@@ -117,9 +116,6 @@ class SchemaDiff(
                 checker.withContext(it.first.name) { visitAppliedDirective(it.first, it.second) }
             }
 
-            // Visit custom diff logic
-            extraDiffs.visitDef(expectedDef, actualDef, checker)
-
             // Checks specific to each [BridgeSchema.Def] subclass
             if (expectedDef is ViaductSchema.HasDefaultValue) {
                 cvt(expectedDef, actualDef) { exp, act ->
@@ -196,12 +192,10 @@ class SchemaDiff(
                     cvt(expectedDef, actualDef) { exp, act ->
                         hasSameKind(exp.containingDef, act.containingDef, "ARG_DEF_KIND_AGREE")
                         checker.isEqualTo(exp.containingDef.name, act.containingDef.name, "ARG_DEF_NAMES_AGREE")
-                        extraDiffs.visitArg(exp, act, checker)
                     }
                 is ViaductSchema.Enum ->
                     cvt(expectedDef, actualDef) { exp, act ->
                         visit(exp.values, act.values, "ENUM_VALUE")
-                        extraDiffs.visitEnum(exp, act, checker)
                     }
 
                 is ViaductSchema.EnumValue ->
@@ -219,7 +213,6 @@ class SchemaDiff(
                         ).forEach {
                             checker.withContext(it.first.name) { visitAppliedDirective(it.first, it.second) }
                         }
-                        extraDiffs.visitEnumValue(exp, act, checker)
                     }
 
                 is ViaductSchema.Field ->
@@ -236,24 +229,13 @@ class SchemaDiff(
                         }
 
                         visit(exp.args, act.args, "ARG")
-                        extraDiffs.visitField(exp, act, checker)
                     }
 
-                is ViaductSchema.Object ->
-                    extraDiffs.visitObject(expectedDef, actualDef as ViaductSchema.Object, checker)
-
-                is ViaductSchema.Input ->
-                    extraDiffs.visitInput(expectedDef, actualDef as ViaductSchema.Input, checker)
-
-                is ViaductSchema.Interface ->
-                    extraDiffs.visitInterface(expectedDef, actualDef as ViaductSchema.Interface, checker)
-
-                is ViaductSchema.Scalar ->
-                    extraDiffs.visitScalar(expectedDef, actualDef as ViaductSchema.Scalar, checker)
-
-                is ViaductSchema.Union ->
-                    extraDiffs.visitUnion(expectedDef, actualDef as ViaductSchema.Union, checker)
-
+                is ViaductSchema.Object -> { }
+                is ViaductSchema.Input -> { }
+                is ViaductSchema.Interface -> { }
+                is ViaductSchema.Scalar -> { }
+                is ViaductSchema.Union -> { }
                 else -> throw IllegalStateException("Unknown type: $expectedDef")
             }
         } finally {

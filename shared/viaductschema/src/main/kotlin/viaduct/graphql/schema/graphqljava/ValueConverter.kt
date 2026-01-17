@@ -7,7 +7,6 @@ import graphql.language.FloatValue
 import graphql.language.IntValue
 import graphql.language.NullValue
 import graphql.language.ObjectValue
-import graphql.language.ScalarValue
 import graphql.language.StringValue
 import graphql.language.Value
 import graphql.schema.InputValueWithState
@@ -66,12 +65,28 @@ internal object ValueConverter {
             type.isList -> ArrayValue::class.java
             type.baseTypeDef is ViaductSchema.Enum -> EnumValue::class.java
             type.baseTypeDef is ViaductSchema.Input -> ObjectValue::class.java
-            type.baseTypeDef.name == "String" -> StringValue::class.java
-            type.baseTypeDef.name == "Int" -> IntValue::class.java
-            type.baseTypeDef.name == "Float" -> ScalarValue::class.java // Cheat...
-            type.baseTypeDef.name == "Boolean" -> BooleanValue::class.java
-            type.baseTypeDef.name == "ID" -> StringValue::class.java
+            type.baseTypeDef is ViaductSchema.Scalar -> scalarValueClass(type.baseTypeDef.name)
             else -> throw IllegalArgumentException("Bad type for default (${type.baseTypeDef}).")
+        }
+
+    /**
+     * Returns the expected Value subclass for a scalar type name.
+     *
+     * For built-in GraphQL scalars, returns the specific value class.
+     * For custom scalars, returns [Value] as the base class since custom
+     * scalars can use any GraphQL literal syntax in SDL - not just scalar
+     * literals (Int, Float, String, Boolean) but also Object literals
+     * (for JSON-like scalars), Array literals, and Enum literals.
+     */
+    private fun scalarValueClass(scalarName: String): Class<out Value<*>> =
+        when (scalarName) {
+            // Built-in GraphQL scalars have specific value types
+            "Boolean" -> BooleanValue::class.java
+            "Float" -> FloatValue::class.java
+            "Int" -> IntValue::class.java
+            "ID", "String" -> StringValue::class.java
+            // Custom scalars can use any GraphQL literal syntax
+            else -> Value::class.java
         }
 
     /**

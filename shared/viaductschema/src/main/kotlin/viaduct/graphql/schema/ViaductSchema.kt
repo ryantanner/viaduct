@@ -29,15 +29,25 @@ import viaduct.utils.collections.BitVector
  *
  * We have four implementations of [ViaductSchema]:
  *
- *  * `GJSchema` - wraps graphql-java's `GraphQLSchema` — a parsed, validated, and semantically analyzed schema.
- *  * `GJSchemaRaw` - wraps graphql-java's `TypeDefinitionRegistry` — a parsed but not semantically validated schema.
- *  * `BSchema` - native `ViaductSchema` implementation with a compact binary serialization format that enables fast loading and reduced memory footprint.
- *  * `FilteredSchema` - projects an existing `ViaductSchema` through a filter to create a restricted view.
+ *  * `GJSchema` - wraps graphql-java's `GraphQLSchema` — a parsed, validated, and semantically analyzed schema.  Factory: ViaductSchema.fromGraphQLSchema
+ *  * `GJSchemaRaw` - wraps graphql-java's `TypeDefinitionRegistry` — a parsed but not semantically validated schema.  Factory: ViaductSchema.fromTypeDefinitionRegistry
+ *  * `BSchema` - native `ViaductSchema` implementation with a compact binary serialization format that enables fast loading and reduced memory footprint.  ViaductSchema.fromBinaryFile
+ *  * `FilteredSchema` - projects an existing `ViaductSchema` through a filter to create a restricted view.  ViaductSchema.filter
  *
- * If you want to output a [ViaductSchema] as GraphQL SDL,
- * use [ViaductSchema.toRegistry] to convert the schema into a
- * graphql-java `TypeDefinitionRegistry` and then use graphql-java's
- * pretty printer to serialize to a text file.
+ * The first three of these are extensions on the ViaductSchema
+ * companion object that need to be imported.  The fourth
+ * is a built-in instance method.
+ *
+ * If you want to translate [ViaductSchema] object into
+ * a graphql-java [TypeDefinitionRegistry], you can call
+ * the memeber function [ViaductSchema.toRegistry] (and
+ * extension functions).  Among other things this is used
+ * to pretty-print schemas by using graphql-java's schema
+ * printer.
+ *
+ * If you want to generate the binary file read by
+ * `fromBinaryFile` call [ViaductSchema.toBinaryFile]
+ * *also an extension function).
  *
  * [ViaductSchema] allows for types that have no fields, which
  * graphql-java does not.  To increase interoperability with

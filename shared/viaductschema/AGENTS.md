@@ -244,14 +244,16 @@ val filteredSchema = baseSchema.filter(
 
 ## Testing Expectations
 
-The library includes comprehensive contract-based testing infrastructure. All `ViaductSchema` implementations should:
+The library includes comprehensive testing infrastructure organized into black-box tests (verifying GraphQL semantics across implementations) and glass-box tests (verifying implementation-specific behavior). All `ViaductSchema` implementations should:
 
 1. **Use contract testing**: Extend `ViaductSchemaContract` and `ViaductSchemaSubtypeContract`
-2. **Validate type signatures**: Ensure proper Kotlin type relationships
-3. **Test edge cases**: Handle empty schemas, cyclic types, complex extensions
+2. **Use black-box testing**: Run the shared `TestSchemas` cases through your implementation
+3. **Add glass-box tests**: Test implementation-specific behavior (encoding limits, caching, error handling)
 4. **Verify invariants**: Schemas must satisfy structural invariants
 
-See [AGENTS_TESTING.md](AGENTS_TESTING.md) for detailed testing guidelines.
+See [TESTING.md](TESTING.md) for detailed testing guidelines for contributors.
+
+See [TEST_FIXTURES.md](TEST_FIXTURES.md) for documentation on test utilities and sample schemas available to consumers of and contributors to this library.
 
 ## Common Patterns
 

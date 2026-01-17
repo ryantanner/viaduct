@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test
 import viaduct.arbitrary.common.Config
 import viaduct.arbitrary.graphql.SchemaSize
 import viaduct.arbitrary.graphql.graphQLSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 
 /**
  * Round-trip tests for large schemas.
@@ -43,7 +44,8 @@ class RoundTripTest {
         val tempFile = File.createTempFile("arb-schema", ".graphqls")
         try {
             tempFile.writeText(schemaSdl)
-            val gjSchema = GJSchemaRaw.fromFiles(listOf(tempFile))
+            val registry = graphql.schema.idl.SchemaParser().parse(tempFile)
+            val gjSchema = ViaductSchema.fromTypeDefinitionRegistry(registry)
 
             // Run the round-trip test
             assertRoundTrip(gjSchema)
@@ -75,7 +77,8 @@ class RoundTripTest {
             }
 
             // Parse from temp file
-            val gjSchema = GJSchemaRaw.fromFiles(listOf(tempFile))
+            val registry = graphql.schema.idl.SchemaParser().parse(tempFile)
+            val gjSchema = ViaductSchema.fromTypeDefinitionRegistry(registry)
 
             // Run the round-trip test
             assertRoundTrip(gjSchema)
@@ -107,7 +110,8 @@ class RoundTripTest {
             }
 
             // Parse from temp file
-            val gjSchema = GJSchemaRaw.fromFiles(listOf(tempFile))
+            val registry = graphql.schema.idl.SchemaParser().parse(tempFile)
+            val gjSchema = ViaductSchema.fromTypeDefinitionRegistry(registry)
 
             // Run the round-trip test
             assertRoundTrip(gjSchema)

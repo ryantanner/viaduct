@@ -125,7 +125,12 @@ fun ViaductSchema.Directive.toDirectiveDefinition() =
         .directiveLocations(allowedLocations.map { DirectiveLocation(it.name) })
         .build()
 
-fun ViaductSchema.Scalar.scalarTypeDefinition() = ScalarTypeDefinition.newScalarTypeDefinition().name(this.name).build()
+fun ViaductSchema.Scalar.scalarTypeDefinition() =
+    ScalarTypeDefinition
+        .newScalarTypeDefinition()
+        .name(this.name)
+        .directives(appliedDirectives.map { it.toDirectiveForTypeDefinition() })
+        .build()
 
 fun ViaductSchema.Object.toMergedObjectTypeDefinition(options: TypeDefinitionRegistryOptions = TypeDefinitionRegistryOptions.DEFAULT): ObjectTypeDefinition {
     val allFields = extensions.flatMap { it.members }
@@ -339,7 +344,7 @@ fun ViaductSchema.Union.unionTypeDefinition(options: TypeDefinitionRegistryOptio
         .memberTypes(
             extensions.first().members.map { TypeName(it.name) } +
                 if (options.addStubsOnEmptyTypes) listOf(TypeName(ViaductSchema.VIADUCT_IGNORE_SYMBOL)) else emptyList()
-        ).directives(appliedDirectives.map { it.toDirectiveForTypeDefinition() })
+        ).directives(extensions.first().appliedDirectives.map { it.toDirectiveForTypeDefinition() })
         .sourceLocation(sourceLocation?.toSourceLocationDefinition())
         .build()
 
@@ -389,7 +394,7 @@ fun ViaductSchema.Enum.enumTypeDefinition() =
                     .directives(it.appliedDirectives.map { it.toDirectiveForTypeDefinition() })
                     .build()
             }
-        ).directives(appliedDirectives.map { it.toDirectiveForTypeDefinition() })
+        ).directives(extensions.first().appliedDirectives.map { it.toDirectiveForTypeDefinition() })
         .sourceLocation(sourceLocation?.toSourceLocationDefinition())
         .build()
 

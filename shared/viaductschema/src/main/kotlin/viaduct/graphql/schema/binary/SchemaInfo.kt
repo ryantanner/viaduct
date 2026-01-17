@@ -187,8 +187,7 @@ internal class SchemaInfo(
             addIdentifier(ad.name)
             for ((argName, argValue) in ad.arguments) {
                 addIdentifier(argName)
-                val constantRepr = ValueStringConverter.valueToString(argValue as Value<*>)
-                constantsEncoderBuilder.addValue(constantRepr)
+                addConstantValue(argValue as Value<*>)
             }
         }
     }
@@ -205,8 +204,7 @@ internal class SchemaInfo(
         addTypeExpr(f.type)
         // For input type fields, collect default values
         if (f.containingDef is ViaductSchema.Input && f.hasDefault) {
-            val constantRepr = ValueStringConverter.valueToString(f.defaultValue as Value<*>)
-            constantsEncoderBuilder.addValue(constantRepr)
+            addConstantValue(f.defaultValue as Value<*>)
         }
         for (a in f.args) visitArg(a)
         visitAppliedDirectives(f.appliedDirectives)
@@ -231,8 +229,35 @@ internal class SchemaInfo(
 
     private fun addConstant(arg: ViaductSchema.Arg) {
         if (arg.hasDefault) {
-            val constantRepr = ValueStringConverter.valueToString(arg.defaultValue as Value<*>)
-            constantsEncoderBuilder.addValue(constantRepr)
+            addConstantValue(arg.defaultValue as Value<*>)
+        }
+    }
+
+    /**
+     * Adds a constant value, extracting and registering any field names from
+     * InputObjectConstant values as identifiers.
+     */
+    private fun addConstantValue(value: Value<*>) {
+        val constantRepr = ValueStringConverter.valueToString(value)
+        extractIdentifiersFromConstant(constantRepr)
+        constantsEncoderBuilder.addValue(constantRepr)
+    }
+
+    /**
+     * Recursively extracts field names from compound constants and registers
+     * them as identifiers. This is needed because ObjectValue literals in SDL
+     * can use arbitrary field names that aren't otherwise declared in the schema.
+     */
+    private fun extractIdentifiersFromConstant(repr: Any?) {
+        when (repr) {
+            null, is String -> { /* Simple values have no identifiers to extract */ }
+            is ListConstant -> repr.elements.forEach { extractIdentifiersFromConstant(it) }
+            is InputObjectConstant -> {
+                for ((fieldName, fieldValue) in repr.fieldPairs) {
+                    addIdentifier(fieldName)
+                    extractIdentifiersFromConstant(fieldValue)
+                }
+            }
         }
     }
 

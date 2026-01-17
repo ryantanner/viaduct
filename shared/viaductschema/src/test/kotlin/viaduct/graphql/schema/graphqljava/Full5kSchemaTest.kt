@@ -6,7 +6,10 @@ import graphql.schema.idl.UnExecutableSchemaGenerator
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.invariants.InvariantChecker
 
@@ -23,8 +26,8 @@ import viaduct.invariants.InvariantChecker
 class Full5kSchemaTest {
     companion object {
         lateinit var gjSchema: GraphQLSchema
-        lateinit var schema: GJSchema
-        lateinit var schemaraw: GJSchemaRaw
+        lateinit var schema: ViaductSchema
+        lateinit var schemaraw: ViaductSchema
 
         @BeforeAll
         @JvmStatic
@@ -34,7 +37,7 @@ class Full5kSchemaTest {
                 ?: throw IllegalStateException("Could not load arb-schema-5k.graphqls")
             val reg = SchemaParser().parse(schemaSrc)
             gjSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(reg)
-            schema = GJSchema.fromSchema(gjSchema)
+            schema = ViaductSchema.fromGraphQLSchema(gjSchema)
 
             // Add builtin directives to GJSchemaRaw only if not already present in the schema.
             // The arb-schema-5k already has some directives defined.
@@ -51,14 +54,14 @@ class Full5kSchemaTest {
                     reg.merge(SchemaParser().parse(directivesDef))
                 }
             }
-            schemaraw = GJSchemaRaw.fromRegistry(reg)
+            schemaraw = ViaductSchema.fromTypeDefinitionRegistry(reg)
             Assertions.assertNotNull(schema)
         }
     }
 
     @Test
     fun `run GJSchemaCheck on 5k schema`() {
-        GJSchemaCheck(schema, gjSchema).assertEmpty("\n")
+        GJSchemaCheck(schema as GJSchema, gjSchema).assertEmpty("\n")
     }
 
     @Test
@@ -84,7 +87,7 @@ class Full5kSchemaTest {
         val schemaSrc = classLoader.getResourceAsStream("arb-schema-5k/arb-schema-5k.graphqls")
             ?: throw IllegalStateException("Could not load arb-schema-5k.graphqls")
         val reg = SchemaParser().parse(schemaSrc)
-        val arbSchema = GJSchemaRaw.fromRegistry(reg)
+        val arbSchema = ViaductSchema.fromTypeDefinitionRegistry(reg)
 
         val noopFilteredArbSchema = arbSchema.filter(NoopSchemaFilter())
         SchemaDiff(arbSchema, noopFilteredArbSchema).diff().assertEmpty("\n")

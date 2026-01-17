@@ -4,7 +4,9 @@ import graphql.schema.idl.SchemaParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.ViaductSchemaContract
 
 /**
@@ -13,15 +15,18 @@ import viaduct.graphql.schema.test.ViaductSchemaContract
  * the binary encoding/decoding preserves all behavioral properties
  * defined in the contract (default value handling, isOverride computation,
  * field path navigation, etc.).
+ *
+ * Uses fromTypeDefinitionRegistry to avoid graphql-java validation bugs that would
+ * incorrectly reject valid GraphQL SDL.
  */
 class BSchemaRoundTripContractTest : ViaductSchemaContract {
     override fun makeSchema(schema: String): ViaductSchema {
-        val tdr = SchemaParser().parse(schema)
-        val original = GJSchemaRaw.fromRegistry(tdr)
+        val registry = SchemaParser().parse(schema)
+        val original = ViaductSchema.fromTypeDefinitionRegistry(registry)
 
         // Round-trip through binary format
         val tmp = ByteArrayOutputStream()
-        writeBSchema(original, tmp)
-        return readBSchema(ByteArrayInputStream(tmp.toByteArray()))
+        original.toBinaryFile(tmp)
+        return ViaductSchema.fromBinaryFile(ByteArrayInputStream(tmp.toByteArray()))
     }
 }

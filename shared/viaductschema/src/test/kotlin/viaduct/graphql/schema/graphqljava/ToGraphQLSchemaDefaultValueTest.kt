@@ -16,6 +16,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import java.math.BigDecimal
 import java.math.BigInteger
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.test.SchemaDiff
 
 /**
@@ -500,10 +502,10 @@ class ToGraphQLSchemaDefaultValueTest {
         ) {
             val tdr = SchemaParser().parse(sdl)
             val expectedGraphQLSchema = SchemaGenerator().makeExecutableSchema(tdr, RuntimeWiring.MOCKED_WIRING)
-            val expectedViaductSchema = GJSchema.fromSchema(expectedGraphQLSchema)
+            val expectedViaductSchema = ViaductSchema.fromGraphQLSchema(expectedGraphQLSchema)
 
             val actualGraphQLSchema = expectedViaductSchema.toGraphQLSchema(scalarsNeeded)
-            val actualViaductSchema = GJSchema.fromSchema(actualGraphQLSchema)
+            val actualViaductSchema = ViaductSchema.fromGraphQLSchema(actualGraphQLSchema)
 
             // Verify structural equivalence
             val schemaDiffResult = SchemaDiff(expectedViaductSchema, actualViaductSchema).diff()
@@ -520,7 +522,7 @@ class ToGraphQLSchemaDefaultValueTest {
         ): graphql.schema.GraphQLSchema {
             val tdr = SchemaParser().parse(sdl)
             val originalSchema = SchemaGenerator().makeExecutableSchema(tdr, RuntimeWiring.MOCKED_WIRING)
-            val viaductSchema = GJSchema.fromSchema(originalSchema)
+            val viaductSchema = ViaductSchema.fromGraphQLSchema(originalSchema)
             return viaductSchema.toGraphQLSchema(scalarsNeeded)
         }
     }

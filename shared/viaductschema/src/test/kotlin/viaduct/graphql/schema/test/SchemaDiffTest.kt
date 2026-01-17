@@ -10,12 +10,14 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 
 class SchemaDiffTest {
     @Test
     fun `should detect sourceLocation disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 MultiSourceReader
                     .newMultiSourceReader()
@@ -24,7 +26,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 MultiSourceReader
                     .newMultiSourceReader()
@@ -41,11 +43,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect missing type`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("scalar Foo\nscalar Bar")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("scalar Foo")
         )
 
@@ -57,11 +59,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect type kind disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("scalar Foo")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("enum Foo { A B }")
         )
 
@@ -73,11 +75,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect enum value disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("enum Status { ACTIVE INACTIVE PENDING }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("enum Status { ACTIVE PENDING }")
         )
 
@@ -90,11 +92,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect field name disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type User { id: ID! name: String email: String }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type User { id: ID! email: String }")
         )
 
@@ -107,11 +109,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect field argument name disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type Query { user(id: ID!): String }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type Query { user(userId: ID!): String }")
         )
 
@@ -123,11 +125,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect field argument type disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type Query { user(id: ID!): String }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type Query { user(id: String!): String }")
         )
 
@@ -139,11 +141,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect input field name disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("input UserInput { name: String age: Int email: String }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("input UserInput { name: String email: String }")
         )
 
@@ -156,7 +158,7 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect interface implementation disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 interface Node { id: ID! }
@@ -167,7 +169,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 interface Node { id: ID! }
@@ -187,7 +189,7 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect union member disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 type Cat { meow: String }
@@ -198,7 +200,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 type Cat { meow: String }
@@ -218,7 +220,7 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect directive name disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @deprecated(reason: String) on FIELD_DEFINITION
@@ -228,7 +230,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @deprecated(reason: String) on FIELD_DEFINITION
@@ -246,7 +248,7 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect directive argument name disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @deprecated(reason: String) on FIELD_DEFINITION
@@ -255,7 +257,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @deprecated(message: String) on FIELD_DEFINITION
@@ -272,11 +274,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect input field default value disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("input UserInput { name: String age: Int = 18 }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("input UserInput { name: String age: Int = 21 }")
         )
 
@@ -289,11 +291,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect field argument default value disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type Query { field: String users(limit: Int = 10): [String] }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("type Query { field: String users(limit: Int = 20): [String] }")
         )
 
@@ -306,11 +308,11 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect hasDefault disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("input UserInput { name: String age: Int = 18 }")
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse("input UserInput { name: String age: Int }")
         )
 
@@ -323,7 +325,7 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect applied directive disagreement on field`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @auth on FIELD_DEFINITION
@@ -332,7 +334,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @auth on FIELD_DEFINITION
@@ -349,7 +351,7 @@ class SchemaDiffTest {
 
     @Test
     fun `should detect applied directive argument value disagreement`() {
-        val expectedSchema = GJSchemaRaw.fromRegistry(
+        val expectedSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @deprecated(reason: String) on FIELD_DEFINITION
@@ -358,7 +360,7 @@ class SchemaDiffTest {
             )
         )
 
-        val actualSchema = GJSchemaRaw.fromRegistry(
+        val actualSchema = ViaductSchema.fromTypeDefinitionRegistry(
             SchemaParser().parse(
                 """
                 directive @deprecated(reason: String) on FIELD_DEFINITION

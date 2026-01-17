@@ -1,6 +1,7 @@
 package viaduct.graphql.schema.graphqljava
 
 import graphql.schema.idl.SchemaParser
+import graphql.schema.idl.UnExecutableSchemaGenerator
 import kotlin.reflect.KClass
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -12,6 +13,7 @@ import viaduct.graphql.schema.SchemaFilter
 import viaduct.graphql.schema.SchemaInvariantOptions
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.invariants.InvariantChecker
 
@@ -128,20 +130,14 @@ class FilteredSchemaTest {
             schema: ViaductSchema,
             filter: SchemaFilter,
             schemaInvariantOptions: SchemaInvariantOptions = SchemaInvariantOptions.DEFAULT,
-        ) = FilteredSchema(
-            filter,
-            schema.types.entries,
-            schema.directives.entries,
-            schemaInvariantOptions,
-            schema.queryTypeDef?.name,
-            schema.mutationTypeDef?.name,
-            schema.subscriptionTypeDef?.name
-        )
+        ) = schema.filter(filter, schemaInvariantOptions)
 
         @BeforeAll
         @JvmStatic
         fun loadSchema() {
-            unfilteredTestSchema = GJSchema.fromRegistry(SchemaParser().parse(testSchemaString))
+            val registry = SchemaParser().parse(testSchemaString)
+            val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
+            unfilteredTestSchema = ViaductSchema.fromGraphQLSchema(graphQLSchema)
         }
     }
 
@@ -196,7 +192,9 @@ class FilteredSchemaTest {
             "Unfiltered schema should be different from filtered schema"
         )
 
-        val expectedFilteredSchema = GJSchema.fromRegistry(SchemaParser().parse(filteredTestSchemaString))
+        val expectedRegistry = SchemaParser().parse(filteredTestSchemaString)
+        val expectedGraphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(expectedRegistry)
+        val expectedFilteredSchema = ViaductSchema.fromGraphQLSchema(expectedGraphQLSchema)
         SchemaDiff(expectedFilteredSchema, filteredSchema).diff().assertEmpty("\n")
     }
 
@@ -204,13 +202,13 @@ class FilteredSchemaTest {
     fun `test unfilteredDef`() {
         val filteredSchema = filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep"))
 
-        val filteredEnum = filteredSchema.types["EnumKeep"] as FilteredSchema.Enum
+        val filteredEnum = filteredSchema.types["EnumKeep"] as FilteredSchema.Enum<*>
         filteredEnum.checkUnfilteredDef(GJSchema.Enum::class)
 
         val filteredEnumValue = filteredEnum.values.first { it.name == "A" }
         filteredEnumValue.checkUnfilteredDef(GJSchema.EnumValue::class)
 
-        val filteredInput = filteredSchema.types["InputKeep"] as FilteredSchema.Input
+        val filteredInput = filteredSchema.types["InputKeep"] as FilteredSchema.Input<*>
         filteredInput.checkUnfilteredDef(GJSchema.Input::class)
 
         val filteredObj = filteredSchema.types["ObjectKeep"] as FilteredSchema.Object<*>
@@ -222,10 +220,10 @@ class FilteredSchemaTest {
         val filteredArg = filteredField.args.first { it.name == "a1" }
         filteredArg.checkUnfilteredDef(GJSchema.FieldArg::class)
 
-        val filteredUnion = filteredSchema.types["UnionKeep"] as FilteredSchema.Union
+        val filteredUnion = filteredSchema.types["UnionKeep"] as FilteredSchema.Union<*>
         filteredUnion.checkUnfilteredDef(GJSchema.Union::class)
 
-        val filteredInterface = filteredSchema.types["InterfaceKeep"] as FilteredSchema.Interface
+        val filteredInterface = filteredSchema.types["InterfaceKeep"] as FilteredSchema.Interface<*>
         filteredInterface.checkUnfilteredDef(GJSchema.Interface::class)
     }
 

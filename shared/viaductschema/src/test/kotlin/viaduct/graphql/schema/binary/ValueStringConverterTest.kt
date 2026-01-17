@@ -17,7 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.graphqljava.GJSchemaRaw
+import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 
 /**
  * Tests for ValueStringConverter using round-trip testing.
@@ -72,7 +72,7 @@ class ValueStringConverterTest {
 
     private val schema by lazy {
         val tdr = SchemaParser().parse(testSchema)
-        GJSchemaRaw.fromRegistry(tdr)
+        ViaductSchema.fromTypeDefinitionRegistry(tdr)
     }
 
     /**

@@ -4,6 +4,8 @@ import graphql.schema.idl.RuntimeWiring
 import graphql.schema.idl.SchemaGenerator
 import graphql.schema.idl.SchemaParser
 import org.junit.jupiter.api.Test
+import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.test.SchemaDiff
 
 /**
@@ -113,10 +115,10 @@ class ToGraphQLSchemaRoundTripTest {
         ) {
             val tdr = SchemaParser().parse(sdl)
             val expectedGraphQLSchema = SchemaGenerator().makeExecutableSchema(tdr, RuntimeWiring.MOCKED_WIRING)
-            val expectedViaductSchema = GJSchema.fromSchema(expectedGraphQLSchema)
+            val expectedViaductSchema = ViaductSchema.fromGraphQLSchema(expectedGraphQLSchema)
 
             val actualGraphQLSchema = expectedViaductSchema.toGraphQLSchema(scalarsNeeded)
-            val actualViaductSchema = GJSchema.fromSchema(actualGraphQLSchema)
+            val actualViaductSchema = ViaductSchema.fromGraphQLSchema(actualGraphQLSchema)
 
             val schemaDiffResult = SchemaDiff(expectedViaductSchema, actualViaductSchema).diff()
             schemaDiffResult.assertEmpty()

@@ -15,9 +15,8 @@ import viaduct.invariants.InvariantChecker
 class GJSchemaCheck(
     private val schema: GJSchema,
     private val gjSchema: GraphQLSchema,
+    private val check: InvariantChecker = InvariantChecker(),
 ) {
-    private val check = InvariantChecker()
-
     fun assertEmpty(separator: String) = check.assertEmpty(separator)
 
     init {

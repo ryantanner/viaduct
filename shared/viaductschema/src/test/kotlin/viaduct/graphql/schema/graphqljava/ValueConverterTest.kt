@@ -12,6 +12,7 @@ import graphql.language.ScalarValue
 import graphql.language.StringValue
 import graphql.language.Value
 import graphql.schema.InputValueWithState
+import graphql.schema.idl.UnExecutableSchemaGenerator
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetTime
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 import org.junit.jupiter.api.TestInstance
 import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class ValueConverterTest {
@@ -140,7 +142,9 @@ internal class ValueConverterTest {
 
     @BeforeAll
     fun setup() {
-        viaductSchema = GJSchema.fromRegistry(readTypes(schema))
+        val registry = readTypes(schema)
+        val graphQLSchema = UnExecutableSchemaGenerator.makeUnExecutableSchema(registry)
+        viaductSchema = ViaductSchema.fromGraphQLSchema(graphQLSchema)
 
         defaultValues = mapOf(
             "SubjectConstants.boolean" to BooleanValue.of(true),

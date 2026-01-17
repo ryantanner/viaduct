@@ -36,8 +36,8 @@ import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 import org.slf4j.LoggerFactory
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.binary.readBSchema
-import viaduct.graphql.schema.binary.writeBSchema
+import viaduct.graphql.schema.binary.extensions.fromBinaryFile
+import viaduct.graphql.schema.binary.extensions.toBinaryFile
 import viaduct.graphql.schema.checkBridgeSchemaInvariants
 import viaduct.graphql.schema.graphqljava.GJSchema
 import viaduct.graphql.schema.graphqljava.GraphQLSchemaExtraDiff
@@ -87,7 +87,7 @@ private class MmWriteCommand : CliktCommand(
 
     override fun run() {
         val schema = readGJSchema(projectDirectory!!.toPath())
-        writeBSchema(schema, FileOutputStream(System.getProperty("user.home") + "/schema.bgql"))
+        schema.toBinaryFile(FileOutputStream(System.getProperty("user.home") + "/schema.bgql"))
     }
 }
 
@@ -123,9 +123,9 @@ private class MmLoadTimeCommand : CliktCommand(
         repeat(count) {
             val time = measureTimeMillis {
                 schema = if (useBinGQL) {
-                    readBSchema(FileInputStream(System.getProperty("user.home") + "/schema.bgql"))
+                    ViaductSchema.fromBinaryFile(FileInputStream(System.getProperty("user.home") + "/schema.bgql"))
                 } else if (b2g) {
-                    val b = readBSchema(FileInputStream(System.getProperty("user.home") + "/schema.bgql"))
+                    val b = ViaductSchema.fromBinaryFile(FileInputStream(System.getProperty("user.home") + "/schema.bgql"))
                     b.toGraphQLSchema(
                         scalarsNeeded = setOf(/*"Boolean",*/ "Float", "ID", "Int", /*"String"*/),
                         additionalScalars = setOf("BackingData", "Date", "DateTime", "JSON", "Long", "Short", "Time"),
@@ -172,7 +172,7 @@ private class MmAccessTimeCommand : CliktCommand(
 
     override fun run() {
         if (useBinGQL) {
-            runViaductSchema(readBSchema(FileInputStream(System.getProperty("user.home") + "/schema.bgql")))
+            runViaductSchema(ViaductSchema.fromBinaryFile(FileInputStream(System.getProperty("user.home") + "/schema.bgql")))
         } else {
             if (noGJ) {
                 runGraphQLJava(projectDirectory!!)
@@ -396,10 +396,10 @@ private class MmDiffCommand : CliktCommand(
 
         // Write to binary format
         val binaryFilePath = System.getProperty("user.home") + "/schema.bgql"
-        writeBSchema(expected, FileOutputStream(binaryFilePath))
+        expected.toBinaryFile(FileOutputStream(binaryFilePath))
 
         // Read back from binary format
-        val actual = readBSchema(FileInputStream(binaryFilePath))
+        val actual = ViaductSchema.fromBinaryFile(FileInputStream(binaryFilePath))
 
         // Validate output schema invariants
         checkBridgeSchemaInvariants(actual, checker)
