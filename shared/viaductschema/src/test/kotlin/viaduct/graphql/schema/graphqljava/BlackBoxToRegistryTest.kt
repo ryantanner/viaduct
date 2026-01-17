@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.TypeDefinitionRegistryOptions
 import viaduct.graphql.schema.graphqljava.extensions.toRegistry
 import viaduct.graphql.schema.test.SchemaDiff
@@ -40,8 +40,8 @@ class BlackBoxToRegistryTest {
 
         // Compare original vs round-tripped
         val checker = InvariantChecker()
-        checkBridgeSchemaInvariants(originalSchema, checker)
-        checkBridgeSchemaInvariants(roundTrippedSchema, checker)
+        checkViaductSchemaInvariants(originalSchema, checker)
+        checkViaductSchemaInvariants(roundTrippedSchema, checker)
         SchemaDiff(originalSchema, roundTrippedSchema, checker).diff()
         checker.assertEmpty("\n")
     }

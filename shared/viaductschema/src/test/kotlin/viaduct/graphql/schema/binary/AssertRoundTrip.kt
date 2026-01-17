@@ -15,7 +15,7 @@ import java.io.ByteArrayOutputStream
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.binary.extensions.fromBinaryFile
 import viaduct.graphql.schema.binary.extensions.toBinaryFile
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.BUILTIN_SCALARS
 import viaduct.graphql.schema.test.SchemaDiff
@@ -30,7 +30,7 @@ internal fun checkRoundTrip(
     checker: InvariantChecker
 ) {
     // Check invariants on input schema
-    checkBridgeSchemaInvariants(expectedSchema, checker)
+    checkViaductSchemaInvariants(expectedSchema, checker)
 
     // Turn into a BSchema file
     val tmp = ByteArrayOutputStream()
@@ -40,7 +40,7 @@ internal fun checkRoundTrip(
     val actual = ViaductSchema.fromBinaryFile(bfile)
 
     // Check invariants on decoded schema
-    checkBridgeSchemaInvariants(actual, checker)
+    checkViaductSchemaInvariants(actual, checker)
 
     // Verify the schemas match structurally (reusing same checker)
     SchemaDiff(expectedSchema, actual, checker).diff()

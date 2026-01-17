@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.graphql.schema.test.TestSchemas
@@ -31,7 +31,7 @@ class BlackBoxFilteredSchemaTest {
 
         // Verify invariants on the filtered schema
         val checker = InvariantChecker()
-        checkBridgeSchemaInvariants(filtered, checker)
+        checkViaductSchemaInvariants(filtered, checker)
 
         // Compare filtered schema with original
         SchemaDiff(original, filtered, checker).diff()

@@ -1,4 +1,4 @@
-package viaduct.tenant.codegen.graphql.bridge
+package viaduct.tenant.codegen.graphql.schema
 
 import viaduct.graphql.schema.SchemaFilter
 import viaduct.graphql.schema.ViaductSchema

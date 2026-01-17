@@ -11,7 +11,7 @@ import graphql.schema.GraphQLNamedType
 import graphql.schema.GraphQLSchema
 import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.invariants.InvariantChecker
 
 class GJSchemaCheck(
@@ -35,7 +35,7 @@ class GJSchemaCheck(
         }
         schema = viaductSchema
 
-        checkBridgeSchemaInvariants(schema, check)
+        checkViaductSchemaInvariants(schema, check)
         check.containsExactlyElementsIn(
             gjSchema.allTypesAsList.filterNot { it.name.startsWith("__") }.map { it.name },
             schema.types.values.map { it.name },

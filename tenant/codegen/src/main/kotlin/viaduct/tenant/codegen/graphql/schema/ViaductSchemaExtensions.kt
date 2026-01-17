@@ -1,4 +1,4 @@
-package viaduct.tenant.codegen.graphql.bridge
+package viaduct.tenant.codegen.graphql.schema
 
 import graphql.language.ArrayValue
 import graphql.language.StringValue

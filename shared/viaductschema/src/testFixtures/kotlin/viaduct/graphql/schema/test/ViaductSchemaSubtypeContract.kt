@@ -124,7 +124,7 @@ abstract class ViaductSchemaSubtypeContract {
         assertIsSubtype(returnType("Directive.args").elementType(), "Arg") // args: Iterable<Args>
     }
 
-    // From BridgeSchema
+    // From ViaductSchema
 
     @Test
     @EnabledIf("noMissingClasses")

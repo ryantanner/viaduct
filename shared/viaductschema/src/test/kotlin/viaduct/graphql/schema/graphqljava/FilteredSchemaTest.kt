@@ -12,7 +12,7 @@ import viaduct.graphql.schema.SchemaFilter
 import viaduct.graphql.schema.SchemaInvariantOptions
 import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.graphql.schema.unfilteredDef
@@ -156,7 +156,7 @@ class FilteredSchemaTest {
         try {
             InvariantChecker()
                 .also { check ->
-                    checkBridgeSchemaInvariants(filterSchema(unfilteredTestSchema, EmptyTypesSchemaFilter()), check)
+                    checkViaductSchemaInvariants(filterSchema(unfilteredTestSchema, EmptyTypesSchemaFilter()), check)
                 }.assertEmpty("\n")
         } catch (_: AssertionError) {
             // Assertion error is expected here as the filtered schema has empty types
@@ -165,7 +165,7 @@ class FilteredSchemaTest {
         // Verify with an ALLOW_EMPTY_TYPES option enabled
         InvariantChecker()
             .also { check ->
-                checkBridgeSchemaInvariants(
+                checkViaductSchemaInvariants(
                     filterSchema(
                         unfilteredTestSchema,
                         schemaFilterProducingEmptyTypes,
@@ -181,7 +181,7 @@ class FilteredSchemaTest {
     fun `invariant checks on filtered test schema`() {
         InvariantChecker()
             .also { check ->
-                checkBridgeSchemaInvariants(filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep")), check)
+                checkViaductSchemaInvariants(filterSchema(unfilteredTestSchema, SuffixSchemaFilter("Remove", "Keep")), check)
             }.assertEmpty("\n")
     }
 

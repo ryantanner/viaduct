@@ -637,7 +637,7 @@ interface ViaductSchema {
         // compilation schema sdl files, etc.
         final const val VIADUCT_IGNORE_SYMBOL = "VIADUCT_IGNORE"
 
-        // use in impl class as "override fun field(...): Field = BridgeSchema.field(this, rec, path)"
+        // use in impl class as "override fun field(...): Field = ViaductSchema.field(this, rec, path)"
         inline fun <reified T : Field> field(
             rec: Record,
             path: Iterable<String>
@@ -657,7 +657,7 @@ interface ViaductSchema {
             return result!! as T
         }
 
-        // use as "override val isOverride by lazy { BridgeSchema.isOverride(this) }"
+        // use as "override val isOverride by lazy { ViaductSchema.isOverride(this) }"
         fun isOverride(field: Field): Boolean {
             val containingDef = field.containingDef
             if (containingDef !is OutputRecord) return false

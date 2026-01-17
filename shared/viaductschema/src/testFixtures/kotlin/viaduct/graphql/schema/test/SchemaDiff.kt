@@ -20,7 +20,7 @@ class SchemaDiff(
 
     fun diff(): InvariantChecker {
         if (!done) {
-            // Exclude introspective types from the comparison (not all BridgeSchema impls support them)
+            // Exclude introspective types from the comparison (not all ViaductSchema impls support them)
             visit(
                 expected.types.values.filter { !it.name.startsWith("__") },
                 actual.types.values.filter { !it.name.startsWith("__") },
@@ -99,7 +99,7 @@ class SchemaDiff(
     ) {
         try {
             checker.pushContext(actualDef.name)
-            // Checks common for all [BridgeSchema.Def]s
+            // Checks common for all [ViaductSchema.Def]s
             if (!hasSameKind(expectedDef, actualDef, "DEF_CLASS")) {
                 return
             }
@@ -116,7 +116,7 @@ class SchemaDiff(
                 checker.withContext(it.first.name) { visitAppliedDirective(it.first, it.second) }
             }
 
-            // Checks specific to each [BridgeSchema.Def] subclass
+            // Checks specific to each [ViaductSchema.Def] subclass
             if (expectedDef is ViaductSchema.HasDefaultValue) {
                 cvt(expectedDef, actualDef) { exp, act ->
                     hasSameKind(exp.containingDef, act.containingDef, "CONTAINING_TYPES_AGREE")

@@ -5,13 +5,13 @@ import io.kotest.property.arbitrary.filter
 import org.junit.jupiter.api.Test
 import viaduct.arbitrary.common.KotestPropertyBase
 import viaduct.arbitrary.common.checkInvariants
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 
 class ViaductSchemasTest : KotestPropertyBase() {
     @Test
     fun `generates valid ViaductSchemas`() =
         Arb.viaductExtendedSchema().checkInvariants(100) { schema, check ->
-            checkBridgeSchemaInvariants(schema, check)
+            checkViaductSchemaInvariants(schema, check)
         }
 
     @Test

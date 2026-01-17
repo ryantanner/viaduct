@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.graphqljava.extensions.fromGraphQLSchema
 import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.graphql.schema.test.SchemaDiff
@@ -66,9 +66,9 @@ class Full5kSchemaTest {
     }
 
     @Test
-    fun `run bridge invariant checks on GJSchemaRaw`() {
+    fun `run schema invariant checks on GJSchemaRaw`() {
         InvariantChecker().also { check ->
-            checkBridgeSchemaInvariants(schemaraw, check)
+            checkViaductSchemaInvariants(schemaraw, check)
         }.assertEmpty("\n")
     }
 

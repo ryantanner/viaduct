@@ -16,7 +16,7 @@ import viaduct.graphql.schema.graphqljava.extensions.fromTypeDefinitionRegistry
 import viaduct.tenant.codegen.bytecode.CodeGenArgs
 import viaduct.tenant.codegen.bytecode.GRTClassFilesBuilderBase
 import viaduct.tenant.codegen.bytecode.config.ViaductBaseTypeMapper
-import viaduct.tenant.codegen.graphql.bridge.ScopedSchemaFilter
+import viaduct.tenant.codegen.graphql.schema.ScopedSchemaFilter
 import viaduct.tenant.codegen.util.ZipUtil.zipAndWriteDirectories
 import viaduct.tenant.codegen.util.shouldUseBinarySchema
 import viaduct.utils.timer.Timer

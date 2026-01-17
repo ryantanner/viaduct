@@ -1,4 +1,4 @@
-package viaduct.tenant.codegen.graphql.bridge
+package viaduct.tenant.codegen.graphql.schema
 
 import graphql.schema.idl.SchemaParser
 import io.mockk.unmockkAll

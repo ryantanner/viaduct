@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.test.SchemaDiff
 import viaduct.graphql.schema.test.TestSchemas
 import viaduct.invariants.InvariantChecker
@@ -38,7 +38,7 @@ class BlackBoxGJComparisonTest {
 
         // Both should produce equivalent ViaductSchema views
         val checker = InvariantChecker()
-        checkBridgeSchemaInvariants(gjSchemaRaw, checker)
+        checkViaductSchemaInvariants(gjSchemaRaw, checker)
         GJSchemaCheck(gjSchema, graphQLSchema, checker)
         SchemaDiff(gjSchemaRaw, gjSchema, checker).diff()
         checker.assertEmpty("\n")

@@ -39,7 +39,7 @@ import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.graphql.schema.binary.extensions.fromBinaryFile
 import viaduct.graphql.schema.binary.extensions.toBinaryFile
-import viaduct.graphql.schema.checkBridgeSchemaInvariants
+import viaduct.graphql.schema.checkViaductSchemaInvariants
 import viaduct.graphql.schema.graphqljava.GraphQLSchemaExtraDiff
 import viaduct.graphql.schema.graphqljava.gjSchemaFromRegistry
 import viaduct.graphql.schema.graphqljava.readTypesFromURLs
@@ -403,7 +403,7 @@ private class MmDiffCommand : CliktCommand(
         val actual = ViaductSchema.fromBinaryFile(FileInputStream(binaryFilePath))
 
         // Validate output schema invariants
-        checkBridgeSchemaInvariants(actual, checker)
+        checkViaductSchemaInvariants(actual, checker)
 
         // Compare schemas structurally (reusing same checker)
         SchemaDiff(expected, actual, checker).diff()

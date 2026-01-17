@@ -114,7 +114,7 @@ internal fun <T : ViaductSchema.TypeDef> filteredSchema(
     )
 
     val violations = InvariantChecker()
-    checkBridgeSchemaInvariants(schema, violations, schemaInvariantOptions)
+    checkViaductSchemaInvariants(schema, violations, schemaInvariantOptions)
     violations.assertEmptyMultiline("FilteredSchema failed the following invariant checks:\n")
 
     return schema

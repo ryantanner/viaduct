@@ -27,7 +27,7 @@ data class SchemaInvariantOptions(
  * checks correspond to GraphQL validation rules, this function does
  * _not_ fully validate GraphQL schemas.
  */
-fun checkBridgeSchemaInvariants(
+fun checkViaductSchemaInvariants(
     schema: ViaductSchema,
     check: InvariantChecker,
     options: SchemaInvariantOptions = SchemaInvariantOptions.DEFAULT
