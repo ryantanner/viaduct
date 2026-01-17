@@ -36,7 +36,7 @@ fun <T : ViaductSchema.TypeDef> ViaductSchema.TypeExpr<T>.unparseWrappers(): Str
  *  zero) and whose elements reflect the nullability at
  *  each listing depth (where element '0' is the
  *  outermost list-wrapper). */
-fun parseWrappers(wrappers: String): BitVector {
+internal fun parseWrappers(wrappers: String): BitVector {
     val sz = wrappers.length
     if (sz == 0) throw IllegalArgumentException("At least wrapper needed for basetype ($wrappers).")
     val baseWrapper = wrappers[sz - 1]
@@ -59,10 +59,10 @@ fun parseWrappers(wrappers: String): BitVector {
  * Extension function to create a TypeExpr from wrapper string notation.
  * This is the inverse of [unparseWrappers].
  */
-fun SchemaWithData.toTypeExpr(
+fun ViaductSchema.toTypeExpr(
     wrappers: String,
     baseString: String
-): ViaductSchema.TypeExpr<SchemaWithData.TypeDef> {
+): ViaductSchema.TypeExpr<out ViaductSchema.TypeDef> {
     val baseTypeDef = requireNotNull(this.types[baseString]) {
         "Type not found: $baseString"
     }

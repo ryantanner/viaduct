@@ -23,7 +23,7 @@ import viaduct.invariants.InvariantChecker
  *
  * These properties are important for correct runtime behavior (e.g., introspection queries).
  */
-class GraphQLSchemaExtraDiff(
+internal class GraphQLSchemaExtraDiff(
     private val expected: GraphQLSchema,
     private val actual: GraphQLSchema,
     private val checker: InvariantChecker = InvariantChecker()

@@ -14,9 +14,37 @@ import viaduct.graphql.schema.ViaductSchema
 
 typealias NSE = NoSuchElementException
 
-/** A set of unit tests for ViaductSchema implementations, with emphasis on
- *  catching error cases (non-error cases are tested pretty well in the "full"
- *  tests).
+/**
+ * A contract test suite for [ViaductSchema] implementations.
+ *
+ * This interface provides a comprehensive set of JUnit 5 tests that verify
+ * the behavioral correctness of any [ViaductSchema] implementation. Implementers
+ * need only provide a [makeSchema] factory method, and they receive extensive
+ * test coverage for:
+ *
+ * - Default value handling for fields and arguments
+ * - Field path navigation
+ * - Override detection (`isOverride`)
+ * - Extension lists and applied directives
+ * - Root type referential integrity
+ * - Type expression properties
+ *
+ * ## Usage
+ *
+ * To use this contract, create a test class that implements this interface:
+ *
+ * ```kotlin
+ * class MySchemaContractTest : ViaductSchemaContract {
+ *     override fun makeSchema(schema: String): ViaductSchema {
+ *         return MySchema.fromSDL(schema)
+ *     }
+ * }
+ * ```
+ *
+ * JUnit will automatically discover and run all the `@Test` methods defined
+ * in this interface.
+ *
+ * @see ViaductSchemaSubtypeContract for complementary tests verifying type structure
  */
 interface ViaductSchemaContract {
     companion object {
@@ -65,6 +93,16 @@ interface ViaductSchemaContract {
         }
     }
 
+    /**
+     * Factory method to create a [ViaductSchema] from SDL.
+     *
+     * Implementations should parse the given GraphQL SDL string and return
+     * a [ViaductSchema] instance. The SDL will always be syntactically valid
+     * GraphQL schema definition language.
+     *
+     * @param schema A valid GraphQL SDL string
+     * @return A [ViaductSchema] parsed from the SDL
+     */
     fun makeSchema(schema: String): ViaductSchema
 
     @Test

@@ -12,4 +12,4 @@ package viaduct.graphql.schema
  * This is distinct from file format errors (like invalid magic numbers or truncated data)
  * which should throw format-specific exceptions.
  */
-class InvalidSchemaException(message: String) : Exception(message)
+internal class InvalidSchemaException(message: String) : Exception(message)

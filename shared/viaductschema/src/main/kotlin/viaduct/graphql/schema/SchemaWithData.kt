@@ -22,7 +22,7 @@ import graphql.language.Value
  * associated with schema nodes. However, consumers should generally work through
  * the [ViaductSchema] interface and flavor-specific extension properties.
  */
-class SchemaWithData(
+internal class SchemaWithData(
     override val directives: Map<String, Directive>,
     override val types: Map<String, TypeDef>,
     override val queryTypeDef: Object?,

@@ -12,16 +12,16 @@ import graphql.schema.GraphQLScalarType
 import graphql.schema.GraphQLUnionType
 import viaduct.graphql.schema.SchemaWithData
 
-val SchemaWithData.Field.isPresentation: Boolean
+internal val SchemaWithData.Field.isPresentation: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/presentation") ?: false
 
-val SchemaWithData.TypeDef.isPresentation: Boolean
+internal val SchemaWithData.TypeDef.isPresentation: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/presentation") ?: false
 
-val SchemaWithData.Field.isData: Boolean
+internal val SchemaWithData.Field.isData: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/data") ?: false
 
-val SchemaWithData.TypeDef.isData: Boolean
+internal val SchemaWithData.TypeDef.isData: Boolean
     get() = this.sourceLocation?.sourceName?.contains("schema/data") ?: false
 
 /** Returns the tenant that defines a field.  The result is typically
@@ -34,7 +34,7 @@ val SchemaWithData.TypeDef.isData: Boolean
  *  not meet our expected conventions, then the constant "NO_TENANT"
  *  is returned.
  */
-val SchemaWithData.Field.tenant: String
+internal val SchemaWithData.Field.tenant: String
     get() = extractTenant(
         when (val d = data) {
             is GraphQLFieldDefinition -> d.definition?.sourceLocation?.sourceName
@@ -53,7 +53,7 @@ val SchemaWithData.Field.tenant: String
  *  not meet our expected conventions, then the constant "NO_TENANT"
  *  is returned.
  */
-val SchemaWithData.TypeDef.tenant: String
+internal val SchemaWithData.TypeDef.tenant: String
     get() = extractTenant(
         when (val d = data) {
             is GraphQLScalarType -> d.definition?.sourceLocation?.sourceName
@@ -101,11 +101,11 @@ private val tenantFinder by lazy {
  *  tenant of the field-definition is the tenant of the containing
  *  type.
  */
-val SchemaWithData.Field.inExtension: Boolean
+internal val SchemaWithData.Field.inExtension: Boolean
     get() = this.tenant != this.containingDef.tenant
 
 /** Returns true iff field is defined in one module but has a type defined
  *  in another.
  */
-val SchemaWithData.Field.hasExternalType: Boolean
+internal val SchemaWithData.Field.hasExternalType: Boolean
     get() = this.tenant != this.type.baseTypeDef.tenant

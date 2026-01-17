@@ -6,6 +6,7 @@ import graphql.language.Value
 import graphql.schema.GraphQLAppliedDirective
 import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirectiveContainer
+import graphql.schema.GraphQLNamedSchemaElement
 import graphql.schema.GraphQLNamedType
 import graphql.schema.GraphQLSchema
 import viaduct.graphql.schema.SchemaWithData
@@ -14,16 +15,29 @@ import viaduct.graphql.schema.checkBridgeSchemaInvariants
 import viaduct.invariants.InvariantChecker
 
 class GJSchemaCheck(
-    private val schema: SchemaWithData,
+    viaductSchema: ViaductSchema,
     private val gjSchema: GraphQLSchema,
     private val check: InvariantChecker = InvariantChecker(),
 ) {
-    fun assertEmpty(separator: String) = check.assertEmpty(separator)
+    private val schema: SchemaWithData
 
     init {
+        require(viaductSchema is SchemaWithData) {
+            "GJSchemaCheck can only be used with schemas from ViaductSchema.fromGraphQLSchema. " +
+                "Got ${viaductSchema::class.simpleName} instead of SchemaWithData."
+        }
+        // Check that the schema's data fields contain graphql-java schema types (not language types)
+        val sampleDef = (viaductSchema.types.values.firstOrNull() ?: viaductSchema.directives.values.firstOrNull())
+            as SchemaWithData.Def?
+        require(sampleDef == null || sampleDef.data is GraphQLNamedSchemaElement) {
+            "GJSchemaCheck can only be used with schemas from ViaductSchema.fromGraphQLSchema. " +
+                "The schema appears to be from ViaductSchema.fromTypeDefinitionRegistry (GJSchemaRaw)."
+        }
+        schema = viaductSchema
+
         checkBridgeSchemaInvariants(schema, check)
         check.containsExactlyElementsIn(
-            gjSchema.allTypesAsList.map { it.name },
+            gjSchema.allTypesAsList.filterNot { it.name.startsWith("__") }.map { it.name },
             schema.types.values.map { it.name },
             "TYPES_AGREE"
         )
@@ -32,6 +46,8 @@ class GJSchemaCheck(
         checkDirectiveInvariants()
         checkSourceLocationInvariants()
     }
+
+    fun assertEmpty(separator: String) = check.assertEmpty(separator)
 
     private fun Iterable<SchemaWithData.Def>.checkAgreement(): Unit = forEach { it.checkAgreement() }
 

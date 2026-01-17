@@ -35,9 +35,13 @@ The ViaductSchema library provides a unified abstraction layer for working with 
 
 3. **Schema Validation Logic**: This library does NOT implement GraphQL schema validation (it does provide a bridge to graphql-java's validated `GraphQLSchema`).
 
-## Architectural Overview
+---
 
-### Root Abstraction: `ViaductSchema`
+# Part 1: For Library Consumers
+
+This section is for developers who use ViaductSchema to work with GraphQL schemas in their applications.
+
+## The ViaductSchema Interface
 
 The `ViaductSchema` interface is the entry point to the abstraction:
 
@@ -51,38 +55,16 @@ interface ViaductSchema {
 }
 ```
 
-### Unified Implementation: `SchemaWithData`
+All operations go through this interface. You never need to work with implementation classes directly.
 
-All schema flavors share a single implementation class, `SchemaWithData`, which directly implements `ViaductSchema`. The key insight is that each node has an optional `data: Any?` property that stores flavor-specific auxiliary data:
+## Creating Schemas
 
-```kotlin
-class SchemaWithData(...) : ViaductSchema {
-    sealed class Def {
-        abstract val data: Any?  // Flavor-specific data
-        // ...
-    }
-    // Nested classes: TypeDef, Object, Interface, Field, etc.
-}
-```
+ViaductSchema provides several factory methods as extension functions on `ViaductSchema.Companion`. Choose based on your source data and requirements.
 
-The different "flavors" are distinguished by what they store in `data`:
+### From GraphQL-Java Validated Schema
 
-| Flavor | What's in `data` | Use Case |
-|--------|------------------|----------|
-| Binary | `null` | Fast loading, compact storage |
-| GJSchema | `graphql.schema.*` types | Validated schema access |
-| GJSchemaRaw | `TypeDefData` with `graphql.language.*` | Fast parsing, build-time codegen |
-| Filtered | Unfiltered `ViaductSchema.Def` | Schema projections |
+**Import:** `viaduct.graphql.schema.graphqljava.extensions`
 
-### Factory Functions
-
-Schema instances are created through factory functions. There are two categories: **public factory functions** for external consumers, and **internal factory functions** used within the library.
-
-#### Public Factory Functions
-
-These are extension functions on `ViaductSchema.Companion` that provide a stable public API. Import them from the `extensions` packages.
-
-**From GraphQL-Java validated schema** (`viaduct.graphql.schema.graphqljava.extensions`):
 ```kotlin
 ViaductSchema.Companion.fromGraphQLSchema(inputFiles: List<File>): ViaductSchema
 ViaductSchema.Companion.fromGraphQLSchema(inputFiles: List<URL>): ViaductSchema
@@ -90,14 +72,33 @@ ViaductSchema.Companion.fromGraphQLSchema(registry: TypeDefinitionRegistry): Via
 ViaductSchema.Companion.fromGraphQLSchema(schema: GraphQLSchema): ViaductSchema
 ```
 
-**From GraphQL-Java raw registry** (`viaduct.graphql.schema.graphqljava.extensions`):
+**Characteristics:**
+
+- Performs full GraphQL semantic validation
+- Requires a query root type
+- Slower to construct due to validation overhead
+- Use when you need guaranteed schema validity
+
+### From GraphQL-Java Raw Registry
+
+**Import:** `viaduct.graphql.schema.graphqljava.extensions`
+
 ```kotlin
 ViaductSchema.Companion.fromTypeDefinitionRegistry(inputFiles: List<File>): ViaductSchema
 ViaductSchema.Companion.fromTypeDefinitionRegistry(inputFiles: List<URL>): ViaductSchema
 ViaductSchema.Companion.fromTypeDefinitionRegistry(registry: TypeDefinitionRegistry): ViaductSchema
 ```
 
-**Binary format** (`viaduct.graphql.schema.binary.extensions`):
+**Characteristics:**
+
+- Fast to construct (no validation overhead)
+- Supports partial schemas (no required query root)
+- Use when your schema is already validated by other means (e.g., a previous build step)
+
+### From Binary Format
+
+**Import:** `viaduct.graphql.schema.binary.extensions`
+
 ```kotlin
 // Reading
 ViaductSchema.Companion.fromBinaryFile(file: File): ViaductSchema
@@ -108,304 +109,47 @@ fun ViaductSchema.toBinaryFile(file: File)
 fun ViaductSchema.toBinaryFile(output: OutputStream)
 ```
 
-**Filtered schemas** (member function on `ViaductSchema`):
+**Characteristics:**
+
+- 10-20x faster to load than parsing SDL text
+- Lower memory overhead than graphql-java's object model
+- Use for production schema loading where startup time matters
+- Pre-compile schemas to binary during build, load quickly at runtime
+
+### Creating Filtered Schemas
+
 ```kotlin
 fun ViaductSchema.filter(filter: SchemaFilter, options: SchemaInvariantOptions): ViaductSchema
 ```
 
-#### Internal Factory Functions
-
-These are top-level functions used internally by the library. They return `SchemaWithData` (the concrete implementation class) rather than `ViaductSchema`, providing access to the `data` property for flavor-specific operations.
-
-**GJSchema** (`viaduct.graphql.schema.graphqljava`):
+**Example:**
 ```kotlin
-gjSchemaFromSchema(gjSchema: GraphQLSchema): SchemaWithData
-gjSchemaFromRegistry(registry: TypeDefinitionRegistry): SchemaWithData
-gjSchemaFromFiles(inputFiles: List<File>): SchemaWithData
-gjSchemaFromURLs(inputFiles: List<URL>): SchemaWithData
-```
-
-**GJSchemaRaw** (`viaduct.graphql.schema.graphqljava`):
-```kotlin
-gjSchemaRawFromSDL(sdl: String): SchemaWithData
-gjSchemaRawFromRegistry(registry: TypeDefinitionRegistry): SchemaWithData
-gjSchemaRawFromFiles(inputFiles: List<File>): SchemaWithData
-gjSchemaRawFromURLs(inputFiles: List<URL>): SchemaWithData
-```
-
-**Binary** (`viaduct.graphql.schema.binary`, internal visibility):
-```kotlin
-internal fun readBSchema(input: InputStream): SchemaWithData
-internal fun writeBSchema(schema: ViaductSchema, output: OutputStream)
-```
-
-**Filtered** (`viaduct.graphql.schema`, internal visibility):
-```kotlin
-internal fun filteredSchema(
-    filter: SchemaFilter,
-    schemaEntries: Iterable<Map.Entry<String, T>>,
-    directiveEntries: Iterable<Map.Entry<String, ViaductSchema.Directive>>,
-    ...
-): SchemaWithData
-```
-
-### Extension Properties for Type-Safe Data Access
-
-Each flavor provides extension properties that cast `data` to the appropriate type:
-
-**GJSchema** (in `viaduct.graphql.schema.graphqljava`):
-```kotlin
-val SchemaWithData.Object.gjDef: GraphQLObjectType
-val SchemaWithData.Interface.gjDef: GraphQLInterfaceType
-val SchemaWithData.Field.gjOutputDef: GraphQLFieldDefinition
-val SchemaWithData.Field.gjInputDef: GraphQLInputObjectField
-// etc.
-```
-
-**GJSchemaRaw** (in `viaduct.graphql.schema.graphqljava`):
-```kotlin
-val SchemaWithData.TypeDef.gjrDef: TypeDefinition<*>
-val SchemaWithData.TypeDef.gjrExtensionDefs: List<TypeDefinition<*>>
-val SchemaWithData.Object.gjrDef: ObjectTypeDefinition
-// etc.
-```
-
-**Filtered** (in `viaduct.graphql.schema`):
-```kotlin
-val SchemaWithData.Def.unfilteredDef: ViaductSchema.Def
-val SchemaWithData.Object.unfilteredDef: ViaductSchema.Object
-val SchemaWithData.Field.unfilteredDef: ViaductSchema.Field
-// etc.
-```
-
-### Two-Phase Construction Pattern
-
-ViaductSchema implementations must handle circular references between types—for example, an `Object` type needs references to its `Interface` supers, while an `Interface` needs references to its implementing `Object` types. All flavors address this using a two-phase construction pattern:
-
-**Phase 1 (Shell Creation)**: All type definition and directive "shells" are created with just their names (and any raw source data in `data`). These shells are added to type/directive maps.
-
-**Phase 2 (Population)**: Each shell is populated with its full data—including cross-references to other types—via a `populate()` method. At this point the type map is fully populated, so cross-references can be resolved directly.
-
-Each `populate()` method includes an idempotency guard (`check(mFoo == null)`) to ensure it's called exactly once, and properties use `guardedGet()` accessors to verify population before access.
-
-### Decoders
-
-Each flavor uses a **decoder** class that transforms source data into `SchemaWithData` elements:
-
-| Flavor | Decoder Class | Source Data |
-|--------|---------------|-------------|
-| GJSchema | GraphQLSchemaDecoder | `graphql.schema.GraphQLSchema` |
-| GJSchemaRaw | TypeDefinitionRegistryDecoder | `graphql.language.TypeDefinitionRegistry` |
-| Binary | DefinitionsDecoder | Binary input stream |
-| Filtered | FilteredSchemaDecoder | Another `ViaductSchema` |
-
-The decoder has access to the fully-populated type map, so it can resolve type references and build `Extension`, `Field`, and other nested objects with direct references rather than deferred lookups.
-
-### Factory Callbacks for Bidirectional Containment
-
-Nested objects like `Extension`, `Field`, `EnumValue`, and `Arg` are immutable from creation—they receive all their data in their constructors. For bidirectional containment relationships (e.g., a `Field` contains `args`, but each `FieldArg` references back to the `Field`), the pattern uses a **factory callback**: the container's constructor takes a `memberFactory: (Container) -> List<Member>` parameter, invokes it with `this`, and the factory creates members with the back-reference already set.
-
-### Type Hierarchy
-
-The library models GraphQL's type system through a comprehensive hierarchy of nested interfaces:
-
-```
-Def
-├── TypeDef
-│   │
-│   ├── HasExtensions
-│   │   └── HasExtenionsWithSupers
-│   │
-│   ├── Enum - extends HasExtensions
-│   ├── Record - extends HasExtensions
-│   │   ├── Input
-│   │   ├── Interface
-│   │   └── Object
-│   ├── Scalar
-│   └── Union - extends HasExtensions
-│
-├── HasArgs
-│
-├── Directive - extends HasArgs
-├── EnumValue
-└── HasDefaultValue
-    ├── Field ─ extends HasArgs
-    └── Arg
-        ├── FieldArg
-        └── DirectiveArg
-AppliedDirective
-Extension
-└── ExtensionWithSupers
-SourceLocation
-TypeExpr
-```
-
-TypeDef also has predicates `isSimple`, `isComposite`, `isInput`, and `isOutput` for categorizing types.
-
-### Type Expressions
-
-The `ViaductSchema.TypeExpr` type represents GraphQL type expressions (e.g., `String!`, `[Int]`, `[User!]!`):
-
-- **baseTypeDef**: The underlying type definition (e.g., `String`, `Int`, `User`)
-- **baseTypeNullable**: Whether the base type is nullable
-- **listNullable**: Bit vector representing nullability at each list nesting level
-
-Unlike most types nested in `ViaductSchema`:
-
-- `TypeExpr` is an abstract class, providing the implementation for list- and non-null "wrapping" and delegating just `baseTypeDef` to implementations of `ViaductSchema`
-- `TypeExpr` has value-equality semantics, versus reference-equality for most of the other nested types. Value equality is implemented in the `TypeExpr` abstract class.
-
-### Extensions
-
-GraphQL supports type extensions, and this library models them explicitly through `Extension` interfaces:
-
-- Each extensible type (Object, Interface, Enum, Input, Union) has an `extensions` property
-- Extensions track which is the "base" definition vs. extensions
-- Extensions carry their own applied directives
-- Source locations are preserved per extension
-
-### Applied Directives
-
-The `AppliedDirective` interface represents directive applications (e.g., `@deprecated(reason: "Use newField")`):
-
-- **name**: Directive name
-- **arguments**: Map of argument names to resolved values
-- Implements value-type semantics (equality based on content, not identity)
-
-**Important:** the `arguments` of an `AppliedDirective` is expected to contain the values of _all_ arguments, not just arguments that are explicitly provided in the schema. It's impossible to tell in `ViaductSchema` when the input schema text explicitly provided an argument value versus depended on a default value (including a default value of `null` for nullable arguments).
-
-## Schema Flavors
-
-The library provides four schema flavors, all using the unified `SchemaWithData` implementation class. Each flavor is distinguished by factory functions, what's stored in `data`, and extension properties for accessing that data.
-
-### 1. GJSchemaRaw (Raw GraphQL-Java)
-
-**Purpose**: Creates schemas from graphql-java's `TypeDefinitionRegistry` — a parsed but not semantically validated schema.
-
-**Key characteristics:**
-
-- Fast to construct (no validation overhead)
-- Supports partial schemas (no required query root)
-- Used primarily during build-time code generation
-- Each node's `data` holds a `TypeDefData` containing the base definition and extension definitions
-
-**Factory functions**:
-
-- Public: `ViaductSchema.Companion.fromTypeDefinitionRegistry(...)`
-- Internal: `gjSchemaRawFromSDL()`, `gjSchemaRawFromRegistry()`, `gjSchemaRawFromFiles()`, `gjSchemaRawFromURLs()`
-
-**Data access** (extension properties):
-```kotlin
-val typeDef = schema.types["User"]!!
-val objectDef: ObjectTypeDefinition = (typeDef as SchemaWithData.Object).gjrDef
-val extensionDefs: List<ObjectTypeDefinition> = (typeDef as SchemaWithData.Object).gjrExtensionDefs
-```
-
-**When to use**: When the input schema has already been validated (e.g., by a previous build step) and you want higher performance.
-
-### 2. GJSchema (Validated GraphQL-Java)
-
-**Purpose**: Creates schemas from graphql-java's `GraphQLSchema` — a parsed, validated, and semantically analyzed schema.
-
-**Key characteristics:**
-
-- Slower to construct because `GraphQLSchema` validation is expensive
-- Requires a query root type
-- Each node's `data` holds the corresponding `graphql.schema.*` type
-
-**Factory functions**:
-
-- Public: `ViaductSchema.Companion.fromGraphQLSchema(...)`
-- Internal: `gjSchemaFromSchema()`, `gjSchemaFromRegistry()`, `gjSchemaFromFiles()`, `gjSchemaFromURLs()`
-
-**Data access** (extension properties):
-```kotlin
-val typeDef = schema.types["User"]!!
-val objectDef: GraphQLObjectType = (typeDef as SchemaWithData.Object).gjDef
-val field = (typeDef as SchemaWithData.Object).field("name")!!
-val fieldDef: GraphQLFieldDefinition = (field as SchemaWithData.Field).gjOutputDef
-```
-
-**When to use**: When you need guaranteed schema validity and can afford the validation cost.
-
-### 3. Binary Schema (BSchema)
-
-**Purpose**: A compact binary serialization format that enables fast loading and reduced memory footprint.
-
-**Key characteristics:**
-
-- Native `ViaductSchema` implementation (no underlying representation to wrap)
-- String deduplication via an interned string table in the binary format
-- Significantly faster to load than parsing SDL text (10-20x speedup on large schemas)
-- Lower memory overhead than graphql-java's object model
-- Round-trip tested: binary → ViaductSchema → binary produces identical output
-- Each node's `data` is `null` (no auxiliary data needed)
-
-**Factory functions**:
-
-- Public reading: `ViaductSchema.Companion.fromBinaryFile(file)`, `fromBinaryFile(inputStream)`
-- Public writing: `ViaductSchema.toBinaryFile(file)`, `toBinaryFile(outputStream)`
-- Internal: `readBSchema(inputStream)`, `writeBSchema(schema, outputStream)`
-
-**When to use**: For production schema loading where startup time and memory usage matter. Schemas can be pre-compiled to binary format during build time, then loaded quickly at runtime.
-
-### 4. Filtered Schema
-
-**Purpose**: Projects an existing `ViaductSchema` through a filter to create a restricted view.
-
-**Key characteristics:**
-
-- Wraps another `ViaductSchema` (each node's `data` holds the unfiltered def)
-- Applies filtering rules via `SchemaFilter` interface
-- **Important:** filtered schemas do _not_ need to be valid GraphQL schemas
-
-**Factory functions**:
-
-- Public: `ViaductSchema.filter(filter, options)` (extension function)
-- Internal: `filteredSchema(filter, schemaEntries, directiveEntries, ...)`
-
-**Example usage**:
-```kotlin
-val filteredSchema = baseSchema.filter(
+val publicSchema = schema.filter(
     filter = object : SchemaFilter {
         override fun includeTypeDef(typeDef: ViaductSchema.TypeDef) =
             !typeDef.hasAppliedDirective("internal")
         override fun includeField(field: ViaductSchema.Field) =
             !field.hasAppliedDirective("admin")
-        // ... other filter methods
     }
 )
 ```
 
-**Data access** (extension properties):
-```kotlin
-val filteredType = filteredSchema.types["User"]!!
-val unfilteredType: ViaductSchema.Object = (filteredType as SchemaWithData.Object).unfilteredDef
-```
+**Characteristics:**
 
-**Filtering capabilities:**
+- Creates a restricted view of another schema
+- Filtered schemas do _not_ need to be valid GraphQL schemas
+- Primary use-case: "compilation schemas" (projections for tenant modules)
 
-- Remove types, fields, enum values
-- Remove interface implementations
-- Filter union members
-- Custom filtering logic via `SchemaFilter` interface
+## Choosing a Schema Flavor
 
-The primary use-case is "compilation schemas," i.e., a projection of an application's full schema to just the parts needed by a particular tenant module.
+| Need | Recommended Approach |
+|------|---------------------|
+| Validated schema, can afford validation cost | `fromGraphQLSchema()` |
+| Fast construction, schema already validated | `fromTypeDefinitionRegistry()` |
+| Production loading, startup time matters | `fromBinaryFile()` |
+| Restricted view of existing schema | `filter()` |
 
-## Testing Expectations
-
-The library includes comprehensive testing infrastructure organized into black-box tests (verifying GraphQL semantics across implementations) and glass-box tests (verifying implementation-specific behavior). All `ViaductSchema` flavors should:
-
-1. **Use contract testing**: Extend `ViaductSchemaContract` and `ViaductSchemaSubtypeContract`
-2. **Use black-box testing**: Run the shared `TestSchemas` cases through your implementation
-3. **Add glass-box tests**: Test implementation-specific behavior (encoding limits, caching, error handling)
-4. **Verify invariants**: Schemas must satisfy structural invariants
-
-See [TESTING.md](TESTING.md) for detailed testing guidelines for contributors.
-
-See [TEST_FIXTURES.md](TEST_FIXTURES.md) for documentation on test utilities and sample schemas available to consumers of and contributors to this library.
-
-## Common Patterns
+## Common Usage Patterns
 
 ### Finding a Field
 
@@ -463,19 +207,263 @@ fun collectAppliedDirectives(schema: ViaductSchema): Set<ViaductSchema.AppliedDi
 }
 ```
 
-### Accessing Underlying GraphQL-Java Types
+## Type Hierarchy
+
+The library models GraphQL's type system through a comprehensive hierarchy of nested interfaces:
+
+```
+Def
+├── TypeDef
+│   │
+│   ├── HasExtensions
+│   │   └── HasExtenionsWithSupers
+│   │
+│   ├── Enum - extends HasExtensions
+│   ├── Record - extends HasExtensions
+│   │   ├── Input
+│   │   ├── Interface
+│   │   └── Object
+│   ├── Scalar
+│   └── Union - extends HasExtensions
+│
+├── HasArgs
+│
+├── Directive - extends HasArgs
+├── EnumValue
+└── HasDefaultValue
+    ├── Field ─ extends HasArgs
+    └── Arg
+        ├── FieldArg
+        └── DirectiveArg
+AppliedDirective
+Extension
+└── ExtensionWithSupers
+SourceLocation
+TypeExpr
+```
+
+TypeDef also has predicates `isSimple`, `isComposite`, `isInput`, and `isOutput` for categorizing types.
+
+## Type Expressions
+
+The `ViaductSchema.TypeExpr` type represents GraphQL type expressions (e.g., `String!`, `[Int]`, `[User!]!`):
+
+- **baseTypeDef**: The underlying type definition (e.g., `String`, `Int`, `User`)
+- **baseTypeNullable**: Whether the base type is nullable
+- **listNullable**: Bit vector representing nullability at each list nesting level
+
+TypeExpr has value-equality semantics (versus reference-equality for most other nested types).
+
+## Extensions
+
+GraphQL supports type extensions, and this library models them explicitly through `Extension` interfaces:
+
+- Each extensible type (Object, Interface, Enum, Input, Union) has an `extensions` property
+- Extensions track which is the "base" definition vs. extensions
+- Extensions carry their own applied directives
+- Source locations are preserved per extension
+
+## Applied Directives
+
+The `AppliedDirective` interface represents directive applications (e.g., `@deprecated(reason: "Use newField")`):
+
+- **name**: Directive name
+- **arguments**: Map of argument names to resolved values
+- Implements value-type semantics (equality based on content, not identity)
+
+**Important:** the `arguments` of an `AppliedDirective` contains the values of _all_ arguments, not just arguments explicitly provided in the schema. It's impossible to tell whether the input schema explicitly provided an argument value versus depended on a default value.
+
+---
+
+# Part 2: For External ViaductSchema Implementers
+
+This section is for developers who want to create their own `ViaductSchema` implementation backed by a different underlying representation.
+
+## Contract Test Suites
+
+The library provides two contract test suites in `testFixtures` to verify your implementation's correctness:
+
+### ViaductSchemaContract
+
+Tests **behavioral correctness**—that your implementation behaves correctly according to GraphQL semantics.
 
 ```kotlin
-// For validated schemas (GJSchema)
-val schema = gjSchemaFromFiles(listOf(schemaFile))
-val userType = schema.types["User"] as SchemaWithData.Object
-val graphqlObjectType: GraphQLObjectType = userType.gjDef
-
-// For raw schemas (GJSchemaRaw)
-val rawSchema = gjSchemaRawFromSDL(sdl)
-val rawUserType = rawSchema.types["User"] as SchemaWithData.Object
-val objectTypeDef: ObjectTypeDefinition = rawUserType.gjrDef
+class MySchemaContractTest : ViaductSchemaContract {
+    override fun makeSchema(schema: String): ViaductSchema {
+        return MySchema.fromSDL(schema)
+    }
+}
 ```
+
+This interface provides comprehensive tests for:
+
+- Default value handling for fields and arguments
+- Field path navigation
+- Override detection (`isOverride`)
+- Extension lists and applied directives
+- Root type referential integrity
+- Type expression properties
+
+### ViaductSchemaSubtypeContract
+
+Tests **type structure**—that your implementation's nested types properly subtype `ViaductSchema`'s nested interfaces.
+
+```kotlin
+class MySchemaSubtypeContractTest : ViaductSchemaSubtypeContract() {
+    override fun getSchemaClass(): KClass<*> = MySchema::class
+}
+```
+
+This class uses Kotlin reflection to verify:
+
+- All required nested classes exist (`Def`, `TypeDef`, `Field`, `Arg`, etc.)
+- The class hierarchy is correct (e.g., `TypeDef` extends `TopLevelDef`)
+- Return types are proper subtypes (e.g., `Field.containingDef` returns your implementation's `Record` type)
+
+**Optional customization:**
+
+- Override `skipExtensionTests = true` if your implementation delegates extension fields without wrapping them
+- Override `classes` if your implementation uses non-standard nested class names
+
+## Black-Box Testing with TestSchemas
+
+In addition to the contracts, use the shared `TestSchemas` cases through your implementation for comprehensive coverage.
+
+See [TEST_FIXTURES.md](TEST_FIXTURES.md) for documentation on test utilities and sample schemas available.
+
+---
+
+# Part 3: For Library Maintainers
+
+This section is for developers who maintain or extend the ViaductSchema library itself.
+
+## Unified Implementation: SchemaWithData
+
+All schema flavors share a single `internal` implementation class, `SchemaWithData`, which directly implements `ViaductSchema`. The key insight is that each node has an optional `data: Any?` property that stores flavor-specific auxiliary data:
+
+```kotlin
+internal class SchemaWithData(...) : ViaductSchema {
+    sealed class Def {
+        abstract val data: Any?  // Flavor-specific data
+        // ...
+    }
+    // Nested classes: TypeDef, Object, Interface, Field, etc.
+}
+```
+
+The different "flavors" are distinguished by what they store in `data`:
+
+| Flavor | What's in `data` | Use Case |
+|--------|------------------|----------|
+| Binary | `null` | Fast loading, compact storage |
+| GJSchema | `graphql.schema.*` types | Validated schema access |
+| GJSchemaRaw | `TypeDefData` with `graphql.language.*` | Fast parsing, build-time codegen |
+| Filtered | Unfiltered `ViaductSchema.Def` | Schema projections |
+
+## Internal Factory Functions
+
+These are top-level `internal` functions that return `SchemaWithData` (not `ViaductSchema`), providing access to the `data` property for flavor-specific operations.
+
+**GJSchema** (`viaduct.graphql.schema.graphqljava`):
+```kotlin
+internal fun gjSchemaFromSchema(gjSchema: GraphQLSchema): SchemaWithData
+internal fun gjSchemaFromRegistry(registry: TypeDefinitionRegistry): SchemaWithData
+internal fun gjSchemaFromFiles(inputFiles: List<File>): SchemaWithData
+internal fun gjSchemaFromURLs(inputFiles: List<URL>): SchemaWithData
+```
+
+**GJSchemaRaw** (`viaduct.graphql.schema.graphqljava`):
+```kotlin
+internal fun gjSchemaRawFromSDL(sdl: String): SchemaWithData
+internal fun gjSchemaRawFromRegistry(registry: TypeDefinitionRegistry): SchemaWithData
+internal fun gjSchemaRawFromFiles(inputFiles: List<File>): SchemaWithData
+internal fun gjSchemaRawFromURLs(inputFiles: List<URL>): SchemaWithData
+```
+
+**Binary** (`viaduct.graphql.schema.binary`):
+```kotlin
+internal fun readBSchema(input: InputStream): SchemaWithData
+internal fun writeBSchema(schema: ViaductSchema, output: OutputStream)
+```
+
+**Filtered** (`viaduct.graphql.schema`):
+```kotlin
+internal fun filteredSchema(
+    filter: SchemaFilter,
+    schemaEntries: Iterable<Map.Entry<String, T>>,
+    directiveEntries: Iterable<Map.Entry<String, ViaductSchema.Directive>>,
+    ...
+): SchemaWithData
+```
+
+## Two-Phase Construction Pattern
+
+ViaductSchema implementations must handle circular references between types—for example, an `Object` type needs references to its `Interface` supers, while an `Interface` needs references to its implementing `Object` types. All flavors address this using a two-phase construction pattern:
+
+**Phase 1 (Shell Creation)**: All type definition and directive "shells" are created with just their names (and any raw source data in `data`). These shells are added to type/directive maps.
+
+**Phase 2 (Population)**: Each shell is populated with its full data—including cross-references to other types—via a `populate()` method. At this point the type map is fully populated, so cross-references can be resolved directly.
+
+Each `populate()` method includes an idempotency guard (`check(mFoo == null)`) to ensure it's called exactly once, and properties use `guardedGet()` accessors to verify population before access.
+
+## Decoders
+
+Each flavor uses a **decoder** class that transforms source data into `SchemaWithData` elements:
+
+| Flavor | Decoder Class | Source Data |
+|--------|---------------|-------------|
+| GJSchema | GraphQLSchemaDecoder | `graphql.schema.GraphQLSchema` |
+| GJSchemaRaw | TypeDefinitionRegistryDecoder | `graphql.language.TypeDefinitionRegistry` |
+| Binary | DefinitionsDecoder | Binary input stream |
+| Filtered | FilteredSchemaDecoder | Another `ViaductSchema` |
+
+The decoder has access to the fully-populated type map, so it can resolve type references and build `Extension`, `Field`, and other nested objects with direct references rather than deferred lookups.
+
+## Factory Callbacks for Bidirectional Containment
+
+Nested objects like `Extension`, `Field`, `EnumValue`, and `Arg` are immutable from creation—they receive all their data in their constructors. For bidirectional containment relationships (e.g., a `Field` contains `args`, but each `FieldArg` references back to the `Field`), the pattern uses a **factory callback**: the container's constructor takes a `memberFactory: (Container) -> List<Member>` parameter, invokes it with `this`, and the factory creates members with the back-reference already set.
+
+## Extension Properties for Type-Safe Data Access
+
+Each flavor provides `internal` extension properties that cast `data` to the appropriate type:
+
+**GJSchema** (in `viaduct.graphql.schema.graphqljava`):
+```kotlin
+internal val SchemaWithData.Object.gjDef: GraphQLObjectType
+internal val SchemaWithData.Interface.gjDef: GraphQLInterfaceType
+internal val SchemaWithData.Field.gjOutputDef: GraphQLFieldDefinition
+internal val SchemaWithData.Field.gjInputDef: GraphQLInputObjectField
+// etc.
+```
+
+**GJSchemaRaw** (in `viaduct.graphql.schema.graphqljava`):
+```kotlin
+internal val SchemaWithData.TypeDef.gjrDef: TypeDefinition<*>
+internal val SchemaWithData.TypeDef.gjrExtensionDefs: List<TypeDefinition<*>>
+internal val SchemaWithData.Object.gjrDef: ObjectTypeDefinition
+// etc.
+```
+
+**Filtered** (in `viaduct.graphql.schema`):
+```kotlin
+internal val SchemaWithData.Def.unfilteredDef: ViaductSchema.Def
+internal val SchemaWithData.Object.unfilteredDef: ViaductSchema.Object
+internal val SchemaWithData.Field.unfilteredDef: ViaductSchema.Field
+// etc.
+```
+
+## Testing Expectations
+
+The library includes comprehensive testing infrastructure organized into black-box tests (verifying GraphQL semantics across implementations) and glass-box tests (verifying implementation-specific behavior). All `ViaductSchema` flavors should:
+
+1. **Use contract testing**: Extend `ViaductSchemaContract` and `ViaductSchemaSubtypeContract`
+2. **Use black-box testing**: Run the shared `TestSchemas` cases through your implementation
+3. **Add glass-box tests**: Test implementation-specific behavior (encoding limits, caching, error handling)
+4. **Verify invariants**: Schemas must satisfy structural invariants
+
+See [TESTING.md](TESTING.md) for detailed testing guidelines for contributors.
+
+See [TEST_FIXTURES.md](TEST_FIXTURES.md) for documentation on test utilities and sample schemas.
 
 ## Contribution Guidelines
 

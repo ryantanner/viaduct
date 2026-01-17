@@ -44,9 +44,9 @@ import viaduct.utils.timer.Timer
  */
 
 /** Convert collection of .graphqls files into a schema. */
-fun gjSchemaRawFromURLs(inputFiles: List<URL>): SchemaWithData = gjSchemaRawFromRegistry(readTypesFromURLs(inputFiles))
+internal fun gjSchemaRawFromURLs(inputFiles: List<URL>): SchemaWithData = gjSchemaRawFromRegistry(readTypesFromURLs(inputFiles))
 
-fun gjSchemaRawFromFiles(
+internal fun gjSchemaRawFromFiles(
     inputFiles: List<File>,
     timer: Timer = Timer(),
 ): SchemaWithData {
@@ -54,7 +54,7 @@ fun gjSchemaRawFromFiles(
     return gjSchemaRawFromRegistry(typeDefRegistry, timer)
 }
 
-fun gjSchemaRawFromSDL(
+internal fun gjSchemaRawFromSDL(
     sdl: String,
     timer: Timer = Timer(),
 ): SchemaWithData {
@@ -70,7 +70,7 @@ fun gjSchemaRawFromSDL(
  * and falling back to the standard names ("Query", "Mutation", "Subscription")
  * if no schema definition exists.
  */
-fun gjSchemaRawFromRegistry(
+internal fun gjSchemaRawFromRegistry(
     registry: TypeDefinitionRegistry,
     timer: Timer = Timer(),
 ): SchemaWithData =

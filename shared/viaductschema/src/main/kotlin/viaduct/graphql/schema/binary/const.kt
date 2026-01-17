@@ -296,7 +296,7 @@ internal const val SIMPLE_CONSTANT_KIND_LOW_NIBBLE_MASK = 0x0F
  * Depth is calculated as 1 + the maximum depth of any element.
  * For example: [1, 2, 3] has depth 1, [[1], [2]] has depth 2.
  */
-data class ListConstant(override val depth: Int, val elements: List<Any?>) : CompoundConstant {
+internal data class ListConstant(override val depth: Int, val elements: List<Any?>) : CompoundConstant {
     override val key = elements
 }
 
@@ -306,7 +306,7 @@ data class ListConstant(override val depth: Int, val elements: List<Any?>) : Com
  * Depth is calculated as 1 + the maximum depth of any field value.
  * For example: {x: 1, y: 2} has depth 1, {x: {y: 1}} has depth 2.
  */
-data class InputObjectConstant(override val depth: Int, val fieldPairs: Map<String, Any?>) : CompoundConstant {
+internal data class InputObjectConstant(override val depth: Int, val fieldPairs: Map<String, Any?>) : CompoundConstant {
     override val key = fieldPairs
 }
 
@@ -316,7 +316,7 @@ data class InputObjectConstant(override val depth: Int, val fieldPairs: Map<Stri
  * The depth property enables ordering by nesting level, which will be used
  * for future optimizations in the binary encoding.
  */
-sealed interface CompoundConstant : Comparable<CompoundConstant> {
+internal sealed interface CompoundConstant : Comparable<CompoundConstant> {
     val depth: Int
     val key: Any?
 

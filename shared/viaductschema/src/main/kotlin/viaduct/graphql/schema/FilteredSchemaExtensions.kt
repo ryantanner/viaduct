@@ -12,53 +12,53 @@ package viaduct.graphql.schema
  */
 
 /** The unfiltered definition that this filtered definition wraps. */
-val SchemaWithData.Def.unfilteredDef: ViaductSchema.Def
+internal val SchemaWithData.Def.unfilteredDef: ViaductSchema.Def
     get() = data as ViaductSchema.Def
 
 /** The unfiltered directive that this filtered directive wraps. */
-val SchemaWithData.Directive.unfilteredDef: ViaductSchema.Directive
+internal val SchemaWithData.Directive.unfilteredDef: ViaductSchema.Directive
     get() = data as ViaductSchema.Directive
 
 /** The unfiltered type definition that this filtered type definition wraps. */
-val SchemaWithData.TypeDef.unfilteredDef: ViaductSchema.TypeDef
+internal val SchemaWithData.TypeDef.unfilteredDef: ViaductSchema.TypeDef
     get() = data as ViaductSchema.TypeDef
 
 /** The unfiltered scalar that this filtered scalar wraps. */
-val SchemaWithData.Scalar.unfilteredDef: ViaductSchema.Scalar
+internal val SchemaWithData.Scalar.unfilteredDef: ViaductSchema.Scalar
     get() = data as ViaductSchema.Scalar
 
 /** The unfiltered enum that this filtered enum wraps. */
-val SchemaWithData.Enum.unfilteredDef: ViaductSchema.Enum
+internal val SchemaWithData.Enum.unfilteredDef: ViaductSchema.Enum
     get() = data as ViaductSchema.Enum
 
 /** The unfiltered union that this filtered union wraps. */
-val SchemaWithData.Union.unfilteredDef: ViaductSchema.Union
+internal val SchemaWithData.Union.unfilteredDef: ViaductSchema.Union
     get() = data as ViaductSchema.Union
 
 /** The unfiltered interface that this filtered interface wraps. */
-val SchemaWithData.Interface.unfilteredDef: ViaductSchema.Interface
+internal val SchemaWithData.Interface.unfilteredDef: ViaductSchema.Interface
     get() = data as ViaductSchema.Interface
 
 /** The unfiltered object that this filtered object wraps. */
-val SchemaWithData.Object.unfilteredDef: ViaductSchema.Object
+internal val SchemaWithData.Object.unfilteredDef: ViaductSchema.Object
     get() = data as ViaductSchema.Object
 
 /** The unfiltered input that this filtered input wraps. */
-val SchemaWithData.Input.unfilteredDef: ViaductSchema.Input
+internal val SchemaWithData.Input.unfilteredDef: ViaductSchema.Input
     get() = data as ViaductSchema.Input
 
 /** The unfiltered field that this filtered field wraps. */
-val SchemaWithData.Field.unfilteredDef: ViaductSchema.Field
+internal val SchemaWithData.Field.unfilteredDef: ViaductSchema.Field
     get() = data as ViaductSchema.Field
 
 /** The unfiltered enum value that this filtered enum value wraps. */
-val SchemaWithData.EnumValue.unfilteredDef: ViaductSchema.EnumValue
+internal val SchemaWithData.EnumValue.unfilteredDef: ViaductSchema.EnumValue
     get() = data as ViaductSchema.EnumValue
 
 /** The unfiltered directive arg that this filtered directive arg wraps. */
-val SchemaWithData.DirectiveArg.unfilteredDef: ViaductSchema.DirectiveArg
+internal val SchemaWithData.DirectiveArg.unfilteredDef: ViaductSchema.DirectiveArg
     get() = data as ViaductSchema.DirectiveArg
 
 /** The unfiltered field arg that this filtered field arg wraps. */
-val SchemaWithData.FieldArg.unfilteredDef: ViaductSchema.FieldArg
+internal val SchemaWithData.FieldArg.unfilteredDef: ViaductSchema.FieldArg
     get() = data as ViaductSchema.FieldArg

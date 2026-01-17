@@ -14,20 +14,65 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIf
 import viaduct.graphql.schema.ViaductSchema
 
+/**
+ * A contract test suite that verifies the type structure of [ViaductSchema] implementations.
+ *
+ * While [ViaductSchemaContract] tests behavioral correctness, this class uses Kotlin reflection
+ * to verify that a [ViaductSchema] implementation has the proper **type structure**. Specifically,
+ * it ensures that:
+ *
+ * - All required nested classes exist (`Def`, `TypeDef`, `Field`, `Arg`, etc.)
+ * - The class hierarchy is correct (e.g., `TypeDef` extends `TopLevelDef`)
+ * - Return types are proper subtypes (e.g., `Field.containingDef` returns the implementation's
+ *   `Record` type, not just `ViaductSchema.Record`)
+ *
+ * This type-safety verification ensures that when you work with a specific implementation,
+ * you get back implementation-specific types that may have additional properties or methods.
+ *
+ * ## Usage
+ *
+ * To use this contract, create a test class that extends this abstract class:
+ *
+ * ```kotlin
+ * class MySchemaSubtypeContractTest : ViaductSchemaSubtypeContract() {
+ *     override fun getSchemaClass() = MySchema::class
+ * }
+ * ```
+ *
+ * JUnit will automatically discover and run all the `@Test` methods defined in this class.
+ *
+ * ## Optional Customization
+ *
+ * - Override [skipExtensionTests] to `true` if your implementation delegates extension
+ *   fields without wrapping them in implementation-specific types.
+ * - Override [classes] directly if your implementation uses non-standard nested class names.
+ *
+ * @see ViaductSchemaContract for complementary tests verifying behavioral correctness
+ */
 @Suppress("ktlint:standard:indent")
 abstract class ViaductSchemaSubtypeContract {
-    /** Override this with the ViaductSchema class you want to test. */
-    abstract fun getSchemaClass(): KClass<*>
+    /**
+     * Returns the [KClass] of the [ViaductSchema] implementation to test.
+     *
+     * Subclasses must override this to return their schema implementation class.
+     * The tests will use reflection to examine this class's nested types and
+     * verify they properly subtype [ViaductSchema]'s nested interfaces.
+     */
+    protected abstract fun getSchemaClass(): KClass<*>
 
-    /** If true, skips tests for `.extensions` fields, which are sometimes delegated
-     *  without being wrapped.
+    /**
+     * If true, skips tests for `.extensions` fields, which are sometimes delegated
+     * without being wrapped in implementation-specific types.
      */
     open val skipExtensionTests: Boolean = false
 
     private val missingClasses = mutableListOf<String>()
 
-    /** If your version of BridgeSchema doesn't implement its classes in the
-     *  standard manner, you can supply this table directly.
+    /**
+     * Map from [ViaductSchema] nested type names to this implementation's corresponding classes.
+     *
+     * Override this if your implementation doesn't follow the standard naming convention
+     * of having nested classes with the same names as [ViaductSchema]'s nested interfaces.
      */
     open val classes: Map<String, KClass<*>> =
         run {
