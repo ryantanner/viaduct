@@ -317,7 +317,7 @@ object TestSchemas {
                 nullableWithNullDefault: "explicit3"
                 nonNullableWithDefault: "explicit4"
             ) {
-                dummy: String
+                stub: String
             }
 
             type Query { obj: ScalarArgsAllProvided }
@@ -335,7 +335,7 @@ object TestSchemas {
             ) on OBJECT
 
             type ScalarArgsNoneProvided @scalarArgs {
-                dummy: String
+                stub: String
             }
 
             type Query { obj: ScalarArgsNoneProvided }
@@ -361,7 +361,7 @@ object TestSchemas {
                 nullableWithNullDefault: "inputExplicit3"
                 nonNullableWithDefault: "inputExplicit4"
             }) {
-                dummy: String
+                stub: String
             }
 
             type Query { obj: InputArgAllProvided }
@@ -381,7 +381,7 @@ object TestSchemas {
             directive @inputArg(arg: InputWithDefaults) on OBJECT
 
             type InputArgNoneProvided @inputArg(arg: {}) {
-                dummy: String
+                stub: String
             }
 
             type Query { obj: InputArgNoneProvided }
@@ -1855,11 +1855,11 @@ object TestSchemas {
                 nullableWithNullDefault: "explicit3"
                 nonNullableWithDefault: "explicit4"
             ) {
-                dummy: String
+                stub: String
             }
 
             type NoArgsProvided @scalarArgs {
-                dummy: String
+                stub: String
             }
 
             type InputArgAllFields @inputArg(arg: {
@@ -1868,11 +1868,11 @@ object TestSchemas {
                 nullableWithNullDefault: "inputExplicit3"
                 nonNullableWithDefault: "inputExplicit4"
             }) {
-                dummy: String
+                stub: String
             }
 
             type InputArgEmpty @inputArg(arg: {}) {
-                dummy: String
+                stub: String
             }
 
             type Test {

@@ -151,11 +151,11 @@ class SmallSchemaTest {
                 nullableWithNullDefault: "explicit3"
                 nonNullableWithDefault: "explicit4"
             ) {
-                dummy: String
+                stub: String
             }
 
             type ScalarArgsNoneProvided @scalarArgs {
-                dummy: String
+                stub: String
             }
 
             # Test types for @inputArg directive:
@@ -167,11 +167,11 @@ class SmallSchemaTest {
                 nullableWithNullDefault: "inputExplicit3"
                 nonNullableWithDefault: "inputExplicit4"
             }) {
-                dummy: String
+                stub: String
             }
 
             type InputArgNoneProvided @inputArg(arg: {}) {
-                dummy: String
+                stub: String
             }
             """.trimIndent()
     }
@@ -256,7 +256,7 @@ class SmallSchemaTest {
             directive @experimental_disableErrorPropagation on QUERY | MUTATION | SUBSCRIPTION
 
             type Query {
-                dummy: String
+                stub: String
                 # Include Int, Float, ID so they're referenced in the schema
                 intField: Int
                 floatField: Float
@@ -332,7 +332,7 @@ class SmallSchemaTest {
             scalar Byte
 
             type Query {
-                dummy: String
+                stub: String
                 intField: Int
                 floatField: Float
                 idField: ID
