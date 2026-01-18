@@ -350,7 +350,7 @@ private class GraphQLJavaSchemaBuilder(
 
         val result = tbuilder.build()
         convertedTypeDefs[source.name] = result
-        registryBuilder.typeResolverIfAbsent(result) { env ->
+        registryBuilder.typeResolverIfAbsent(result) { _ ->
             error("No type resolver configured for interface '${source.name}'. This schema is not executable.")
         }
         return result
@@ -419,7 +419,7 @@ private class GraphQLJavaSchemaBuilder(
             }
             .build()
         convertedTypeDefs[typeDef.name] = result
-        registryBuilder.typeResolverIfAbsent(result) { env ->
+        registryBuilder.typeResolverIfAbsent(result) { _ ->
             error("No type resolver configured for union '${typeDef.name}'. This schema is not executable.")
         }
         return result

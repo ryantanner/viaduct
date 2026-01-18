@@ -149,7 +149,7 @@ internal object ValueStringConverter {
             null -> 0
             is String -> 0
             is CompoundConstant -> obj.depth
-            else -> throw IllegalArgumentException("Unexpected value type: ${obj?.javaClass}")
+            else -> throw IllegalArgumentException("Unexpected value type: ${obj.javaClass}")
         }
     }
 }

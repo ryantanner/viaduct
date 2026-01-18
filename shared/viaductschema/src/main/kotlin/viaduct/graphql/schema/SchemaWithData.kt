@@ -266,9 +266,11 @@ internal class SchemaWithData : ViaductSchema {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
             require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
             // Validate that all members are actually Object instances
-            // Cast to Collection<*> to avoid JVM type checks during iteration
+            // Cast to Collection<*> bypasses type erasure so runtime check works
             for (ext in extensions) {
+                @Suppress("UNCHECKED_CAST", "USELESS_CAST") // Cast bypasses type erasure for runtime check
                 for (member in ext.members as Collection<*>) {
+                    @Suppress("USELESS_IS_CHECK") // Defensive check for corrupt binary data
                     if (member !is Object) {
                         val typeName = (member as? ViaductSchema.TypeDef)?.name ?: member.toString()
                         throw InvalidSchemaException(
@@ -325,8 +327,10 @@ internal class SchemaWithData : ViaductSchema {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
             require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
             // Validate possibleObjectTypes contains actual Object instances
-            // Cast to Set<*> to avoid JVM type checks during iteration
+            // Cast to Set<*> bypasses type erasure so runtime check works
+            @Suppress("UNCHECKED_CAST", "USELESS_CAST") // Cast bypasses type erasure for runtime check
             for (objType in possibleObjectTypes as Set<*>) {
+                @Suppress("USELESS_IS_CHECK") // Defensive check for corrupt binary data
                 if (objType !is Object) {
                     val typeName = (objType as? ViaductSchema.TypeDef)?.name ?: objType.toString()
                     throw InvalidSchemaException(
@@ -393,9 +397,11 @@ internal class SchemaWithData : ViaductSchema {
             check(mExtensions == null) { "Type $name has already been populated; populate() can only be called once" }
             require(extensions.isNotEmpty()) { "Types must have at least one extension ($this)." }
             // Validate that all supers are actually Interface instances
-            // Cast to Collection<*> to avoid JVM type checks during iteration
+            // Cast to Collection<*> bypasses type erasure so runtime check works
             for (ext in extensions) {
+                @Suppress("UNCHECKED_CAST", "USELESS_CAST") // Cast bypasses type erasure for runtime check
                 for (superType in ext.supers as Collection<*>) {
+                    @Suppress("USELESS_IS_CHECK") // Defensive check for corrupt binary data
                     if (superType !is Interface) {
                         val typeName = (superType as? ViaductSchema.TypeDef)?.name ?: superType.toString()
                         throw InvalidSchemaException(
@@ -415,8 +421,10 @@ internal class SchemaWithData : ViaductSchema {
 }
 
 // Helper functions (private to the file)
+@Suppress("NOTHING_TO_INLINE")
 private inline fun <T> SchemaWithData.guardedGet(v: T?): T = checkNotNull(v) { "Schema has not been populated; call populate() first" }
 
+@Suppress("NOTHING_TO_INLINE")
 private inline fun <T> SchemaWithData.guardedGetNullable(
     v: T?,
     sentinel: Any?
@@ -425,8 +433,10 @@ private inline fun <T> SchemaWithData.guardedGetNullable(
     return v
 }
 
+@Suppress("NOTHING_TO_INLINE")
 private inline fun <T> SchemaWithData.TopLevelDef.guardedGet(v: T?): T = checkNotNull(v) { "${this.name} has not been populated; call populate() first" }
 
+@Suppress("NOTHING_TO_INLINE")
 private inline fun <T> SchemaWithData.TopLevelDef.guardedGetNullable(
     v: T?,
     sentinel: Any?

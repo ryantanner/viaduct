@@ -234,7 +234,7 @@ class SchemaApiTest {
         val userType = bschema.types["User"] as ViaductSchema.Record
         val field = userType.field(listOf("name"))
         assertNotNull(field)
-        assertEquals("name", field!!.name)
+        assertEquals("name", field.name)
     }
 
     @Test
@@ -263,7 +263,7 @@ class SchemaApiTest {
         val userType = bschema.types["User"] as ViaductSchema.Record
         val field = userType.field(listOf("address", "street"))
         assertNotNull(field)
-        assertEquals("street", field!!.name)
+        assertEquals("street", field.name)
     }
 
     @Test

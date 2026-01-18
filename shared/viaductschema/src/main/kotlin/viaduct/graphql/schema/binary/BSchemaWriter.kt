@@ -12,6 +12,6 @@ internal fun writeBSchema(
         val schemaInfo = SchemaInfo(schema, constantsEncoderBuilder)
         val constantsEncoder = constantsEncoderBuilder.build()
 
-        SchemaEncoder(out, schemaInfo, constantsEncoder).encode(schema)
+        SchemaEncoder(out, schemaInfo, constantsEncoder).encode()
     }
 }

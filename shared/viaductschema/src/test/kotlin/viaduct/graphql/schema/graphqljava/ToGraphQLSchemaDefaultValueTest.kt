@@ -382,7 +382,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = arg.argumentDefaultValue.value
         defaultValue.shouldBeInstanceOf<StringValue>()
-        (defaultValue as StringValue).value shouldBe "test"
+        defaultValue.value shouldBe "test"
     }
 
     @Test
@@ -395,7 +395,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = arg.argumentDefaultValue.value
         defaultValue.shouldBeInstanceOf<IntValue>()
-        (defaultValue as IntValue).value shouldBe BigInteger.valueOf(42)
+        defaultValue.value shouldBe BigInteger.valueOf(42)
     }
 
     @Test
@@ -408,7 +408,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = arg.argumentDefaultValue.value
         defaultValue.shouldBeInstanceOf<FloatValue>()
-        (defaultValue as FloatValue).value shouldBe BigDecimal("3.14")
+        defaultValue.value shouldBe BigDecimal("3.14")
     }
 
     @Test
@@ -421,7 +421,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = arg.argumentDefaultValue.value
         defaultValue.shouldBeInstanceOf<BooleanValue>()
-        (defaultValue as BooleanValue).isValue shouldBe true
+        defaultValue.isValue shouldBe true
     }
 
     @Test
@@ -446,7 +446,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = arg.argumentDefaultValue.value
         defaultValue.shouldBeInstanceOf<ArrayValue>()
-        val arrayValue = defaultValue as ArrayValue
+        val arrayValue = defaultValue
         arrayValue.values.size shouldBe 3
         arrayValue.values.map { (it as IntValue).value.toInt() } shouldBe listOf(1, 2, 3)
     }
@@ -464,7 +464,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = arg.argumentDefaultValue.value
         defaultValue.shouldBeInstanceOf<ObjectValue>()
-        val objectValue = defaultValue as ObjectValue
+        val objectValue = defaultValue
         objectValue.objectFields.size shouldBe 2
 
         val xField = objectValue.objectFields.find { it.name == "x" }
@@ -490,7 +490,7 @@ class ToGraphQLSchemaDefaultValueTest {
 
         val defaultValue = limitField.inputFieldDefaultValue.value
         defaultValue.shouldBeInstanceOf<IntValue>()
-        (defaultValue as IntValue).value shouldBe BigInteger.valueOf(100)
+        defaultValue.value shouldBe BigInteger.valueOf(100)
     }
 
     // ==================== HELPER METHODS ====================

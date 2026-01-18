@@ -1,3 +1,5 @@
+@file:Suppress("FINITE_BOUNDS_VIOLATION_IN_JAVA") // TypeDefinition has recursive type bound
+
 package viaduct.graphql.schema.graphqljava
 
 import graphql.language.TypeDefinition

@@ -206,7 +206,7 @@ class FilteredSchemaTest {
         val filteredEnum = filteredSchema.types["EnumKeep"] as SchemaWithData.Enum
         filteredEnum.checkUnfilteredDef(SchemaWithData.Enum::class)
 
-        val filteredEnumValue = filteredEnum.values.first { it.name == "A" } as SchemaWithData.EnumValue
+        val filteredEnumValue = filteredEnum.values.first { it.name == "A" }
         filteredEnumValue.checkUnfilteredDef(SchemaWithData.EnumValue::class)
 
         val filteredInput = filteredSchema.types["InputKeep"] as SchemaWithData.Input
@@ -218,7 +218,7 @@ class FilteredSchemaTest {
         val filteredField = filteredObj.field("c") as SchemaWithData.Field
         filteredField.checkUnfilteredDef(SchemaWithData.Field::class)
 
-        val filteredArg = filteredField.args.first { it.name == "a1" } as SchemaWithData.FieldArg
+        val filteredArg = filteredField.args.first { it.name == "a1" }
         filteredArg.checkUnfilteredDef(SchemaWithData.FieldArg::class)
 
         val filteredUnion = filteredSchema.types["UnionKeep"] as SchemaWithData.Union

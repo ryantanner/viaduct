@@ -187,7 +187,7 @@ internal class SchemaInfo(
             addIdentifier(ad.name)
             for ((argName, argValue) in ad.arguments) {
                 addIdentifier(argName)
-                addConstantValue(argValue as Value<*>)
+                addConstantValue(argValue)
             }
         }
     }
@@ -204,7 +204,7 @@ internal class SchemaInfo(
         addTypeExpr(f.type)
         // For input type fields, collect default values
         if (f.containingDef is ViaductSchema.Input && f.hasDefault) {
-            addConstantValue(f.defaultValue as Value<*>)
+            addConstantValue(f.defaultValue)
         }
         for (a in f.args) visitArg(a)
         visitAppliedDirectives(f.appliedDirectives)
@@ -229,7 +229,7 @@ internal class SchemaInfo(
 
     private fun addConstant(arg: ViaductSchema.Arg) {
         if (arg.hasDefault) {
-            addConstantValue(arg.defaultValue as Value<*>)
+            addConstantValue(arg.defaultValue)
         }
     }
 

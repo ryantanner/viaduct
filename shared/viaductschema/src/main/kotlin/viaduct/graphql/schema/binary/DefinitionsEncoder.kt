@@ -247,7 +247,7 @@ private fun SchemaEncoder.encodeAppliedDirectiveArguments(
         val refPlus = AppliedDirectiveArgRefPlus(schemaInfo.identifierIndex(argName), hasNext)
         out.writeInt(refPlus.word)
         // Convert value to string representation
-        val argDef = directiveDef.args.find { it.name == argName }
+        directiveDef.args.find { it.name == argName }
             ?: throw IllegalArgumentException("Unknown argument $argName for directive ${appliedDirective.name}")
         val value = argValue as? Value<*>
             ?: NullValue.newNullValue().build()
@@ -371,6 +371,7 @@ private fun SchemaEncoder.encodeFieldsOrMarker(fields: Iterable<ViaductSchema.Fi
     encodeListOrMarker(fields) { encodeFields(it) }
 }
 
+@Suppress("NOTHING_TO_INLINE")
 private inline fun Int.tagIf(needsTag: Boolean) = this or (if (needsTag) (1 shl 31) else 0)
 
 private inline val Iterable<*>.isNotEmpty get() = this.iterator().hasNext()

@@ -1,7 +1,5 @@
 package viaduct.graphql.schema.binary
 
-import viaduct.graphql.schema.ViaductSchema
-
 /**
  * Logic for encoding an entire schema (assuming schema-level and
  * constant-level information is collected first).
@@ -11,7 +9,7 @@ internal class SchemaEncoder(
     val schemaInfo: SchemaInfo,
     val constantsEncoder: ConstantsEncoder
 ) {
-    fun encode(schema: ViaductSchema) {
+    fun encode() {
         // Write Header section
         HeaderSection
             .from(schemaInfo, constantsEncoder)

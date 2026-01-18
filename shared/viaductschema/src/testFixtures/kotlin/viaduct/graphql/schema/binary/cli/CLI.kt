@@ -87,7 +87,7 @@ private class MmWriteCommand : CliktCommand(
         .required()
 
     override fun run() {
-        val schema = readGJSchema(projectDirectory!!.toPath())
+        val schema = readGJSchema(projectDirectory.toPath())
         schema.toBinaryFile(FileOutputStream(System.getProperty("user.home") + "/schema.bgql"))
     }
 }
@@ -120,6 +120,7 @@ private class MmLoadTimeCommand : CliktCommand(
         val rt = Runtime.getRuntime()
         rt.gc()
         println("Heap at start (KB): ${(rt.totalMemory() - rt.freeMemory()) / 1024}")
+        @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE") // Intentional: holds reference to prevent GC during benchmark
         var schema: Any?
         repeat(count) {
             val time = measureTimeMillis {
@@ -350,8 +351,8 @@ private class MmLoadNoGJCommand : CliktCommand(
         println("Heap at start (KB): ${(rt.totalMemory() - rt.freeMemory()) / 1024}")
         var schema: GraphQLSchema?
         repeat(count) {
-            var parseTime = 0L
-            var buildTime = 0L
+            var parseTime: Long
+            var buildTime: Long
             val time = measureTimeMillis {
                 var registry: TypeDefinitionRegistry
                 parseTime = measureTimeMillis {
@@ -393,7 +394,7 @@ private class MmDiffCommand : CliktCommand(
         val checker = InvariantChecker()
 
         // Read input schema (both GJSchema and the underlying registry)
-        val (expected, registry) = readGJSchemaWithRegistry(projectDirectory!!.toPath())
+        val (expected, registry) = readGJSchemaWithRegistry(projectDirectory.toPath())
 
         // Write to binary format
         val binaryFilePath = System.getProperty("user.home") + "/schema.bgql"
@@ -429,11 +430,7 @@ private class MmDiffCommand : CliktCommand(
             )
 
             // Compare using GraphQLSchemaExtraDiff (runtime properties like deprecation, default values)
-            if (actualGraphQLSchema != null) {
-                GraphQLSchemaExtraDiff(expectedGraphQLSchema, actualGraphQLSchema, checker).diff()
-            } else {
-                checker.isTrue(false, "GRAPHQL_SCHEMA_CONVERSION: toGraphQLSchema returned null")
-            }
+            GraphQLSchemaExtraDiff(expectedGraphQLSchema, actualGraphQLSchema, checker).diff()
         } catch (e: Exception) {
             println("Warning: toGraphQLSchema round-trip check skipped due to: ${e.message}")
             println("  (This may occur with schemas using custom directives not fully supported by toGraphQLSchema)")

@@ -221,6 +221,7 @@ private fun checkReferentialIntegrity(
 
 private fun checkEmptyListInvariants(
     def: ViaductSchema.TypeDef,
+    @Suppress("UNUSED_PARAMETER") // Keep for parallism with other checkXyzInvariants functions
     check: InvariantChecker
 ) {
     when (def) {

@@ -318,7 +318,7 @@ internal class FilteredSchemaDecoder(
 
     private fun createField(
         unfilteredField: ViaductSchema.Field,
-        containingExtension: ViaductSchema.Extension<out SchemaWithData.Record, SchemaWithData.Field>
+        containingExtension: ViaductSchema.Extension<SchemaWithData.Record, SchemaWithData.Field>
     ): SchemaWithData.Field {
         val typeExpr = createTypeExprFromDefs(unfilteredField.type)
         return SchemaWithData.Field(

@@ -62,7 +62,7 @@ internal fun parseWrappers(wrappers: String): BitVector {
 fun ViaductSchema.toTypeExpr(
     wrappers: String,
     baseString: String
-): ViaductSchema.TypeExpr<out ViaductSchema.TypeDef> {
+): ViaductSchema.TypeExpr<ViaductSchema.TypeDef> {
     val baseTypeDef = requireNotNull(this.types[baseString]) {
         "Type not found: $baseString"
     }

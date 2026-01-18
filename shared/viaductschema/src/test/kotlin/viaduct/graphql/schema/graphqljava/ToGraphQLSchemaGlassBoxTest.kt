@@ -385,7 +385,7 @@ class ToGraphQLSchemaGlassBoxTest {
             }
 
             // turn into a ViaductSchema (GJSchema)
-            val actualViaductSchema = ViaductSchema.fromGraphQLSchema(actualGraphQLSchema!!)
+            val actualViaductSchema = ViaductSchema.fromGraphQLSchema(actualGraphQLSchema)
 
             // Compare using ViaductSchema SchemaDiff (structural comparison)
             val schemaDiffResult = SchemaDiff(expectedViaductSchema, actualViaductSchema).diff()
@@ -431,7 +431,7 @@ class ToGraphQLSchemaGlassBoxTest {
             }
 
             // Verify the type has the expected source location
-            val type = graphqlSchema!!.getType(typeName)
+            val type = graphqlSchema.getType(typeName)
                 ?: throw AssertionError("Type '$typeName' not found in schema")
 
             val definition = when (type) {

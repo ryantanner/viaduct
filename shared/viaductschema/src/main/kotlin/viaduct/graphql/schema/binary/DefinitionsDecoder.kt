@@ -352,7 +352,7 @@ internal class DefinitionsDecoder(
                     isBase = isBase,
                     appliedDirectives = appliedDirectives,
                     sourceLocation = sourceLocation
-                ) as ViaductSchema.Extension<SchemaWithData.Scalar, Nothing>
+                )
                 add(ext)
                 isBase = false
             } while (refPlus.hasNext())
@@ -413,6 +413,7 @@ internal class DefinitionsDecoder(
 
                 // Validate that all supers are actually Interface types before creating extension
                 for (superType in supers) {
+                    @Suppress("USELESS_IS_CHECK") // Defensive check for unchecked cast above
                     if (superType !is SchemaWithData.Interface) {
                         val typeName = superType.name
                         throw InvalidSchemaException(

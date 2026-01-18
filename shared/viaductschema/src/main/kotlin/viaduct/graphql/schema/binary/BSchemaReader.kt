@@ -79,7 +79,7 @@ internal class IdentifiersDecoder(
             val mDirectives = LinkedHashMap<String, SchemaWithData.Directive>(((header.directiveCount / 0.75f) + 1).toInt(), 0.75f)
             val mTypes = LinkedHashMap<String, SchemaWithData.TypeDef>(((header.typeDefCount / 0.75f) + 1).toInt(), 0.75f)
 
-            val indexedDefs = Array(header.definitionStubCount) { defIdx ->
+            val indexedDefs = Array(header.definitionStubCount) { _ ->
                 val stubWord = StubRefPlus(data.readInt())
                 val name = identifierTable.keyAt(stubWord.getIdentifierIndex())
                 when (val kindCode = stubWord.getKindCode()) {

@@ -367,7 +367,7 @@ interface ViaductSchema {
             get() = kind.isOutput
 
         /** Returns a _nullable_ type-expr for this def. */
-        fun asTypeExpr(): TypeExpr<out TypeDef>
+        fun asTypeExpr(): TypeExpr<TypeDef>
 
         /** Returns the set of Object types possibly subsumed by this
          *  type definition.  It's the empty set for any type other
@@ -422,7 +422,7 @@ interface ViaductSchema {
 
     interface HasDefaultValue : Def {
         val containingDef: Def
-        val type: TypeExpr<out TypeDef>
+        val type: TypeExpr<TypeDef>
         override val sourceLocation get() = containingDef.sourceLocation
 
         /**

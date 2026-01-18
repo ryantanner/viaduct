@@ -250,8 +250,6 @@ class ValueStringConverterTest {
 
     @Test
     fun `Error - invalid boolean value`() {
-        val typeDef = schema.types["Boolean"]!!
-
         assertThrows<IllegalArgumentException> {
             ValueStringConverter.stringToSimpleValue("True")
         }
@@ -377,7 +375,8 @@ class ValueStringConverterTest {
 
     @Test
     fun `StringValue with null content becomes empty string`() {
-        val value = StringValue(null)
+        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Testing edge case with null content
+        val value = StringValue(null as String?)
         val result = ValueStringConverter.simpleValueToString(value)
         assertEquals("${K_STRING_VALUE.toChar()}", result)
     }

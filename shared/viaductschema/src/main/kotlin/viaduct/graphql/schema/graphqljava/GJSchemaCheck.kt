@@ -155,7 +155,6 @@ class GJSchemaCheck(
                     "UNION_MEMBERS_AGREE"
                 )
             }
-            else -> throw IllegalArgumentException("Unknown type ($gjDef).")
         }
         check.popContext()
     }
@@ -243,7 +242,6 @@ class GJSchemaCheck(
                         is SchemaWithData.Object -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
                         is SchemaWithData.Scalar -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
                         is SchemaWithData.Union -> listOf(d.gjDef.definition) + d.gjDef.extensionDefinitions
-                        else -> throw IllegalArgumentException("Unknown type ($d).")
                     }
                 val expectedSourceNames = expectedExts.map { it?.sourceLocation?.sourceName }.filterNotNull()
                 val actualSourceNames = d.extensions.map { it.sourceLocation?.sourceName }.filterNotNull()
