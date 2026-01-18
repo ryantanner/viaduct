@@ -43,7 +43,7 @@ internal object ValueConverter {
                 convert(type, valueWithState.value as Value<*>)
             valueWithState.isExternal ->
                 // Map external values to Value before passing to [convert]
-                convert(type, externalToLiteral(type, valueWithState.value) ?: NullValue.of())
+                convert(type, externalToLiteral(type, valueWithState.value))
             else -> throw IllegalArgumentException("unsupported value state")
         }
 
@@ -104,7 +104,7 @@ internal object ValueConverter {
         type: ViaductSchema.TypeExpr<*>,
         value: Any?,
         listDepth: Int = 0,
-    ): Value<*>? {
+    ): Value<*> {
         if (value == null) {
             require(type.nullableAtDepth(listDepth)) {
                 "$type not nullable at depth $listDepth"

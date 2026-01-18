@@ -205,8 +205,9 @@ private fun canOmitArgument(
     return when {
         // If argument has a default and value matches it, omit
         argDef.hasDefault && valuesEqual(argDef.defaultValue, argValue) -> true
-        // If argument is nullable (no default) and value is null, omit
-        !argDef.hasDefault && argDef.type.isNullable && argValue == null -> true
+        // If argument is nullable (no default) and value is NullValue, omit
+        // (the decoder reconstructs NullValue for nullable args without defaults)
+        !argDef.hasDefault && argDef.type.isNullable && argValue is NullValue -> true
         // Otherwise, must encode explicitly
         else -> false
     }
@@ -217,10 +218,9 @@ private fun canOmitArgument(
  */
 private fun ViaductSchema.HasDefaultValue.defaultValueRepr(): Any? {
     if (!hasDefault) return null
-    // Handle explicit null default values - ViaductSchema returns Java null instead of NullValue
-    val value = defaultValue as? Value<*>
-        ?: NullValue.newNullValue().build()
-    return ValueStringConverter.valueToString(value)
+    // defaultValue is Value<*> (non-nullable) when hasDefault is true;
+    // GraphQL null values are represented as NullValue, not Kotlin null
+    return ValueStringConverter.valueToString(defaultValue)
 }
 
 /**
@@ -246,12 +246,13 @@ private fun SchemaEncoder.encodeAppliedDirectiveArguments(
     argsToEncode.encode { (argName, argValue), hasNext ->
         val refPlus = AppliedDirectiveArgRefPlus(schemaInfo.identifierIndex(argName), hasNext)
         out.writeInt(refPlus.word)
-        // Convert value to string representation
-        directiveDef.args.find { it.name == argName }
-            ?: throw IllegalArgumentException("Unknown argument $argName for directive ${appliedDirective.name}")
-        val value = argValue as? Value<*>
-            ?: NullValue.newNullValue().build()
-        val constantRepr = ValueStringConverter.valueToString(value)
+        // Validate argument exists in directive definition
+        require(directiveDef.args.any { it.name == argName }) {
+            "Unknown argument $argName for directive ${appliedDirective.name}"
+        }
+        // argValue is always Value<*> from appliedDirective.arguments;
+        // GraphQL null values are represented as NullValue, not Kotlin null
+        val constantRepr = ValueStringConverter.valueToString(argValue as Value<*>)
         out.writeInt(constantsEncoder.findRef(constantRepr))
     }
 }
