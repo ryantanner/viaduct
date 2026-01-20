@@ -204,7 +204,7 @@ class SimpleMutationsFeatureAppTest : FeatureAppTestBase() {
         )
 
         // ID EXTRACTION PATTERN - Critical for follow-up operations
-        val createdUserId = result.getData<Map<String, Any>>()
+        val createdUserId = result.getData()
             ?.get("createUser")?.let { it as Map<*, *> }
             ?.get("id") as String
 
@@ -255,7 +255,7 @@ class SimpleMutationsFeatureAppTest : FeatureAppTestBase() {
             """.trimIndent()
         )
 
-        val createdUserId = createResult.getData<Map<String, Any>>()
+        val createdUserId = createResult.getData()
             ?.get("createUser")?.let { it as Map<*, *> }
             ?.get("id") as String
 
@@ -302,7 +302,7 @@ class SimpleMutationsFeatureAppTest : FeatureAppTestBase() {
             """.trimIndent()
         )
 
-        val createdUserId = createResult.getData<Map<String, Any>>()
+        val createdUserId = createResult.getData()
             ?.get("createUser")?.let { it as Map<*, *> }
             ?.get("id") as String
 

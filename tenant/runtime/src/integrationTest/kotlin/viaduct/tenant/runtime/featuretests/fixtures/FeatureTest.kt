@@ -5,13 +5,13 @@ package viaduct.tenant.runtime.featuretests.fixtures
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import graphql.ExecutionResult
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import viaduct.service.api.ExecutionInput
+import viaduct.service.api.ExecutionResult
 import viaduct.service.runtime.StandardViaduct
 
 /**

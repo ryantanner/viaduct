@@ -110,7 +110,7 @@ class FieldResolverTest {
                 assertEquals(1, errors.size)
                 val error = errors[0]
                 assertTrue(error.message.contains("Attempted to access field Baz.x but it was not set: only id can be accessed on an unresolved Node reference"))
-            }.getData<Map<String, Any?>>().mapAssertJson("{baz: null}")
+            }.getData()!!.mapAssertJson("{baz: null}")
 
     @Test
     fun `resolver can read and write enum values`() =
@@ -325,5 +325,5 @@ class FieldResolverTest {
                     error.message.contains("Privacy check failed") || error.message.contains("not authorized"),
                     "Expected error message to contain privacy failure info, got: ${error.message}"
                 )
-            }.getData<Map<String, Any?>>().mapAssertJson("{getUrls: null}")
+            }.getData()!!.mapAssertJson("{getUrls: null}")
 }

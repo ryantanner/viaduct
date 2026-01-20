@@ -1,10 +1,11 @@
 package viaduct.graphql.test
 
-import graphql.ExecutionResult
+import graphql.ExecutionResult as GJExecutionResult
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import viaduct.invariants.InvariantChecker
+import viaduct.service.api.ExecutionResult
 
 /**
  * DSL Extension function for ExecutionResult to assert equality
@@ -33,7 +34,7 @@ import viaduct.invariants.InvariantChecker
  *      }
  *  }
  */
-fun ExecutionResult.assertEquals(mapFn: QueryResultBuilderFn) = assertEquals(queryResultMap(mapFn), this.toSpecification())
+fun GJExecutionResult.assertEquals(mapFn: QueryResultBuilderFn) = assertEquals(queryResultMap(mapFn), this.toSpecification())
 
 /**
  * Assert that an ExecutionResult matches a pattern.  The pattern
@@ -56,7 +57,7 @@ fun ExecutionResult.assertEquals(mapFn: QueryResultBuilderFn) = assertEquals(que
  *
  * @param templateFn The DSL function to build the template
  */
-fun ExecutionResult.assertMatches(templateFn: QueryResultBuilderFn) = this.toSpecification().assertMatches(templateFn)
+fun GJExecutionResult.assertMatches(templateFn: QueryResultBuilderFn) = this.toSpecification().assertMatches(templateFn)
 
 /**
  * Assert that an ExecutionResult contains at least one error, and
@@ -65,6 +66,22 @@ fun ExecutionResult.assertMatches(templateFn: QueryResultBuilderFn) = this.toSpe
  *
  * @param expectedSubMessage a string that must be contained by the
  * message of at least one of the error messages.
+ */
+fun GJExecutionResult.assertHasError(expectedSubMessage: String) = this.toSpecification().assertHasError(expectedSubMessage)
+
+/**
+ * DSL Extension function for ExecutionResult to assert equality
+ * with a map built using a DSL function.
+ */
+fun ExecutionResult.assertEquals(mapFn: QueryResultBuilderFn) = assertEquals(queryResultMap(mapFn), this.toSpecification())
+
+/**
+ * Assert that an ExecutionResult matches a pattern.
+ */
+fun ExecutionResult.assertMatches(templateFn: QueryResultBuilderFn) = this.toSpecification().assertMatches(templateFn)
+
+/**
+ * Assert that an ExecutionResult contains at least one error with a message containing the expected substring.
  */
 fun ExecutionResult.assertHasError(expectedSubMessage: String) = this.toSpecification().assertHasError(expectedSubMessage)
 

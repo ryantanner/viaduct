@@ -16,5 +16,5 @@ data class GraphQLError(
     val message: String,
     val path: List<Any>? = null,
     val locations: List<SourceLocation>? = null,
-    val extensions: Map<String, Any?>? = null
+    val extensions: Map<String, Any?> = emptyMap()
 )

@@ -286,7 +286,7 @@ class ViaductScopedSchemaIntegrationTest {
             assert(result1.errors[0].message.contains("Field 'scope2Value' in type 'Query' is undefined")) {
                 "Expected validation error for scope2Value in SCOPE1_ONLY schema, but got: ${result1.errors[0].message}"
             }
-            assertNull(result1.getData<Any>(), "Data should be null when validation fails")
+            assertNull(result1.getData(), "Data should be null when validation fails")
 
             val query2 = """
                 query {
@@ -302,7 +302,7 @@ class ViaductScopedSchemaIntegrationTest {
             assert(result2.errors[0].message.contains("Field 'scope1Value' in type 'Query' is undefined")) {
                 "Expected validation error for scope1Value in SCOPE2_ONLY schema, but got: ${result2.errors[0].message}"
             }
-            assertNull(result2.getData<Any>(), "Data should be null when validation fails")
+            assertNull(result2.getData(), "Data should be null when validation fails")
         }
 
     @Test
@@ -341,7 +341,7 @@ class ViaductScopedSchemaIntegrationTest {
 
             assertEquals(1, result.errors.size)
             assertEquals("Schema not found for schemaId=SchemaId(id='NONE')", result.errors[0].message)
-            assertNull(result.getData<Any>())
+            assertNull(result.getData())
         }
 
     @Test

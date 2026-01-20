@@ -69,7 +69,7 @@ class TaggedMetricInstrumentation(
 
         return SimpleInstrumentationContext.whenCompleted { executionResult, throwable ->
 
-            val success = throwable == null && executionResult.isDataPresent
+            val success = throwable == null && executionResult.errors.isEmpty()
             timer.tag("success", success.toString())
             // Emit metrics
             timerSample.stop(
@@ -90,7 +90,7 @@ class TaggedMetricInstrumentation(
 
         return SimpleInstrumentationContext.whenCompleted { executionResult, throwable ->
 
-            val success = throwable == null && executionResult.isDataPresent
+            val success = throwable == null && executionResult.errors.isEmpty()
             timer.tag("success", success.toString())
             timerSample.stop(
                 timer.register(meterRegistry)

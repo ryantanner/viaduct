@@ -1,6 +1,5 @@
 package viaduct.service.api
 
-import graphql.ExecutionResult
 import graphql.schema.GraphQLSchema
 import java.util.concurrent.CompletableFuture
 import viaduct.apiannotations.StableApi
@@ -15,7 +14,7 @@ interface Viaduct {
      *
      *  @param executionInput The execution Input
      *  @param schemaId the id of the schema for which we want to execute the operation, defaults to SchemaId.Full
-     *  @return the [CompletableFuture] of [ExecutionResult] who contains the sorted results or the error which was produced
+     *  @return the [CompletableFuture] of [ExecutionResult] which contains the sorted results or the error which was produced
      */
     suspend fun executeAsync(
         executionInput: ExecutionInput,
@@ -27,7 +26,7 @@ interface Viaduct {
      *
      *  @param executionInput the execution input for this operation
      *  @param schemaId the id of the schema for which we want to execute the operation, defaults to SchemaId.Full
-     *  @return the ExecutionResult who contains the sorted results
+     *  @return the ExecutionResult which contains the sorted results
      */
     fun execute(
         executionInput: ExecutionInput,

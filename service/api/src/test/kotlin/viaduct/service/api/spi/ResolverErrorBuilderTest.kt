@@ -47,7 +47,7 @@ class ResolverErrorBuilderTest {
         assertEquals("Custom error: Something failed", result[0].message)
         assertEquals(listOf("query", "user"), result[0].path)
         assertEquals(10, result[0].locations?.first()?.line)
-        assertEquals("CUSTOM", result[0].extensions?.get("errorType"))
+        assertEquals("CUSTOM", result[0].extensions.get("errorType"))
     }
 
     @Test
@@ -101,14 +101,14 @@ class ResolverErrorBuilderTest {
             errorMetadata = ErrorReporter.Metadata()
         )
         assertNotNull(customResult)
-        assertEquals("CUSTOM_ERROR", customResult[0].extensions?.get("errorType"))
+        assertEquals("CUSTOM_ERROR", customResult[0].extensions.get("errorType"))
 
         val illegalArgResult = selectiveBuilder.exceptionToGraphQLError(
             throwable = IllegalArgumentException("Bad arg"),
             errorMetadata = ErrorReporter.Metadata()
         )
         assertNotNull(illegalArgResult)
-        assertEquals("INVALID_ARGUMENT", illegalArgResult[0].extensions?.get("errorType"))
+        assertEquals("INVALID_ARGUMENT", illegalArgResult[0].extensions.get("errorType"))
 
         val unhandledResult = selectiveBuilder.exceptionToGraphQLError(
             throwable = NullPointerException("null"),
@@ -147,8 +147,8 @@ class ResolverErrorBuilderTest {
         assertEquals("Error: Database connection failed", result[0].message)
         assertEquals(listOf("user", "userName"), result[0].path)
         assertEquals(5, result[0].locations?.first()?.line)
-        assertEquals("INTERNAL_ERROR", result[0].extensions?.get("errorType"))
-        assertEquals("RuntimeException", result[0].extensions?.get("exceptionClass"))
+        assertEquals("INTERNAL_ERROR", result[0].extensions.get("errorType"))
+        assertEquals("RuntimeException", result[0].extensions.get("exceptionClass"))
     }
 
     @Test

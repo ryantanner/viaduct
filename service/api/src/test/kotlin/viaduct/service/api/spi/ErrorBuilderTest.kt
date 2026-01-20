@@ -17,7 +17,7 @@ class ErrorBuilderTest {
         assertEquals("Test error", error.message)
         assertNull(error.path)
         assertNull(error.locations)
-        assertNull(error.extensions)
+        assertEquals(emptyMap(), error.extensions)
     }
 
     @Test
@@ -36,8 +36,8 @@ class ErrorBuilderTest {
         assertEquals(listOf("user", "profile", 0), error.path)
         assertEquals(1, error.locations?.size)
         assertEquals(location, error.locations?.first())
-        assertEquals("NOT_FOUND", error.extensions?.get("errorType"))
-        assertEquals("User was not found", error.extensions?.get("localizedMessage"))
+        assertEquals("NOT_FOUND", error.extensions.get("errorType"))
+        assertEquals("User was not found", error.extensions.get("localizedMessage"))
     }
 
     @Test
@@ -68,9 +68,9 @@ class ErrorBuilderTest {
             .extensions(extensions)
             .build()
 
-        assertEquals("VALIDATION", error.extensions?.get("errorType"))
-        assertEquals("email", error.extensions?.get("field"))
-        assertEquals(400, error.extensions?.get("code"))
+        assertEquals("VALIDATION", error.extensions.get("errorType"))
+        assertEquals("email", error.extensions.get("field"))
+        assertEquals(400, error.extensions.get("code"))
     }
 
     @Test
@@ -84,9 +84,9 @@ class ErrorBuilderTest {
             .build()
 
         assertNotNull(error.extensions)
-        assertEquals("value1", error.extensions?.get("key1"))
-        assertEquals("value2", error.extensions?.get("key2"))
-        assertEquals("value3", error.extensions?.get("key3"))
+        assertEquals("value1", error.extensions.get("key1"))
+        assertEquals("value2", error.extensions.get("key2"))
+        assertEquals("value3", error.extensions.get("key3"))
     }
 
     @Test
@@ -142,7 +142,7 @@ class ErrorBuilderTest {
             .extension("key", "value2")
             .build()
 
-        assertEquals("value2", error.extensions?.get("key"))
+        assertEquals("value2", error.extensions.get("key"))
     }
 
     @Test
@@ -163,13 +163,13 @@ class ErrorBuilderTest {
     }
 
     @Test
-    fun `test empty extensions are null in result`() {
+    fun `test empty extensions are empty map in result`() {
         val error = ErrorBuilder
             .newError()
             .message("Test")
             .build()
 
-        assertNull(error.extensions)
+        assertEquals(emptyMap(), error.extensions)
     }
 
     @Test
@@ -181,6 +181,6 @@ class ErrorBuilderTest {
             .build()
 
         assertNotNull(error.extensions)
-        assertEquals(1, error.extensions?.size)
+        assertEquals(1, error.extensions.size)
     }
 }

@@ -25,6 +25,13 @@ public final class viaduct/service/api/ExecutionInput$Companion {
 	public static synthetic fun create$default (Lviaduct/service/api/ExecutionInput$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Object;ILjava/lang/Object;)Lviaduct/service/api/ExecutionInput;
 }
 
+public abstract interface class viaduct/service/api/ExecutionResult {
+	public abstract fun getData ()Ljava/util/Map;
+	public abstract fun getErrors ()Ljava/util/List;
+	public abstract fun getExtensions ()Ljava/util/Map;
+	public abstract fun toSpecification ()Ljava/util/Map;
+}
+
 public final class viaduct/service/api/GraphQLError {
 	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -71,13 +78,13 @@ public final class viaduct/service/api/SchemaId$Scoped : viaduct/service/api/Sch
 }
 
 public abstract interface class viaduct/service/api/Viaduct {
-	public abstract fun execute (Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;)Lgraphql/ExecutionResult;
+	public abstract fun execute (Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;)Lviaduct/service/api/ExecutionResult;
 	public abstract fun executeAsync (Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun getAppliedScopes (Lviaduct/service/api/SchemaId;)Ljava/util/Set;
 }
 
 public final class viaduct/service/api/Viaduct$DefaultImpls {
-	public static synthetic fun execute$default (Lviaduct/service/api/Viaduct;Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;ILjava/lang/Object;)Lgraphql/ExecutionResult;
+	public static synthetic fun execute$default (Lviaduct/service/api/Viaduct;Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;ILjava/lang/Object;)Lviaduct/service/api/ExecutionResult;
 	public static synthetic fun executeAsync$default (Lviaduct/service/api/Viaduct;Lviaduct/service/api/ExecutionInput;Lviaduct/service/api/SchemaId;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 }
 

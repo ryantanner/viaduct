@@ -413,7 +413,7 @@ class ViaductServer(
                     val result = currentViaduct.executeAsync(executionInput).await()
 
                     val response = mapOf(
-                        "data" to result.getData<Any>(),
+                        "data" to result.getData(),
                         "errors" to result.errors?.map { error ->
                             mapOf(
                                 "message" to error.message,

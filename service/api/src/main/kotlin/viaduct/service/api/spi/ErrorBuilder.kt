@@ -50,7 +50,7 @@ class ErrorBuilder private constructor() {
             message = message,
             path = path,
             locations = locations,
-            extensions = if (extensions.isEmpty()) null else extensions.toMap()
+            extensions = extensions.toMap()
         )
 
     companion object {

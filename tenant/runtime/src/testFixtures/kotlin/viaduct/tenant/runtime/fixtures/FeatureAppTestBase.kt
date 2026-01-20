@@ -4,7 +4,6 @@ package viaduct.tenant.runtime.fixtures
 
 import com.google.inject.Guice
 import com.google.inject.Injector
-import graphql.ExecutionResult
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
@@ -13,6 +12,7 @@ import viaduct.api.reflect.Type
 import viaduct.api.types.NodeObject
 import viaduct.service.ViaductBuilder
 import viaduct.service.api.ExecutionInput
+import viaduct.service.api.ExecutionResult
 import viaduct.service.api.SchemaId
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 import viaduct.service.api.spi.mocks.MockFlagManager

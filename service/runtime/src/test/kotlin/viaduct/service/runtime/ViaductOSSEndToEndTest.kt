@@ -161,7 +161,7 @@ class ViaductOSSEndToEndTest {
             val result = exceptionSubject.executeAsync(executionInput, schemaId).await()
             assertEquals(1, result.errors.size)
             assertEquals("java.lang.RuntimeException: Data fetcher error", result.errors.first().message)
-            assertNull(result.getData<Any>()?.let { (it as Map<*, *>)["field"] })
+            assertNull(result.getData()?.get("field"))
         }
 
     @Test

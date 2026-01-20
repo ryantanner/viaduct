@@ -20,8 +20,8 @@ class GraphQLErrorTest {
         assertEquals(1, error.locations?.size)
         assertEquals(10, error.locations?.first()?.line)
         assertEquals(5, error.locations?.first()?.column)
-        assertEquals("NOT_FOUND", error.extensions?.get("errorType"))
-        assertEquals("User was not found", error.extensions?.get("localizedMessage"))
+        assertEquals("NOT_FOUND", error.extensions.get("errorType"))
+        assertEquals("User was not found", error.extensions.get("localizedMessage"))
     }
 
     @Test
@@ -31,7 +31,7 @@ class GraphQLErrorTest {
         assertEquals("Something went wrong", error.message)
         assertNull(error.path)
         assertNull(error.locations)
-        assertNull(error.extensions)
+        assertEquals(emptyMap(), error.extensions)
     }
 
     @Test

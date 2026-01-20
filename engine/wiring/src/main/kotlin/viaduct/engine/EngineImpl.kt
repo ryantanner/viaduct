@@ -220,15 +220,13 @@ class EngineImpl(
                 .executionId(ExecutionId.generate())
                 .query(executionInput.operationText)
 
-        if (executionInput.operationName != null) {
-            executionInputBuilder.operationName(executionInput.operationName)
-        }
+        executionInput.operationName?.let { executionInputBuilder.operationName(it) }
         executionInputBuilder.variables(executionInput.variables)
         val localContext = CompositeLocalContext.withContexts(mkEngineExecutionContext(executionInput.requestContext))
 
         @Suppress("DEPRECATION")
         return executionInputBuilder
-            .context(executionInput.requestContext)
+            .apply { executionInput.requestContext?.let { context(it) } }
             .localContext(localContext)
             .graphQLContext(GraphQLJavaConfig.default.asMap())
             .build()

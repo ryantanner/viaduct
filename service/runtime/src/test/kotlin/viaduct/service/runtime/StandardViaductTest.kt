@@ -91,8 +91,8 @@ class StandardViaductTest {
         val graphqlErrors = listOf(GraphQLError.newError().message("Error").build())
 
         every {
-            executionResult.getData<String>()
-        } returns "Test"
+            executionResult.getData<Map<String, Any?>>()
+        } returns mapOf("field" to "Test")
 
         every {
             executionResult.errors
@@ -104,7 +104,7 @@ class StandardViaductTest {
 
         val executionResultImpl = subject.sortExecutionResult(executionResult)
 
-        assertEquals("Test", executionResultImpl.getData())
+        assertEquals(mapOf("field" to "Test"), executionResultImpl.getData())
         assertEquals(graphqlErrors, executionResultImpl.errors)
         assertEquals(mapOf(), executionResultImpl.extensions)
     }

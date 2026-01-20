@@ -12,6 +12,7 @@ import viaduct.api.context.FieldExecutionContext
 import viaduct.api.context.NodeExecutionContext
 import viaduct.api.types.Arguments
 import viaduct.api.types.CompositeOutput
+import viaduct.graphql.test.assertJson
 import viaduct.tenant.runtime.FakeArguments
 import viaduct.tenant.runtime.FakeObject
 import viaduct.tenant.runtime.FakeQuery
@@ -21,7 +22,6 @@ import viaduct.tenant.runtime.featuretests.fixtures.Foo
 import viaduct.tenant.runtime.featuretests.fixtures.Query
 import viaduct.tenant.runtime.featuretests.fixtures.Query_HasArgs1_Arguments
 import viaduct.tenant.runtime.featuretests.fixtures.UntypedFieldContext
-import viaduct.tenant.runtime.featuretests.fixtures.assertJson
 import viaduct.tenant.runtime.featuretests.fixtures.get
 
 /** tests to ensure that [FeatureTest] behaves as expected */
@@ -211,6 +211,7 @@ class SanityTest {
         val err = runCatching {
             result.assertJson("""{"x": 42}""")
         }.exceptionOrNull()
+        // kotlin.test.assertEquals with JUnit 5 throws AssertionFailedError
         assertEquals("org.opentest4j.AssertionFailedError", err?.javaClass?.name)
     }
 

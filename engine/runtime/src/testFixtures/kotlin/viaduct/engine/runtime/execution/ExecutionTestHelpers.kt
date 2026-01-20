@@ -267,7 +267,7 @@ object ExecutionTestHelpers {
     ): ExecutionInput =
         ExecutionInput.newExecutionInput()
             .query(query)
-            .operationName(operationName)
+            .apply { operationName?.let { operationName(it) } }
             .variables(variables)
             .localContext(createLocalContext(schema, dispatcherRegistry))
             .graphQLContext { b ->

@@ -3,14 +3,20 @@ package viaduct.graphql.test
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import graphql.ExecutionResult
-import kotlin.test.assertEquals
+import graphql.ExecutionResult as GJExecutionResult
+import org.junit.jupiter.api.Assertions.assertEquals
+import viaduct.service.api.ExecutionResult
 
 /**
  * Assert that this result serializes to same value as [expectedJson].
  *
  * @param expectedJson a JSON string. The string may use some short-hand conventions,
  *  including unquoted object keys, trailing commas, and comments
+ */
+fun GJExecutionResult.assertJson(expectedJson: String) = this.toSpecification().assertJson(expectedJson)
+
+/**
+ * Assert that this ExecutionResult serializes to same value as [expectedJson].
  */
 fun ExecutionResult.assertJson(expectedJson: String) = this.toSpecification().assertJson(expectedJson)
 

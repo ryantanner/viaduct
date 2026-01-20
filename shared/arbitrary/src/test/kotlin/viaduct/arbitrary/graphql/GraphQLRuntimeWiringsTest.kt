@@ -242,7 +242,7 @@ class GraphQLRuntimeWiringsTest : KotestPropertyBase() {
                         val input = Arb.graphQLExecutionInput(sdl.asSchema, doc, cfg)
                         input.map(gql::execute)
                     }.forAll {
-                        it.isDataPresent && it.errors.isEmpty()
+                        it.errors.isEmpty()
                     }
             }
 

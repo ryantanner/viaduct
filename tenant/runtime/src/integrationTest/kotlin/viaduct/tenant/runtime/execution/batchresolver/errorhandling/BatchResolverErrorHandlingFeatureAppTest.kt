@@ -152,7 +152,7 @@ class BatchResolverErrorHandlingFeatureAppTest : FeatureAppTestBase() {
 
         assert(result.errors.isEmpty()) { "Query should execute without errors, got: ${result.errors}" }
 
-        val data = result.getData<Map<String, Any>>()
+        val data = result.getData()!!
         val f1Data = data["f1"] as Map<*, *>
         val f2Data = data["f2"] as Map<*, *>
         val f1Selections = f1Data["a"] as String
