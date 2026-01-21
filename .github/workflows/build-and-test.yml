@@ -78,6 +78,7 @@ jobs:
           echo "🔨 Building project..."
           ./gradlew clean || { echo "❌ Clean failed"; exit 1; }
           ./gradlew assemble || { echo "❌ Assemble failed"; exit 1; }
+          ./gradlew :core:tenant:tenant-api:dokkaGenerate :core:service:dokkaGenerate || { echo "❌ Dokka failed"; exit 1; }
           echo "✅ Project built successfully"
         shell: bash
 
