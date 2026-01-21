@@ -41,6 +41,7 @@ dependencies {
     testImplementation(testFixtures(libs.viaduct.shared.mapping))
 
     /** Test dependencies - External **/
+    testImplementation(libs.assertj.core)
     testImplementation(libs.graphql.java.extension)
     testImplementation(libs.io.mockk.jvm)
     testImplementation(libs.kotlinx.coroutines.test)

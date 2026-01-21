@@ -55,48 +55,76 @@ import viaduct.tenant.runtime.select.SelectionsLoaderImpl
  * dependency injection frameworks. Subclasses should provide their own injector
  * integration as needed.
  *
- * ## Integration
+ * ## Deprecation Notice
  *
- * Users need to provide a ViaductSchema implementation via [getSchema]
+ * **This API is deprecated.** Please migrate to the new type-safe testing API in
+ * `viaduct.api.testing` package, which provides:
+ * - **Explicit type parameters**: No reflection-based type inference
+ * - **Factory pattern**: No inheritance required
+ * - **API-only dependencies**: No runtime module dependencies
  *
- * For the schema, you can either:
- * - Load from a GraphQL schema file using ViaductSchemaGenerator.makeUnexecutableSchema()
+ * ### Migration Guide
  *
- * Example subclass:
-
- *    class MyResolverTestBase : ResolverTestBase() {
- *        override val selectionsLoaderFactory by lazy {
- *            mkSelectionsLoaderFactory()
- *        }
+ * **Old API (deprecated):**
+ * ```kotlin
+ * class MyResolverTest : DefaultAbstractResolverTestBase() {
+ *     override fun getSchema() = mySchema
  *
- *        override val context: ExecutionContext by lazy {
- *            ResolverExecutionContextImpl(
- *               mkInternalContext(),
- *               queryLoader = mkQueryLoader(),
- *               selectionSetFactory = mkSelectionSetFactory(),
- *               nodeReferenceFactory = mkNodeReferenceFactory()
- *           )
- *        }
+ *     @Test
+ *     fun test() = runBlocking {
+ *         val result = runFieldResolver(
+ *             resolver = MyResolver(),
+ *             objectValue = myObject,
+ *             arguments = myArgs
+ *         )
+ *         assertEquals(expected, result)
+ *     }
+ * }
+ * ```
  *
- *        override fun getSchema(): ViaductSchema = myTestSchema
- *        override fun getFragmentLoader(): FragmentLoader = myMockFragmentLoader
- *    }
+ * **New API:**
+ * ```kotlin
+ * class MyResolverTest {
+ *     private val tester = FieldResolverTester.create<
+ *         MyObject,           // Object type (T)
+ *         Query,              // Query type (Q)
+ *         MyArguments,        // Arguments type (A)
+ *         MyOutput            // Output type (O)
+ *     >(
+ *         ResolverTester.TesterConfig(schemaSDL = MY_SCHEMA_SDL)
+ *     )
  *
- * Example usage:
+ *     @Test
+ *     fun test() = runBlocking {
+ *         val result = tester.test(MyResolver()) {
+ *             objectValue = myObject
+ *             arguments = myArgs
+ *         }
+ *         assertEquals(expected, result)
+ *     }
+ * }
+ * ```
  *
- *    // Mock the required selection set result
- *    val objectValue = Wishlist.Builder(context)
- *       .internalName("Hawaii")
- *       .namePhrase(null)
- *       .build()
+ * ### Migration by Resolver Type
  *
- *    val result = runFieldResolver(
- *       resolver,
- *       objectValue,
- *       Wishlist_Name_Arguments(...)
- *    )
- *    assertEquals("Hawaii", result)
+ * | Old Method                | New Tester                    |
+ * |---------------------------|-------------------------------|
+ * | `runFieldResolver()`      | `FieldResolverTester.test()`  |
+ * | `runFieldBatchResolver()` | `FieldResolverTester.testBatch()` |
+ * | `runMutationFieldResolver()` | `MutationResolverTester.test()` |
+ * | `runNodeResolver()`       | `NodeResolverTester.test()`   |
+ * | `runNodeBatchResolver()`  | `NodeResolverTester.testBatch()` |
+ *
+ * @see viaduct.api.testing.FieldResolverTester
+ * @see viaduct.api.testing.MutationResolverTester
+ * @see viaduct.api.testing.NodeResolverTester
+ * @see viaduct.api.testing.ResolverTester.TesterConfig
  */
+@Deprecated(
+    message = "ResolverTestBase interface is deprecated. Use the new type-safe testing API in viaduct.api.testing package. " +
+        "See FieldResolverTester, MutationResolverTester, or NodeResolverTester for the new API.",
+    level = DeprecationLevel.WARNING
+)
 @OptIn(TestingApi::class)
 interface ResolverTestBase {
     /**
