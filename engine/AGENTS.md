@@ -1,0 +1,7 @@
+This directory contains the core GraphQL execution algorithm implemented by Viaduct.
+
+There are two interfaces to the engine: the top-level interface used to initiate an operation and receive its results, and an intra-operation interface used during the execution of an operation to interact with resolvers.
+
+This directory contains three subprojects: `engine/api` defines the interfaces for both the top-level and intra-operation interfaces, and `engine/runtime` contains the implementations of those interfaces.  The top-level API consists mostly of a single interface  [`viaduct.engine.api.Engine`](engine/api/src/main/kotlin/viaduct/engine/api/Engine.kt), instances of which are produced through the [`viaduct.engine.EngineFactory`](wiring/src/main/kotlin/viaduct/engine/EngineFactory.kt) class found in the `engine/wiring` project.
+
+Most of `engine/api` pertains to the intra-operation API used by the engine to invoke resolvers.  At the core of this API is are the _executor_ Kotlin interfaces, for example [`viaduct.engine.api.FieldResolverExecutor`](api/src/main/kotlin/viaduct/engine/api/FieldResolverExecutor.kt).  The Tenant API (found in `../tenant`) is responsible for producing an implementation of this interface for each field resolver written by application developers.  When it's time to invoke a resolver, the engine calls the `FieldResolverExecutor.batchResolve` function to do so.
