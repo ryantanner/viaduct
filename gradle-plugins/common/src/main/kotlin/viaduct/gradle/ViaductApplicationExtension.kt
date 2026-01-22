@@ -7,21 +7,6 @@ open class ViaductApplicationExtension(objects: org.gradle.api.model.ObjectFacto
     /** Kotlin package name prefix for all modules. */
     val modulePackagePrefix = objects.property(String::class.java)
 
-    /** Version of the Viaduct BOM to use. Defaults to the project version. */
-    val bomVersion = objects.property(String::class.java)
-
-    /** Whether to automatically apply the Viaduct BOM platform dependency. Defaults to true. */
-    val applyBOM = objects.property(Boolean::class.java).convention(true)
-
-    /** Which Viaduct artifacts to automatically add as dependencies. Defaults to all common ones. */
-    val viaductDependencies = objects.setProperty(String::class.java).convention(ViaductPluginCommon.BOM.DEFAULT_APPLICATION_ARTIFACTS)
-
-    /** Which Viaduct artifacts to automatically add as test dependencies. */
-    val viaductTestDependencies = objects.setProperty(String::class.java).convention(ViaductPluginCommon.BOM.DEFAULT_APPLICATION_TEST_ARTIFACTS)
-
-    /** Which Viaduct testFixtures to automatically add as test dependencies. */
-    val viaductTestFixtures = objects.setProperty(String::class.java).convention(ViaductPluginCommon.BOM.DEFAULT_TEST_FIXTURES)
-
     /** Port for the development server. Defaults to 8080. Set to 0 for dynamic port allocation. */
     val servePort = objects.property(Int::class.java).convention(8080)
 

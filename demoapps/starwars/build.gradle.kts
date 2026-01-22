@@ -9,8 +9,6 @@ plugins {
 viaductApplication {
     grtPackageName.set("viaduct.api.grts")
     modulePackagePrefix.set("com.example.starwars")
-    // Disable automatic BOM/dependency injection - we manage dependencies explicitly
-    applyBOM.set(false)
 }
 
 micronaut {

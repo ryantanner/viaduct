@@ -13,18 +13,39 @@ viaductPublishing {
     description.set("Convenience module that aggregates all Viaduct runtime modules and their transitive dependencies")
 }
 
-dependencies {
-    implementation(libs.viaduct.engine.runtime)
-    implementation(libs.viaduct.engine.wiring)
-    implementation(libs.viaduct.service.runtime)
-    implementation(libs.viaduct.service.wiring)
-    implementation(libs.viaduct.tenant.runtime)
-    implementation(libs.viaduct.tenant.wiring)
+// In composite builds (when demo apps are included), expose transitive deps so consumers don't need explicit declarations.
+// For published jars, keep as implementation so they're bundled in the shadow jar without POM conflicts.
+val isPublishing = gradle.startParameter.taskNames.any { it.contains("publish") || it.contains("MavenCentral") }
+val isCompositeBuild = gradle.includedBuilds.any { it.name.contains("starter") || it.name == "starwars" } && !isPublishing
 
-    // Third-party dependencies used internally by Viaduct
-    implementation(libs.graphql.java)
-    implementation(libs.guice)
-    implementation(libs.javax.inject)
+dependencies {
+    if (isCompositeBuild) {
+        api(libs.viaduct.engine.api)
+        api(libs.viaduct.engine.runtime)
+        api(libs.viaduct.engine.wiring)
+        api(libs.viaduct.service.runtime)
+        api(libs.viaduct.service.wiring)
+        api(libs.viaduct.tenant.runtime)
+        api(libs.viaduct.tenant.wiring)
+
+        // Third-party dependencies used internally by Viaduct
+        api(libs.graphql.java)
+        api(libs.guice)
+        api(libs.javax.inject)
+    } else {
+        implementation(libs.viaduct.engine.api)
+        implementation(libs.viaduct.engine.runtime)
+        implementation(libs.viaduct.engine.wiring)
+        implementation(libs.viaduct.service.runtime)
+        implementation(libs.viaduct.service.wiring)
+        implementation(libs.viaduct.tenant.runtime)
+        implementation(libs.viaduct.tenant.wiring)
+
+        // Third-party dependencies used internally by Viaduct
+        implementation(libs.graphql.java)
+        implementation(libs.guice)
+        implementation(libs.javax.inject)
+    }
 }
 
 // Create shaded jar for publishing (fat jar with all dependencies)

@@ -13,9 +13,6 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import schemaPartitionDirectory
-import viaduct.gradle.ViaductPluginCommon.addViaductDependencies
-import viaduct.gradle.ViaductPluginCommon.addViaductTestDependencies
-import viaduct.gradle.ViaductPluginCommon.applyViaductBOM
 import viaduct.gradle.ViaductPluginCommon.configureIdeaIntegration
 import viaduct.gradle.task.AssembleSchemaPartitionTask
 import viaduct.gradle.task.GenerateResolverBasesTask
@@ -23,18 +20,6 @@ import viaduct.gradle.task.GenerateResolverBasesTask
 open class ViaductModuleExtension(objects: org.gradle.api.model.ObjectFactory) {
     /** Kotlin package name suffix for this module (can be empty). */
     val modulePackageSuffix = objects.property(String::class.java)
-
-    /** Version of the Viaduct BOM to use. Defaults to the project version. */
-    val bomVersion = objects.property(String::class.java)
-
-    /** Whether to automatically apply the Viaduct BOM platform dependency. Defaults to true. */
-    val applyBOM = objects.property(Boolean::class.java).convention(true)
-
-    /** Which Viaduct artifacts to automatically add as dependencies. Defaults to common module ones. */
-    val viaductDependencies = objects.setProperty(String::class.java).convention(ViaductPluginCommon.BOM.DEFAULT_MODULE_ARTIFACTS)
-
-    /** Which Viaduct artifacts to automatically add as test dependencies. Defaults to common module ones. */
-    val viaductTestDependencies = objects.setProperty(String::class.java).convention(ViaductPluginCommon.BOM.DEFAULT_MODULE_TEST_ARTIFACTS)
 }
 
 class ViaductModulePlugin : Plugin<Project> {
@@ -46,21 +31,11 @@ class ViaductModulePlugin : Plugin<Project> {
         with(project) {
             val moduleExt = extensions.create("viaductModule", ViaductModuleExtension::class.java, objects)
 
-            moduleExt.bomVersion.convention(ViaductPluginCommon.BOM.getDefaultVersion())
-
             pluginManager.withPlugin("java") { enforceNoDirectModuleDeps() }
             pluginManager.withPlugin("org.jetbrains.kotlin.jvm") { enforceNoDirectModuleDeps() }
 
             pluginManager.withPlugin("com.airbnb.viaduct.application-gradle-plugin") {
                 moduleExt.modulePackageSuffix.convention("")
-            }
-
-            plugins.withId("java") {
-                if (moduleExt.applyBOM.get()) {
-                    applyViaductBOM(moduleExt.bomVersion.get())
-                    addViaductDependencies(moduleExt.viaductDependencies.get())
-                    addViaductTestDependencies(moduleExt.viaductTestDependencies.get())
-                }
             }
 
             val grtIncomingCfg = configurations.create(ViaductPluginCommon.Configs.GRT_CLASSES_INCOMING).apply {

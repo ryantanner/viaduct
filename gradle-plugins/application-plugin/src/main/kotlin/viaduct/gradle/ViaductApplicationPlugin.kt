@@ -12,10 +12,6 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.kotlin.dsl.register
-import viaduct.gradle.ViaductPluginCommon.addViaductDependencies
-import viaduct.gradle.ViaductPluginCommon.addViaductTestDependencies
-import viaduct.gradle.ViaductPluginCommon.addViaductTestFixtures
-import viaduct.gradle.ViaductPluginCommon.applyViaductBOM
 import viaduct.gradle.ViaductPluginCommon.configureIdeaIntegration
 import viaduct.gradle.task.AssembleCentralSchemaTask
 import viaduct.gradle.task.GenerateGRTClassFilesTask
@@ -29,22 +25,11 @@ abstract class ViaductApplicationPlugin : Plugin<Project> {
 
             val appExt = extensions.create("viaductApplication", ViaductApplicationExtension::class.java, objects)
 
-            // Set default BOM version to plugin version
-            appExt.bomVersion.convention(ViaductPluginCommon.BOM.getDefaultVersion())
-
             val assembleCentralSchemaTask = setupAssembleCentralSchemaTask()
             setupOutgoingConfigurationForCentralSchema(assembleCentralSchemaTask)
 
             val generateGRTsTask = setupGenerateGRTsTask(appExt, assembleCentralSchemaTask)
 
-            plugins.withId("java") {
-                if (appExt.applyBOM.get()) {
-                    applyViaductBOM(appExt.bomVersion.get())
-                    addViaductDependencies(appExt.viaductDependencies.get())
-                    addViaductTestDependencies(appExt.viaductTestDependencies.get())
-                    addViaductTestFixtures(appExt.viaductTestFixtures.get())
-                }
-            }
             configureIdeaIntegration(generateGRTsTask)
             setupConsumableConfigurationForGRT(generateGRTsTask.flatMap { it.archiveFile })
 
