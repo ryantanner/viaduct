@@ -1,5 +1,7 @@
 plugins {
+    `java-library`
     id("conventions.java")
+    id("conventions.dokka")
 }
 
 description = "Java Tenant API interfaces"

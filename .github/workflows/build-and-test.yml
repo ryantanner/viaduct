@@ -82,6 +82,38 @@ jobs:
           echo "✅ Project built successfully"
         shell: bash
 
+      - name: Verify Dokka output
+        run: |
+          echo "📖 Verifying Dokka documentation output..."
+
+          # Check tenant-api docs
+          if [ ! -f "docs/docs/apis/tenant-api/index.html" ]; then
+            echo "❌ Missing tenant-api Dokka output: docs/docs/apis/tenant-api/index.html"
+            exit 1
+          fi
+          echo "✅ tenant-api docs present"
+
+          # Check service aggregated docs
+          if [ ! -f "docs/docs/apis/service/index.html" ]; then
+            echo "❌ Missing service Dokka output: docs/docs/apis/service/index.html"
+            exit 1
+          fi
+          echo "✅ service docs present"
+
+          # Verify service docs contain aggregated modules
+          if [ ! -d "docs/docs/apis/service/service/service-api" ]; then
+            echo "❌ Missing aggregated service-api module in service docs"
+            exit 1
+          fi
+          if [ ! -d "docs/docs/apis/service/service/service-wiring" ]; then
+            echo "❌ Missing aggregated service-wiring module in service docs"
+            exit 1
+          fi
+          echo "✅ service docs contain aggregated modules (service-api, service-wiring)"
+
+          echo "✅ All Dokka documentation verified successfully"
+        shell: bash
+
       - name: Collect build artifacts
         run: |
           echo "📦 Collecting artifacts..."
