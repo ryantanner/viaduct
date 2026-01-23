@@ -1,7 +1,5 @@
 package viaduct.graphql.schema
 
-import graphql.language.Value
-
 /**
  * A unified implementation of [ViaductSchema] that stores optional auxiliary data
  * associated with each schema node via a generic [data] property.
@@ -85,9 +83,9 @@ internal class SchemaWithData : ViaductSchema {
         // Leave abstract so we can narrow the type
         abstract override val containingDef: Def
 
-        protected abstract val mDefaultValue: Value<*>?
+        protected abstract val mDefaultValue: ViaductSchema.Literal?
 
-        override val defaultValue: Value<*>
+        override val defaultValue: ViaductSchema.Literal
             get() =
                 if (hasDefault) {
                     mDefaultValue!!
@@ -104,7 +102,7 @@ internal class SchemaWithData : ViaductSchema {
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Value<*>?,
+        override val mDefaultValue: ViaductSchema.Literal?,
         override val data: Any? = null,
     ) : Arg(), ViaductSchema.DirectiveArg
 
@@ -114,7 +112,7 @@ internal class SchemaWithData : ViaductSchema {
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Value<*>?,
+        override val mDefaultValue: ViaductSchema.Literal?,
         override val data: Any? = null,
     ) : Arg(), ViaductSchema.FieldArg
 
@@ -133,7 +131,7 @@ internal class SchemaWithData : ViaductSchema {
         override val type: ViaductSchema.TypeExpr<TypeDef>,
         override val appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
         override val hasDefault: Boolean,
-        override val mDefaultValue: Value<*>?,
+        override val mDefaultValue: ViaductSchema.Literal?,
         override val data: Any? = null,
         argsFactory: (Field) -> List<FieldArg> = { emptyList() },
     ) : HasDefaultValue(), ViaductSchema.Field {
@@ -144,7 +142,7 @@ internal class SchemaWithData : ViaductSchema {
             type: ViaductSchema.TypeExpr<TypeDef>,
             appliedDirectives: List<ViaductSchema.AppliedDirective<*>>,
             hasDefault: Boolean,
-            defaultValue: Value<*>?,
+            defaultValue: ViaductSchema.Literal?,
             data: Any? = null,
         ) : this(containingExtension, name, type, appliedDirectives, hasDefault, defaultValue, data, { emptyList() })
 

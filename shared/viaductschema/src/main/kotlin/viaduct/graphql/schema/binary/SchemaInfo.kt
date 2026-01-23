@@ -1,7 +1,6 @@
 package viaduct.graphql.schema.binary
 
 import com.google.common.base.Utf8
-import graphql.language.Value
 import viaduct.graphql.schema.ViaductSchema
 
 /**
@@ -237,7 +236,7 @@ internal class SchemaInfo(
      * Adds a constant value, extracting and registering any field names from
      * InputObjectConstant values as identifiers.
      */
-    private fun addConstantValue(value: Value<*>) {
+    private fun addConstantValue(value: ViaductSchema.Literal) {
         val constantRepr = ValueStringConverter.valueToString(value)
         extractIdentifiersFromConstant(constantRepr)
         constantsEncoderBuilder.addValue(constantRepr)

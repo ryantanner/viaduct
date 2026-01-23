@@ -1,7 +1,5 @@
 package viaduct.graphql.schema
 
-import graphql.language.NullValue
-import graphql.language.Value
 import viaduct.utils.collections.BitVector
 
 /**
@@ -160,7 +158,7 @@ interface ViaductSchema {
      */
     data class AppliedDirective<out D : ViaductSchema.Directive> private constructor(
         val directive: D,
-        val arguments: Map<String, Value<*>>
+        val arguments: Map<String, Literal>
     ) {
         val name: String get() = directive.name
 
@@ -186,7 +184,7 @@ interface ViaductSchema {
              */
             fun <D : ViaductSchema.Directive> of(
                 directive: D,
-                arguments: Map<String, Value<*>>
+                arguments: Map<String, Literal>
             ) = AppliedDirective(directive, arguments)
         }
     }
@@ -204,7 +202,7 @@ interface ViaductSchema {
 
         interface Field : Selection {
             val fieldName: String
-            val arguments: Map<String, Value<*>>
+            val arguments: Map<String, Literal>
         }
     }
 
@@ -428,20 +426,20 @@ interface ViaductSchema {
         /**
          * Returns the default value; throws NoSuchElementException if none is explicit in the schema.
          */
-        val defaultValue: Value<*>
+        val defaultValue: Literal
 
         /** Returns true if there's an explicitly defined default. */
         val hasDefault: Boolean
 
-        /** Returns the explicit default value if there is one, or NullValue if the field
+        /** Returns the explicit default value if there is one, or NullLiteral if the field
          *  is a nullable field of a non-Object containing definition.
          *  Throws NoSuchElementException for the rest.
          */
-        val effectiveDefaultValue: Value<*>
+        val effectiveDefaultValue: Literal
             get() =
                 when {
                     hasDefault -> defaultValue
-                    type.isNullable && (containingDef as? TypeDef)?.isOutput != true -> NullValue.of()
+                    type.isNullable && (containingDef as? TypeDef)?.isOutput != true -> NULL
                     else -> throw NoSuchElementException("No default value for ${this.describe()}")
                 }
 
@@ -637,6 +635,24 @@ interface ViaductSchema {
         // compilation schema sdl files, etc.
         final const val VIADUCT_IGNORE_SYMBOL = "VIADUCT_IGNORE"
 
+        /**
+         * The singleton instance of [NullLiteral].
+         */
+        @JvmStatic
+        val NULL: NullLiteral = NullLiteral()
+
+        /**
+         * The singleton instance of [TrueLiteral].
+         */
+        @JvmStatic
+        val TRUE: TrueLiteral = TrueLiteral()
+
+        /**
+         * The singleton instance of [FalseLiteral].
+         */
+        @JvmStatic
+        val FALSE: FalseLiteral = FalseLiteral()
+
         // use in impl class as "override fun field(...): Field = ViaductSchema.field(this, rec, path)"
         inline fun <reified T : Field> field(
             rec: Record,
@@ -665,6 +681,422 @@ interface ViaductSchema {
                 if (s.field(field.name) != null) return true
             }
             return false
+        }
+    }
+
+    // =========================================================================
+    // Literal types - representations of GraphQL Input Values
+    // See: https://spec.graphql.org/October2021/#sec-Input-Values
+    // =========================================================================
+
+    /**
+     * Represents a GraphQL input value (constant) as used in schema definitions
+     * for default values and applied directive arguments.
+     *
+     * This is a syntactic representation following the GraphQL specification's
+     * Input Values grammar. All implementations are immutable and have value
+     * equality semantics.
+     *
+     * The [value] property returns the semantic value in a convenient Kotlin type:
+     * - [IntLiteral] → [java.math.BigInteger]
+     * - [FloatLiteral] → [java.math.BigDecimal]
+     * - [StringLiteral] → [String] (unquoted, unescaped content)
+     * - [BooleanLiteral] → [Boolean]
+     * - [NullLiteral] → null
+     * - [EnumLit] → [String] (the enum literal)
+     * - [ListLiteral] → List<Any?> (recursively converted)
+     * - [ObjectLiteral] → Map<String, Any?> (recursively converted)
+     */
+    sealed interface Literal {
+        /**
+         * Returns the semantic value in a convenient Kotlin type.
+         * See class documentation for the mapping of types.
+         */
+        val value: Any?
+    }
+
+    /**
+     * Represents a GraphQL null literal.
+     *
+     * Use [ViaductSchema.NULL] to obtain the singleton instance.
+     * This class is not a Kotlin object for Java compatibility.
+     */
+    class NullLiteral internal constructor() : Literal {
+        override val value: Any? = null
+
+        override fun toString() = "null"
+
+        override fun equals(other: Any?) = other is NullLiteral
+
+        override fun hashCode() = 0
+    }
+
+    /**
+     * Sealed interface for GraphQL boolean literals.
+     *
+     * Use [ViaductSchema.TRUE] or [ViaductSchema.FALSE] to obtain singleton instances.
+     */
+    sealed interface BooleanLiteral : Literal {
+        override val value: Boolean
+    }
+
+    /**
+     * Represents a GraphQL `true` literal.
+     *
+     * Use [ViaductSchema.TRUE] to obtain the singleton instance.
+     */
+    class TrueLiteral internal constructor() : BooleanLiteral {
+        override val value: Boolean = true
+
+        override fun toString() = "true"
+
+        override fun equals(other: Any?) = other is TrueLiteral
+
+        override fun hashCode() = 1
+    }
+
+    /**
+     * Represents a GraphQL `false` literal.
+     *
+     * Use [ViaductSchema.FALSE] to obtain the singleton instance.
+     */
+    class FalseLiteral internal constructor() : BooleanLiteral {
+        override val value: Boolean = false
+
+        override fun toString() = "false"
+
+        override fun equals(other: Any?) = other is FalseLiteral
+
+        override fun hashCode() = 0
+    }
+
+    /**
+     * Represents a GraphQL string literal.
+     *
+     * The [content] holds the actual string value (unquoted, with escapes interpreted).
+     * The [toString] method returns the GraphQL representation (quoted, escaped).
+     */
+    class StringLiteral private constructor(
+        private val content: String
+    ) : Literal {
+        override val value: String get() = content
+
+        @Volatile
+        private var mToString: String? = null
+
+        override fun toString(): String {
+            var result = mToString
+            if (result == null) {
+                result = quoteAndEscape(content)
+                mToString = result
+            }
+            return result
+        }
+
+        override fun equals(other: Any?) = other is StringLiteral && content == other.content
+
+        override fun hashCode() = content.hashCode()
+
+        companion object {
+            /**
+             * Creates a [StringLiteral] from the given string content.
+             *
+             * @param content The actual string value (not quoted, not escaped)
+             */
+            @JvmStatic
+            fun of(content: String) = StringLiteral(content)
+
+            private fun quoteAndEscape(s: String): String {
+                val sb = StringBuilder(s.length + 2)
+                sb.append('"')
+                for (c in s) {
+                    when (c) {
+                        '"' -> sb.append("\\\"")
+                        '\\' -> sb.append("\\\\")
+                        '\b' -> sb.append("\\b")
+                        '\u000C' -> sb.append("\\f")
+                        '\n' -> sb.append("\\n")
+                        '\r' -> sb.append("\\r")
+                        '\t' -> sb.append("\\t")
+                        else -> {
+                            if (c.code < 0x20) {
+                                sb.append("\\u")
+                                sb.append(String.format("%04x", c.code))
+                            } else {
+                                sb.append(c)
+                            }
+                        }
+                    }
+                }
+                sb.append('"')
+                return sb.toString()
+            }
+        }
+    }
+
+    /**
+     * Represents a GraphQL integer literal.
+     *
+     * The literal must conform to the GraphQL IntValue grammar:
+     * - Optional leading minus sign
+     * - No leading zeros (except for the value 0 itself)
+     *
+     * The [value] property returns the parsed [java.math.BigInteger].
+     */
+    class IntLiteral private constructor(
+        private val literal: String
+    ) : Literal {
+        @Volatile
+        private var mValue: java.math.BigInteger? = null
+
+        override val value: java.math.BigInteger
+            get() {
+                var result = mValue
+                if (result == null) {
+                    result = java.math.BigInteger(literal)
+                    mValue = result
+                }
+                return result
+            }
+
+        override fun toString() = literal
+
+        override fun equals(other: Any?) = other is IntLiteral && literal == other.literal
+
+        override fun hashCode() = literal.hashCode()
+
+        companion object {
+            // GraphQL IntValue: IntegerPart
+            // IntegerPart: NegativeSign? 0 | NegativeSign? NonZeroDigit Digit*
+            private val INT_PATTERN = Regex("^-?(?:0|[1-9][0-9]*)$")
+
+            /**
+             * Creates an [IntLiteral] from a GraphQL integer literal string.
+             *
+             * @param literal The GraphQL integer literal (no leading zeros except for "0" or "-0")
+             * @throws IllegalArgumentException if the literal does not conform to GraphQL IntValue grammar
+             */
+            @JvmStatic
+            fun of(literal: String): IntLiteral {
+                require(INT_PATTERN.matches(literal)) {
+                    "Invalid GraphQL IntValue literal: '$literal'"
+                }
+                return IntLiteral(literal)
+            }
+        }
+    }
+
+    /**
+     * Represents a GraphQL float literal.
+     *
+     * The literal must conform to the GraphQL FloatValue grammar:
+     * - Integer part with optional minus sign and no leading zeros
+     * - Either a fractional part, exponent part, or both
+     *
+     * The [value] property returns the parsed [java.math.BigDecimal].
+     */
+    class FloatLiteral private constructor(
+        private val literal: String
+    ) : Literal {
+        @Volatile
+        private var mValue: java.math.BigDecimal? = null
+
+        override val value: java.math.BigDecimal
+            get() {
+                var result = mValue
+                if (result == null) {
+                    result = java.math.BigDecimal(literal)
+                    mValue = result
+                }
+                return result
+            }
+
+        override fun toString() = literal
+
+        override fun equals(other: Any?) = other is FloatLiteral && literal == other.literal
+
+        override fun hashCode() = literal.hashCode()
+
+        companion object {
+            // GraphQL FloatValue: IntegerPart FractionalPart | IntegerPart ExponentPart | IntegerPart FractionalPart ExponentPart
+            // IntegerPart: NegativeSign? 0 | NegativeSign? NonZeroDigit Digit*
+            // FractionalPart: . Digit+
+            // ExponentPart: ExponentIndicator Sign? Digit+
+            private val FLOAT_PATTERN = Regex("^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$")
+
+            /**
+             * Creates a [FloatLiteral] from a GraphQL float literal string.
+             *
+             * @param literal The GraphQL float literal
+             * @throws IllegalArgumentException if the literal does not conform to GraphQL FloatValue grammar
+             */
+            @JvmStatic
+            fun of(literal: String): FloatLiteral {
+                require(FLOAT_PATTERN.matches(literal)) {
+                    "Invalid GraphQL FloatValue literal: '$literal'"
+                }
+                // Must have either fractional or exponent part (or both) to be a FloatValue
+                require(literal.contains('.') || literal.contains('e') || literal.contains('E')) {
+                    "GraphQL FloatValue must have fractional or exponent part: '$literal'"
+                }
+                return FloatLiteral(literal)
+            }
+        }
+    }
+
+    /**
+     * Represents a GraphQL enum literal (an input value of enum type).
+     *
+     * Note: This class is named `EnumLit` (not `EnumLiteral`) to avoid conflict with
+     * the [ViaductSchema.EnumValue] interface which represents enum value definitions
+     * (members of an enum type).
+     *
+     * The literal must conform to the GraphQL EnumValue grammar:
+     * - Must be a valid Name (starts with letter or underscore, contains letters, digits, underscores)
+     * - Must not be `true`, `false`, or `null`
+     *
+     * The [value] property returns the enum literal as a [String].
+     */
+    class EnumLit private constructor(
+        private val literal: String
+    ) : Literal {
+        override val value: String get() = literal
+
+        override fun toString() = literal
+
+        override fun equals(other: Any?) = other is EnumLit && literal == other.literal
+
+        override fun hashCode() = literal.hashCode()
+
+        companion object {
+            // GraphQL Name: /[_A-Za-z][_0-9A-Za-z]*/
+            private val NAME_PATTERN = Regex("^[_A-Za-z][_0-9A-Za-z]*$")
+            private val RESERVED = setOf("true", "false", "null")
+
+            /**
+             * Creates an [EnumLit] from a GraphQL enum literal string.
+             *
+             * @param literal The GraphQL enum literal (a valid Name that is not true, false, or null)
+             * @throws IllegalArgumentException if the literal does not conform to GraphQL EnumValue grammar
+             */
+            @JvmStatic
+            fun of(literal: String): EnumLit {
+                require(NAME_PATTERN.matches(literal)) {
+                    "Invalid GraphQL EnumValue literal: '$literal' (must be a valid Name)"
+                }
+                require(literal !in RESERVED) {
+                    "Invalid GraphQL EnumValue literal: '$literal' (cannot be true, false, or null)"
+                }
+                return EnumLit(literal)
+            }
+        }
+    }
+
+    /**
+     * Represents a GraphQL list literal.
+     *
+     * This class implements [List]<[Literal]> by delegating to the underlying elements.
+     *
+     * The [value] property returns a List<Any?> with recursively converted element values.
+     *
+     * **Important**: The caller must provide an immutable list; no defensive copy is made.
+     */
+    class ListLiteral private constructor(
+        private val elements: List<Literal>
+    ) : Literal, List<Literal> by elements {
+        @Volatile
+        private var mValue: List<Any?>? = null
+
+        override val value: List<Any?>
+            get() {
+                var result = mValue
+                if (result == null) {
+                    result = elements.map { it.value }
+                    mValue = result
+                }
+                return result
+            }
+
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.append('[')
+            elements.forEachIndexed { index, element ->
+                if (index > 0) sb.append(", ")
+                sb.append(element.toString())
+            }
+            sb.append(']')
+            return sb.toString()
+        }
+
+        override fun equals(other: Any?) = other is ListLiteral && elements == other.elements
+
+        override fun hashCode() = elements.hashCode()
+
+        companion object {
+            /**
+             * Creates a [ListLiteral] from the given list of values.
+             *
+             * **Important**: The caller must provide an immutable list; no defensive copy is made.
+             *
+             * @param elements The list of values (must be immutable)
+             */
+            @JvmStatic
+            fun of(elements: List<Literal>) = ListLiteral(elements)
+        }
+    }
+
+    /**
+     * Represents a GraphQL object (input object) literal.
+     *
+     * This class implements [Map]<[String], [Literal]> by delegating to the underlying field map.
+     *
+     * The [value] property returns a Map<String, Any?> with recursively converted entry values.
+     *
+     * **Important**: The caller must provide an immutable map; no defensive copy is made.
+     */
+    class ObjectLiteral private constructor(
+        private val fieldMap: Map<String, Literal>
+    ) : Literal, Map<String, Literal> by fieldMap {
+        @Volatile
+        private var mValue: Map<String, Any?>? = null
+
+        override val value: Map<String, Any?>
+            get() {
+                var result = mValue
+                if (result == null) {
+                    result = fieldMap.mapValues { it.value.value }
+                    mValue = result
+                }
+                return result
+            }
+
+        override fun toString(): String {
+            val sb = StringBuilder()
+            sb.append('{')
+            fieldMap.entries.forEachIndexed { index, (key, v) ->
+                if (index > 0) sb.append(", ")
+                sb.append(key)
+                sb.append(": ")
+                sb.append(v.toString())
+            }
+            sb.append('}')
+            return sb.toString()
+        }
+
+        override fun equals(other: Any?) = other is ObjectLiteral && fieldMap == other.fieldMap
+
+        override fun hashCode() = fieldMap.hashCode()
+
+        companion object {
+            /**
+             * Creates an [ObjectLiteral] from the given map of fields.
+             *
+             * **Important**: The caller must provide an immutable map; no defensive copy is made.
+             *
+             * @param fields The map of field names to values (must be immutable)
+             */
+            @JvmStatic
+            fun of(fields: Map<String, Literal>) = ObjectLiteral(fields)
         }
     }
 }

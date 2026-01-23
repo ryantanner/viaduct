@@ -11,7 +11,6 @@ import graphql.language.InputValueDefinition
 import graphql.language.InterfaceTypeDefinition
 import graphql.language.ListType
 import graphql.language.NonNullType
-import graphql.language.NullValue
 import graphql.language.ObjectTypeDefinition
 import graphql.language.ScalarTypeDefinition
 import graphql.language.SchemaDefinition
@@ -295,16 +294,17 @@ internal fun <D : ViaductSchema.Directive> Directive.toAppliedDirective(
     val args = def.inputValueDefinitions
     return ViaductSchema.AppliedDirective.of(
         directiveDef,
-        args.fold(mutableMapOf<String, Value<*>>()) { m, arg ->
+        args.fold(mutableMapOf<String, ViaductSchema.Literal>()) { m, arg ->
             val t = typeExprConverter(arg.type)
-            val v: Value<*> =
-                this.getArgument(arg.name)?.value ?: arg.defaultValue
-                    ?: NullValue.of().also {
-                        if (!t.isNullable) {
-                            throw IllegalStateException("No default value for non-nullable argument ${arg.name}")
-                        }
-                    }
-            m[arg.name] = ValueConverter.convert(t, v)
+            val v: Value<*>? = this.getArgument(arg.name)?.value ?: arg.defaultValue
+            m[arg.name] = if (v != null) {
+                ValueConverter.convert(t, v)
+            } else {
+                if (!t.isNullable) {
+                    throw IllegalStateException("No default value for non-nullable argument ${arg.name}")
+                }
+                ViaductSchema.NULL
+            }
             m
         }
     )

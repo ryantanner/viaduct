@@ -1,10 +1,8 @@
 package viaduct.graphql.schema.graphqljava
 
 import graphql.language.Directive
-import graphql.language.NullValue
 import graphql.language.Type
 import graphql.language.TypeName
-import graphql.language.Value
 import graphql.schema.GraphQLAppliedDirective
 import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirectiveContainer
@@ -117,7 +115,7 @@ internal class GraphQLSchemaDecoder(
     private fun decodeAppliedDirectiveArg(
         appliedDirective: GraphQLAppliedDirective,
         argDef: GraphQLArgument
-    ): Value<*> {
+    ): ViaductSchema.Literal {
         val appliedArg = appliedDirective.getArgument(argDef.name)
         val type = decodeTypeExpr(argDef.type)
         val convertedValue = when {
@@ -125,7 +123,7 @@ internal class GraphQLSchemaDecoder(
             argDef.hasSetDefaultValue() -> ValueConverter.convert(type, argDef.argumentDefaultValue)
             else -> null
         }
-        return convertedValue ?: NullValue.of().also {
+        return convertedValue ?: ViaductSchema.NULL.also {
             require(type.isNullable) {
                 "No value for non-nullable argument ${argDef.name} on @${appliedDirective.name}"
             }
@@ -143,7 +141,7 @@ internal class GraphQLSchemaDecoder(
 
     fun decodeHasDefault(arg: GraphQLArgument): Boolean = arg.hasSetDefaultValue()
 
-    fun decodeDefaultValue(arg: GraphQLArgument): Value<*>? =
+    fun decodeDefaultValue(arg: GraphQLArgument): ViaductSchema.Literal? =
         if (arg.hasSetDefaultValue()) {
             ValueConverter.convert(decodeTypeExpr(arg.type), arg.argumentDefaultValue)
         } else {

@@ -1,7 +1,5 @@
 package viaduct.tenant.codegen.graphql.schema
 
-import graphql.language.ArrayValue
-import graphql.language.StringValue
 import viaduct.graphql.schema.ViaductSchema
 
 fun ViaductSchema.Def.isInScope(scope: String): Boolean {
@@ -33,8 +31,8 @@ private fun Iterable<ViaductSchema.AppliedDirective<*>>.includesScope(scope: Str
         setOf(scope)
     }
     this.filter { it.name == "scope" }.forEach { directive ->
-        (directive.arguments["to"] as ArrayValue).values.forEach {
-            val value = (it as StringValue).value
+        (directive.arguments["to"] as ViaductSchema.ListLiteral).forEach {
+            val value = (it as ViaductSchema.StringLiteral).value
             if (value in scopes || value == "*") return true
         }
     }
@@ -51,6 +49,6 @@ val ViaductSchema.Extension<*, *>.scopes: List<String>? get() {
 
     // scope is a repeatable directive
     return dirs.flatMap { dir ->
-        (dir.arguments["to"] as ArrayValue).values.map { (it as StringValue).value }
+        (dir.arguments["to"] as ViaductSchema.ListLiteral).map { (it as ViaductSchema.StringLiteral).value }
     }
 }

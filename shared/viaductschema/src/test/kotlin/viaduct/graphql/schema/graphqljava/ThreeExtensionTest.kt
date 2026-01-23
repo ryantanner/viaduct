@@ -34,17 +34,17 @@ class ThreeExtensionTest {
             // Extension 0: base
             assertTrue(extensions[0].isBase)
             assertEquals(listOf("BASE_VALUE"), extensions[0].members.map { it.name })
-            assertEquals(listOf("StringValue{value='base'}"), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"base\""), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 1: ext1
             assertFalse(extensions[1].isBase)
             assertEquals(listOf("EXT1_VALUE"), extensions[1].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext1'}"), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext1\""), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 2: ext2
             assertFalse(extensions[2].isBase)
             assertEquals(listOf("EXT2_VALUE"), extensions[2].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext2'}"), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext2\""), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
         }
     }
 
@@ -67,17 +67,17 @@ class ThreeExtensionTest {
             // Extension 0: base
             assertTrue(extensions[0].isBase)
             assertEquals(listOf("baseField"), extensions[0].members.map { it.name })
-            assertEquals(listOf("StringValue{value='base'}"), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"base\""), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 1: ext1
             assertFalse(extensions[1].isBase)
             assertEquals(listOf("ext1Field"), extensions[1].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext1'}"), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext1\""), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 2: ext2
             assertFalse(extensions[2].isBase)
             assertEquals(listOf("ext2Field"), extensions[2].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext2'}"), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext2\""), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
         }
     }
 
@@ -106,17 +106,17 @@ class ThreeExtensionTest {
             // Extension 0: base
             assertTrue(extensions[0].isBase)
             assertEquals(listOf("baseField"), extensions[0].members.map { it.name })
-            assertEquals(listOf("StringValue{value='base'}"), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"base\""), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 1: ext1
             assertFalse(extensions[1].isBase)
             assertEquals(listOf("ext1Field"), extensions[1].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext1'}"), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext1\""), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 2: ext2
             assertFalse(extensions[2].isBase)
             assertEquals(listOf("ext2Field"), extensions[2].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext2'}"), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext2\""), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
         }
     }
 
@@ -139,17 +139,17 @@ class ThreeExtensionTest {
             // Extension 0: base
             assertTrue(extensions[0].isBase)
             assertEquals(listOf("baseField"), extensions[0].members.map { it.name })
-            assertEquals(listOf("StringValue{value='base'}"), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"base\""), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 1: ext1
             assertFalse(extensions[1].isBase)
             assertEquals(listOf("ext1Field"), extensions[1].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext1'}"), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext1\""), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 2: ext2
             assertFalse(extensions[2].isBase)
             assertEquals(listOf("ext2Field"), extensions[2].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext2'}"), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext2\""), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
         }
     }
 
@@ -176,17 +176,17 @@ class ThreeExtensionTest {
             // Extension 0: base
             assertTrue(extensions[0].isBase)
             assertEquals(listOf("BaseType"), extensions[0].members.map { it.name })
-            assertEquals(listOf("StringValue{value='base'}"), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"base\""), extensions[0].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 1: ext1
             assertFalse(extensions[1].isBase)
             assertEquals(listOf("Ext1Type"), extensions[1].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext1'}"), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext1\""), extensions[1].appliedDirectives.map { it.arguments["name"].toString() })
 
             // Extension 2: ext2
             assertFalse(extensions[2].isBase)
             assertEquals(listOf("Ext2Type"), extensions[2].members.map { it.name })
-            assertEquals(listOf("StringValue{value='ext2'}"), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
+            assertEquals(listOf("\"ext2\""), extensions[2].appliedDirectives.map { it.arguments["name"].toString() })
         }
     }
 

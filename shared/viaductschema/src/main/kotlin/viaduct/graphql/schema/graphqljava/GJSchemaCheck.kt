@@ -1,8 +1,6 @@
 package viaduct.graphql.schema.graphqljava
 
 import graphql.language.Node
-import graphql.language.NullValue
-import graphql.language.Value
 import graphql.schema.GraphQLAppliedDirective
 import graphql.schema.GraphQLArgument
 import graphql.schema.GraphQLDirectiveContainer
@@ -166,7 +164,7 @@ class GJSchemaCheck(
     private fun convertAppliedDirectiveArg(
         appliedDirective: GraphQLAppliedDirective,
         argDef: GraphQLArgument
-    ): Value<*> {
+    ): ViaductSchema.Literal {
         val appliedArg = appliedDirective.getArgument(argDef.name)
         val type = schema.toTypeExpr(argDef.type)
         val convertedValue = when {
@@ -174,7 +172,7 @@ class GJSchemaCheck(
             argDef.hasSetDefaultValue() -> ValueConverter.convert(type, argDef.argumentDefaultValue)
             else -> null
         }
-        return convertedValue ?: NullValue.of().also {
+        return convertedValue ?: ViaductSchema.NULL.also {
             require(type.isNullable) {
                 "No value for non-nullable argument ${argDef.name} on @${appliedDirective.name}"
             }
@@ -194,7 +192,7 @@ class GJSchemaCheck(
                 .doesNotThrow("HAS_DEFAULT") {
                     actual.defaultValue
                 }.ifNoThrow { default ->
-                    if (default is NullValue) {
+                    if (default is ViaductSchema.NullLiteral) {
                         check.isTrue(actual.type.isNullable, "DEFAULT_NULLABLE")
                     } else {
                         ValueConverter.javaClassFor(actual.type).let {

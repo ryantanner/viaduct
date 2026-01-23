@@ -189,10 +189,22 @@ internal class ValueConverterTest {
     /**
      * Transform Value objects into comparable forms since graphql-java Value.equals()
      * uses reference equality, not value equality.
+     * Also handles ViaductSchema.Literal types which are now returned from defaultValue.
      */
     private fun xform(value: Any?): Any? {
-        if (value !is Value<*>) return value
+        // Handle ViaductSchema.Literal types (returned from defaultValue, effectiveDefaultValue)
         return when (value) {
+            null -> value
+            is ViaductSchema.NullLiteral -> NULL_STANDIN
+            is ViaductSchema.TrueLiteral -> true
+            is ViaductSchema.FalseLiteral -> false
+            is ViaductSchema.IntLiteral -> value.value.toDouble()
+            is ViaductSchema.FloatLiteral -> value.value.toDouble()
+            is ViaductSchema.StringLiteral -> "StringValue{${value.value}}"
+            is ViaductSchema.EnumLit -> "EnumValue{${value.value}}"
+            is ViaductSchema.ListLiteral -> value.map { xform(it) }
+            is ViaductSchema.ObjectLiteral -> value.entries.associate { it.key to xform(it.value) }
+            // Handle graphql.language.Value types (from test inputs)
             is ArrayValue -> value.values.map { xform(it) }
             is BooleanValue -> value.isValue
             is EnumValue -> "EnumValue{${value.name}}"
@@ -201,7 +213,8 @@ internal class ValueConverterTest {
             is NullValue -> NULL_STANDIN
             is ObjectValue -> value.objectFields.associate { it.name to xform(it.value) }
             is StringValue -> "StringValue{${value.value}}"
-            else -> throw IllegalArgumentException("Unknown value type: ${value::class.java}")
+            is Value<*> -> throw IllegalArgumentException("Unknown graphql.language.Value type: ${value::class.java}")
+            else -> value
         }
     }
 

@@ -221,7 +221,7 @@ class TopologicalSortTest {
         override val type: ViaductSchema.TypeExpr<ViaductSchema.TypeDef>
             get() = throw UnsupportedOperationException("Not needed for topological sort tests")
         override val hasDefault: Boolean = false
-        override val defaultValue: graphql.language.Value<*>
+        override val defaultValue: ViaductSchema.Literal
             get() = throw NoSuchElementException("Not needed for topological sort tests")
         override val sourceLocation: ViaductSchema.SourceLocation? = null
 

@@ -1,29 +1,19 @@
 package viaduct.graphql.schema.binary
 
-import graphql.language.ArrayValue
-import graphql.language.BooleanValue
-import graphql.language.EnumValue
-import graphql.language.FloatValue
-import graphql.language.IntValue
-import graphql.language.NullValue
-import graphql.language.ObjectValue
-import graphql.language.StringValue
-import graphql.language.Value
-import java.math.BigDecimal
-import java.math.BigInteger
+import viaduct.graphql.schema.ViaductSchema
 
 /**
- * Converts GraphQL values between Value instances and intermediate representations
+ * Converts GraphQL values between ViaductSchema.Literal instances and intermediate representations
  * for binary encoding.
  *
  * ViaductSchema represents default values and values for applied-directive arguments
- * as follows:
+ * using ViaductSchema.Literal types:
  *
  * - GraphQL InputType -> Kotlin Type
- * - _NullValue_ -> `null`
- * - _IntValue_, `FloatValue`, `StringValue`, `BooleanValue`, `EnumValue` -> graphql-java's corresponding `graphql.language.*Value` types
- * - _ListValue_ -> `ArrayValue` (recursively following this convention)
- * - _ObjectValue_ -> `ObjectValue` (recursively following this convention)
+ * - _NullValue_ -> `ViaductSchema.NullLiteral`
+ * - _IntValue_, `FloatValue`, `StringValue`, `BooleanValue`, `EnumValue` -> ViaductSchema.*Value types
+ * - _ListValue_ -> `ViaductSchema.ListLiteral` (recursively following this convention)
+ * - _ObjectValue_ -> `ViaductSchema.ObjectLiteral` (recursively following this convention)
  *
  * Our binary schema format has a special section for handling so-called "simple"
  * types, ie, all InputTypes other than _ListValue_ and _ObjectValue_. In this
@@ -40,31 +30,32 @@ import java.math.BigInteger
  */
 internal object ValueStringConverter {
     /**
-     * Converts a Value instance to its string representation with kind code prefix.
+     * Converts a ViaductSchema.Literal instance to its string representation with kind code prefix.
      *
      * @param value The value to convert (must be a scalar or enum value, not null)
      * @return The kind-code-prefixed string representation
      * @throws IllegalArgumentException if value is not a simple type
      */
-    fun simpleValueToString(value: Value<*>): String {
+    fun simpleValueToString(value: ViaductSchema.Literal): String {
         return when (value) {
-            is BooleanValue -> "${K_BOOLEAN_VALUE.toChar()}${value.isValue}"
-            is IntValue -> "${K_INT_VALUE.toChar()}${value.value}"
-            is FloatValue -> "${K_FLOAT_VALUE.toChar()}${value.value}"
-            is StringValue -> "${K_STRING_VALUE.toChar()}${value.value ?: ""}"
-            is EnumValue -> "${K_ENUM_VALUE.toChar()}${value.name}"
+            is ViaductSchema.TrueLiteral -> "${K_BOOLEAN_VALUE.toChar()}true"
+            is ViaductSchema.FalseLiteral -> "${K_BOOLEAN_VALUE.toChar()}false"
+            is ViaductSchema.IntLiteral -> "${K_INT_VALUE.toChar()}$value"
+            is ViaductSchema.FloatLiteral -> "${K_FLOAT_VALUE.toChar()}$value"
+            is ViaductSchema.StringLiteral -> "${K_STRING_VALUE.toChar()}${value.value}"
+            is ViaductSchema.EnumLit -> "${K_ENUM_VALUE.toChar()}${value.value}"
             else -> throw IllegalArgumentException("Unsupported Value type for simple conversion: ${value.javaClass}")
         }
     }
 
     /**
-     * Converts a kind-code-prefixed string representation back to a Value instance.
+     * Converts a kind-code-prefixed string representation back to a ViaductSchema.Literal instance.
      *
      * @param encodedStr The kind-code-prefixed string representation
-     * @return Value instance matching the kind code
+     * @return ViaductSchema.Literal instance matching the kind code
      * @throws IllegalArgumentException if kind code is invalid or string cannot be parsed
      */
-    fun stringToSimpleValue(encodedStr: String): Value<*> {
+    fun stringToSimpleValue(encodedStr: String): ViaductSchema.Literal {
         require(encodedStr.isNotEmpty()) { "Encoded string cannot be empty" }
 
         val kindCode = encodedStr[0].code
@@ -73,48 +64,48 @@ internal object ValueStringConverter {
         return when (kindCode) {
             K_BOOLEAN_VALUE -> {
                 when (content) {
-                    "true" -> BooleanValue(true)
-                    "false" -> BooleanValue(false)
+                    "true" -> ViaductSchema.TRUE
+                    "false" -> ViaductSchema.FALSE
                     else -> throw IllegalArgumentException("Invalid boolean value: $content (expected 'true' or 'false')")
                 }
             }
             K_INT_VALUE -> {
                 try {
-                    IntValue(BigInteger(content))
-                } catch (e: NumberFormatException) {
+                    ViaductSchema.IntLiteral.of(content)
+                } catch (e: IllegalArgumentException) {
                     throw IllegalArgumentException("Invalid integer value: $content", e)
                 }
             }
             K_FLOAT_VALUE -> {
                 try {
-                    FloatValue(BigDecimal(content))
-                } catch (e: NumberFormatException) {
+                    ViaductSchema.FloatLiteral.of(content)
+                } catch (e: IllegalArgumentException) {
                     throw IllegalArgumentException("Invalid float value: $content", e)
                 }
             }
             K_STRING_VALUE -> {
-                StringValue(content)
+                ViaductSchema.StringLiteral.of(content)
             }
             K_ENUM_VALUE -> {
-                EnumValue(content)
+                ViaductSchema.EnumLit.of(content)
             }
             else -> throw IllegalArgumentException("Unknown kind code: 0x${kindCode.toString(16)}")
         }
     }
 
     /**
-     * Converts a Value instance (including compound values) to its representation
+     * Converts a ViaductSchema.Literal instance (including compound values) to its representation
      * as Any? following the default value encoding rules.
      *
      * @param value The value to convert
      * @return The converted representation: null, String, ListConstant, or InputObjectConstant
      */
-    fun valueToString(value: Value<*>): Any? {
+    fun valueToString(value: ViaductSchema.Literal): Any? {
         return when (value) {
-            is NullValue -> null
-            is ArrayValue -> {
+            is ViaductSchema.NullLiteral -> null
+            is ViaductSchema.ListLiteral -> {
                 // Convert each element recursively
-                val elements = value.values.map { elementValue ->
+                val elements = value.map { elementValue ->
                     valueToString(elementValue)
                 }
 
@@ -122,10 +113,10 @@ internal object ValueStringConverter {
                 val maxElementDepth = elements.maxOfOrNull { depthOf(it) } ?: 0
                 ListConstant(1 + maxElementDepth, elements)
             }
-            is ObjectValue -> {
+            is ViaductSchema.ObjectLiteral -> {
                 // Convert field values recursively
-                val fieldPairs = value.objectFields.associate { field ->
-                    field.name to valueToString(field.value)
+                val fieldPairs = value.entries.associate { (fieldName, fieldValue) ->
+                    fieldName to valueToString(fieldValue)
                 }
 
                 // Calculate depth: 1 + max depth of field values

@@ -1,6 +1,5 @@
 package viaduct.tenant.codegen.bytecode.config
 
-import graphql.language.StringValue
 import kotlinx.metadata.KmType
 import kotlinx.metadata.isNullable
 import viaduct.codegen.utils.Km
@@ -33,7 +32,7 @@ data class BackingData(val fqClass: String) {
 
         fun parse(dir: ViaductSchema.AppliedDirective<*>): BackingData {
             require(dir.name == name)
-            return BackingData((dir.arguments["class"] as StringValue).value)
+            return BackingData((dir.arguments["class"] as ViaductSchema.StringLiteral).value)
         }
     }
 }

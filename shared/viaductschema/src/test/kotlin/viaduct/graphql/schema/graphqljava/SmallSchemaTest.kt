@@ -1,6 +1,5 @@
 package viaduct.graphql.schema.graphqljava
 
-import graphql.language.NullValue
 import graphql.schema.idl.SchemaParser
 import graphql.schema.idl.UnExecutableSchemaGenerator
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -297,8 +296,8 @@ class SmallSchemaTest {
         // Both effectiveDefaultValue should be NullValue instances
         val gjEffective = gjField.effectiveDefaultValue
         val rawEffective = rawField.effectiveDefaultValue
-        assertTrue(gjEffective is NullValue, "GJSchema effectiveDefaultValue should be NullValue, got: ${gjEffective::class}")
-        assertTrue(rawEffective is NullValue, "GJSchemaRaw effectiveDefaultValue should be NullValue, got: ${rawEffective::class}")
+        assertTrue(gjEffective is viaduct.graphql.schema.ViaductSchema.NullLiteral, "GJSchema effectiveDefaultValue should be NullValue, got: ${gjEffective::class}")
+        assertTrue(rawEffective is viaduct.graphql.schema.ViaductSchema.NullLiteral, "GJSchemaRaw effectiveDefaultValue should be NullValue, got: ${rawEffective::class}")
 
         // Now verify SchemaDiff compares them correctly
         SchemaDiff(gjSchema, gjSchemaRaw).diff().assertEmpty("\n")
@@ -377,8 +376,8 @@ class SmallSchemaTest {
         // Both effectiveDefaultValue should be NullValue instances
         val gjEffective = gjField.effectiveDefaultValue
         val rawEffective = rawField.effectiveDefaultValue
-        assertTrue(gjEffective is NullValue, "GJSchema effectiveDefaultValue should be NullValue")
-        assertTrue(rawEffective is NullValue, "GJSchemaRaw effectiveDefaultValue should be NullValue")
+        assertTrue(gjEffective is viaduct.graphql.schema.ViaductSchema.NullLiteral, "GJSchema effectiveDefaultValue should be NullValue")
+        assertTrue(rawEffective is viaduct.graphql.schema.ViaductSchema.NullLiteral, "GJSchemaRaw effectiveDefaultValue should be NullValue")
 
         // This is the key test - SchemaDiff must compare the NullValues correctly for Long type
         // Without the fix, this fails because extractIntegralValue returns the NullValue itself

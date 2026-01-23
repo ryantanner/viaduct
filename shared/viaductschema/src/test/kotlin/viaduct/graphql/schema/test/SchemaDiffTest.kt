@@ -1,11 +1,7 @@
 package viaduct.graphql.schema.test
 
-import graphql.language.ArrayValue
-import graphql.language.IntValue
-import graphql.language.StringValue
 import graphql.parser.MultiSourceReader
 import graphql.schema.idl.SchemaParser
-import java.math.BigInteger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -376,7 +372,7 @@ class SchemaDiffTest {
         assertTrue(errors[0].contains("ARG_VALUE_AGREES"))
     }
 
-    // Tests for areNodesEqual with integral scalar types
+    // Tests for areValuesEqual with integral scalar types
     private val integralScalarsSDL = """
         scalar Byte
         scalar Short
@@ -386,250 +382,250 @@ class SchemaDiffTest {
     """.trimIndent()
 
     @Test
-    fun `areNodesEqual should compare IntValue and StringValue for Byte scalar`() {
+    fun `areValuesEqual should compare IntValue and StringValue for Byte scalar`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val byteType = schema.types["Byte"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
-        val intValue = IntValue.of(42)
-        val stringValue = StringValue("42")
+        val intValue = ViaductSchema.IntLiteral.of("42")
+        val stringValue = ViaductSchema.StringLiteral.of("42")
 
-        assertTrue(diff.areNodesEqual(intValue, stringValue, byteType))
-        assertTrue(diff.areNodesEqual(stringValue, intValue, byteType))
+        assertTrue(diff.areValuesEqual(intValue, stringValue, byteType))
+        assertTrue(diff.areValuesEqual(stringValue, intValue, byteType))
     }
 
     @Test
-    fun `areNodesEqual should compare IntValue and StringValue for Short scalar`() {
+    fun `areValuesEqual should compare IntValue and StringValue for Short scalar`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val shortType = schema.types["Short"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
-        val intValue = IntValue.of(1000)
-        val stringValue = StringValue("1000")
+        val intValue = ViaductSchema.IntLiteral.of("1000")
+        val stringValue = ViaductSchema.StringLiteral.of("1000")
 
-        assertTrue(diff.areNodesEqual(intValue, stringValue, shortType))
-        assertTrue(diff.areNodesEqual(stringValue, intValue, shortType))
+        assertTrue(diff.areValuesEqual(intValue, stringValue, shortType))
+        assertTrue(diff.areValuesEqual(stringValue, intValue, shortType))
     }
 
     @Test
-    fun `areNodesEqual should compare IntValue and StringValue for Long scalar`() {
+    fun `areValuesEqual should compare IntValue and StringValue for Long scalar`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val longType = schema.types["Long"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
-        val intValue = IntValue(BigInteger.valueOf(9223372036854775807L))
-        val stringValue = StringValue("9223372036854775807")
+        val intValue = ViaductSchema.IntLiteral.of("9223372036854775807")
+        val stringValue = ViaductSchema.StringLiteral.of("9223372036854775807")
 
-        assertTrue(diff.areNodesEqual(intValue, stringValue, longType))
-        assertTrue(diff.areNodesEqual(stringValue, intValue, longType))
+        assertTrue(diff.areValuesEqual(intValue, stringValue, longType))
+        assertTrue(diff.areValuesEqual(stringValue, intValue, longType))
     }
 
     @Test
-    fun `areNodesEqual should detect different integral values`() {
+    fun `areValuesEqual should detect different integral values`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val intType = schema.types["Int"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
-        val intValue1 = IntValue.of(42)
-        val intValue2 = IntValue.of(43)
-        val stringValue = StringValue("43")
+        val intValue1 = ViaductSchema.IntLiteral.of("42")
+        val intValue2 = ViaductSchema.IntLiteral.of("43")
+        val stringValue = ViaductSchema.StringLiteral.of("43")
 
-        assertFalse(diff.areNodesEqual(intValue1, intValue2, intType))
-        assertFalse(diff.areNodesEqual(intValue1, stringValue, intType))
+        assertFalse(diff.areValuesEqual(intValue1, intValue2, intType))
+        assertFalse(diff.areValuesEqual(intValue1, stringValue, intType))
     }
 
     @Test
-    fun `areNodesEqual should compare single-level lists of integral values`() {
+    fun `areValuesEqual should compare single-level lists of integral values`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Long")
         val diff = SchemaDiff(schema, schema)
 
-        val intValues = ArrayValue(
+        val intValues = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(10),
-                IntValue.of(20),
-                IntValue.of(30)
+                ViaductSchema.IntLiteral.of("10"),
+                ViaductSchema.IntLiteral.of("20"),
+                ViaductSchema.IntLiteral.of("30")
             )
         )
 
-        val stringValues = ArrayValue(
+        val stringValues = ViaductSchema.ListLiteral.of(
             listOf(
-                StringValue("10"),
-                StringValue("20"),
-                StringValue("30")
+                ViaductSchema.StringLiteral.of("10"),
+                ViaductSchema.StringLiteral.of("20"),
+                ViaductSchema.StringLiteral.of("30")
             )
         )
 
-        assertTrue(diff.areNodesEqual(intValues, stringValues, listType))
-        assertTrue(diff.areNodesEqual(stringValues, intValues, listType))
+        assertTrue(diff.areValuesEqual(intValues, stringValues, listType))
+        assertTrue(diff.areValuesEqual(stringValues, intValues, listType))
     }
 
     @Test
-    fun `areNodesEqual should detect different list lengths`() {
+    fun `areValuesEqual should detect different list lengths`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Int")
         val diff = SchemaDiff(schema, schema)
 
-        val list1 = ArrayValue(
+        val list1 = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(10),
-                IntValue.of(20)
+                ViaductSchema.IntLiteral.of("10"),
+                ViaductSchema.IntLiteral.of("20")
             )
         )
 
-        val list2 = ArrayValue(
+        val list2 = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(10),
-                IntValue.of(20),
-                IntValue.of(30)
+                ViaductSchema.IntLiteral.of("10"),
+                ViaductSchema.IntLiteral.of("20"),
+                ViaductSchema.IntLiteral.of("30")
             )
         )
 
-        assertFalse(diff.areNodesEqual(list1, list2, listType))
+        assertFalse(diff.areValuesEqual(list1, list2, listType))
     }
 
     @Test
-    fun `areNodesEqual should detect different list elements`() {
+    fun `areValuesEqual should detect different list elements`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Long")
         val diff = SchemaDiff(schema, schema)
 
-        val list1 = ArrayValue(
+        val list1 = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(10),
-                IntValue.of(20)
+                ViaductSchema.IntLiteral.of("10"),
+                ViaductSchema.IntLiteral.of("20")
             )
         )
 
-        val list2 = ArrayValue(
+        val list2 = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(10),
-                IntValue.of(21)
+                ViaductSchema.IntLiteral.of("10"),
+                ViaductSchema.IntLiteral.of("21")
             )
         )
 
-        assertFalse(diff.areNodesEqual(list1, list2, listType))
+        assertFalse(diff.areValuesEqual(list1, list2, listType))
     }
 
     @Test
-    fun `areNodesEqual should compare nested lists of integral values`() {
+    fun `areValuesEqual should compare nested lists of integral values`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val nestedListType = schema.toTypeExpr("!!!", "Byte")
         val diff = SchemaDiff(schema, schema)
 
-        val innerList1a = ArrayValue(
+        val innerList1a = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(1),
-                IntValue.of(2)
+                ViaductSchema.IntLiteral.of("1"),
+                ViaductSchema.IntLiteral.of("2")
             )
         )
 
-        val innerList1b = ArrayValue(
+        val innerList1b = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(3),
-                IntValue.of(4)
+                ViaductSchema.IntLiteral.of("3"),
+                ViaductSchema.IntLiteral.of("4")
             )
         )
 
-        val outerList1 = ArrayValue(
+        val outerList1 = ViaductSchema.ListLiteral.of(
             listOf(
                 innerList1a,
                 innerList1b
             )
         )
 
-        val innerList2a = ArrayValue(
+        val innerList2a = ViaductSchema.ListLiteral.of(
             listOf(
-                StringValue("1"),
-                StringValue("2")
+                ViaductSchema.StringLiteral.of("1"),
+                ViaductSchema.StringLiteral.of("2")
             )
         )
 
-        val innerList2b = ArrayValue(
+        val innerList2b = ViaductSchema.ListLiteral.of(
             listOf(
-                StringValue("3"),
-                StringValue("4")
+                ViaductSchema.StringLiteral.of("3"),
+                ViaductSchema.StringLiteral.of("4")
             )
         )
 
-        val outerList2 = ArrayValue(
+        val outerList2 = ViaductSchema.ListLiteral.of(
             listOf(
                 innerList2a,
                 innerList2b
             )
         )
 
-        assertTrue(diff.areNodesEqual(outerList1, outerList2, nestedListType))
+        assertTrue(diff.areValuesEqual(outerList1, outerList2, nestedListType))
     }
 
     @Test
-    fun `areNodesEqual should detect different nested list depths`() {
+    fun `areValuesEqual should detect different nested list depths`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val nestedListType = schema.toTypeExpr("!!!", "Short")
         val diff = SchemaDiff(schema, schema)
 
-        val innerList1a = ArrayValue(
+        val innerList1a = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(1)
+                ViaductSchema.IntLiteral.of("1")
             )
         )
 
-        val innerList1b = ArrayValue(
+        val innerList1b = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue.of(2),
-                IntValue.of(3)
+                ViaductSchema.IntLiteral.of("2"),
+                ViaductSchema.IntLiteral.of("3")
             )
         )
 
-        val outerList1 = ArrayValue(
+        val outerList1 = ViaductSchema.ListLiteral.of(
             listOf(
                 innerList1a,
                 innerList1b
             )
         )
 
-        val innerList2a = ArrayValue(
+        val innerList2a = ViaductSchema.ListLiteral.of(
             listOf(
-                StringValue("1")
+                ViaductSchema.StringLiteral.of("1")
             )
         )
 
-        val innerList2b = ArrayValue(
+        val innerList2b = ViaductSchema.ListLiteral.of(
             listOf(
-                StringValue("2")
+                ViaductSchema.StringLiteral.of("2")
             )
         )
 
-        val outerList2 = ArrayValue(
+        val outerList2 = ViaductSchema.ListLiteral.of(
             listOf(
                 innerList2a,
                 innerList2b
             )
         )
 
-        assertFalse(diff.areNodesEqual(outerList1, outerList2, nestedListType))
+        assertFalse(diff.areValuesEqual(outerList1, outerList2, nestedListType))
     }
 
     @Test
-    fun `areNodesEqual should handle empty lists`() {
+    fun `areValuesEqual should handle empty lists`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val listType = schema.toTypeExpr("!!", "Int")
         val diff = SchemaDiff(schema, schema)
 
-        val emptyList1 = ArrayValue(emptyList())
-        val emptyList2 = ArrayValue(emptyList())
+        val emptyList1 = ViaductSchema.ListLiteral.of(emptyList())
+        val emptyList2 = ViaductSchema.ListLiteral.of(emptyList())
 
-        assertTrue(diff.areNodesEqual(emptyList1, emptyList2, listType))
+        assertTrue(diff.areValuesEqual(emptyList1, emptyList2, listType))
     }
 
     @Test
-    fun `areNodesEqual should handle null values`() {
+    fun `areValuesEqual should handle null values`() {
         val schema = gjSchemaRawFromRegistry(SchemaParser().parse(integralScalarsSDL))
         val intType = schema.types["Int"]!!.asTypeExpr()
         val diff = SchemaDiff(schema, schema)
 
-        assertTrue(diff.areNodesEqual(null, null, intType))
-        assertFalse(diff.areNodesEqual(null, IntValue.of(42), intType))
-        assertFalse(diff.areNodesEqual(IntValue.of(42), null, intType))
+        assertTrue(diff.areValuesEqual(null, null, intType))
+        assertFalse(diff.areValuesEqual(null, ViaductSchema.IntLiteral.of("42"), intType))
+        assertFalse(diff.areValuesEqual(ViaductSchema.IntLiteral.of("42"), null, intType))
     }
 }

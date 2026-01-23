@@ -1,6 +1,5 @@
 package viaduct.graphql.schema.binary
 
-import graphql.language.StringValue
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -264,7 +263,7 @@ class DecodingErrorHandlingTest {
         // Create applied directive with an argument that doesn't exist in definition
         val appliedDirective = ViaductSchema.AppliedDirective.of(
             mockDirective("myDirective"),
-            mapOf("unknownArg" to StringValue.of("value")) // This arg doesn't exist!
+            mapOf("unknownArg" to ViaductSchema.StringLiteral.of("value")) // This arg doesn't exist!
         )
 
         val ext = ViaductSchema.ExtensionWithSupers.of<SchemaWithData.Object, SchemaWithData.Field>(

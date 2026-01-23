@@ -1,7 +1,5 @@
 package viaduct.graphql.schema.binary
 
-import graphql.language.NullValue
-import graphql.language.Value
 import viaduct.graphql.schema.ViaductSchema
 
 internal fun SchemaEncoder.encodeDefinitions() {
@@ -179,7 +177,7 @@ private fun SchemaEncoder.encodeAppliedDirectives(appliedDirectives: Iterable<Vi
  * - Its value matches the default value in the directive definition, OR
  * - Its value is null and the argument type is nullable (and has no default)
  */
-private fun SchemaEncoder.filterAppliedDirectiveArguments(appliedDirective: ViaductSchema.AppliedDirective<*>): List<Pair<String, Any?>> {
+private fun SchemaEncoder.filterAppliedDirectiveArguments(appliedDirective: ViaductSchema.AppliedDirective<*>): List<Pair<String, ViaductSchema.Literal>> {
     val directiveDef = requireNotNull(schemaInfo.inputSchema.directives[appliedDirective.name]) {
         "Unknown directive: ${appliedDirective.name}"
     }
@@ -200,14 +198,14 @@ private fun SchemaEncoder.filterAppliedDirectiveArguments(appliedDirective: Viad
  */
 private fun canOmitArgument(
     argDef: ViaductSchema.HasDefaultValue,
-    argValue: Any?
+    argValue: ViaductSchema.Literal
 ): Boolean {
     return when {
         // If argument has a default and value matches it, omit
         argDef.hasDefault && valuesEqual(argDef.defaultValue, argValue) -> true
         // If argument is nullable (no default) and value is NullValue, omit
         // (the decoder reconstructs NullValue for nullable args without defaults)
-        !argDef.hasDefault && argDef.type.isNullable && argValue is NullValue -> true
+        !argDef.hasDefault && argDef.type.isNullable && argValue is ViaductSchema.NullLiteral -> true
         // Otherwise, must encode explicitly
         else -> false
     }
@@ -218,7 +216,7 @@ private fun canOmitArgument(
  */
 private fun ViaductSchema.HasDefaultValue.defaultValueRepr(): Any? {
     if (!hasDefault) return null
-    // defaultValue is Value<*> (non-nullable) when hasDefault is true;
+    // defaultValue is ViaductSchema.Literal (non-nullable) when hasDefault is true;
     // GraphQL null values are represented as NullValue, not Kotlin null
     return ValueStringConverter.valueToString(defaultValue)
 }
@@ -239,7 +237,7 @@ private fun valuesEqual(
 
 private fun SchemaEncoder.encodeAppliedDirectiveArguments(
     appliedDirective: ViaductSchema.AppliedDirective<*>,
-    argsToEncode: List<Pair<String, Any?>>
+    argsToEncode: List<Pair<String, ViaductSchema.Literal>>
 ) {
     val directiveDef = schemaInfo.inputSchema.directives[appliedDirective.name]
         ?: throw IllegalArgumentException("Unknown directive: ${appliedDirective.name}")
@@ -250,9 +248,9 @@ private fun SchemaEncoder.encodeAppliedDirectiveArguments(
         require(directiveDef.args.any { it.name == argName }) {
             "Unknown argument $argName for directive ${appliedDirective.name}"
         }
-        // argValue is always Value<*> from appliedDirective.arguments;
+        // argValue is ViaductSchema.Literal from appliedDirective.arguments;
         // GraphQL null values are represented as NullValue, not Kotlin null
-        val constantRepr = ValueStringConverter.valueToString(argValue as Value<*>)
+        val constantRepr = ValueStringConverter.valueToString(argValue)
         out.writeInt(constantsEncoder.findRef(constantRepr))
     }
 }

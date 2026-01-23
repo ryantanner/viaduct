@@ -433,8 +433,8 @@ private class GraphQLJavaSchemaBuilder(
         val deprecated = directives.find { it.name == "deprecated" } ?: return null
         val reason = deprecated.arguments["reason"]
         return when (reason) {
-            is StringValue -> reason.value
-            is NullValue, null -> "No longer supported" // GraphQL spec default
+            is ViaductSchema.StringLiteral -> reason.value
+            is ViaductSchema.NullLiteral, null -> "No longer supported" // GraphQL spec default
             else -> reason.toString()
         }
     }
@@ -462,7 +462,7 @@ private class GraphQLJavaSchemaBuilder(
                         GraphQLAppliedDirectiveArgument.newArgument()
                             .name(name)
                             .type(argType)
-                            .valueLiteral(value)
+                            .valueLiteral(value.toGraphQLJavaValue())
                             .build()
                     )
                 }
@@ -546,7 +546,7 @@ private class GraphQLJavaSchemaBuilder(
  * graphql-java Value<*>. This is a place holder: in the future we will be replacing
  * graphql-java's Value<*> classes with our own, and this will then be needed.
  */
-private fun toGraphQLValue(value: Value<*>): Value<*> = value
+private fun toGraphQLValue(value: ViaductSchema.Literal): Value<*> = value.toGraphQLJavaValue()
 
 /**
  * A passthrough Coercing implementation for custom scalars that just returns values as-is.

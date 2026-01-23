@@ -1,18 +1,14 @@
 package viaduct.graphql.schema
 
-import graphql.language.IntValue
-import graphql.language.StringValue
-import graphql.language.Value
-import java.math.BigInteger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class AppliedDirectiveTest {
     @Test
     fun `AppliedDirective smoke test`() {
-        val args: Map<String, Value<*>> = mapOf(
-            "foo" to StringValue.of("bar"),
-            "baz" to IntValue.newIntValue(BigInteger.valueOf(1)).build()
+        val args: Map<String, ViaductSchema.Literal> = mapOf(
+            "foo" to ViaductSchema.StringLiteral.of("bar"),
+            "baz" to ViaductSchema.IntLiteral.of("1")
         )
         val mockDirective = MockDirective("name")
         val appliedDirective = ViaductSchema.AppliedDirective.of(mockDirective, args)

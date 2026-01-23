@@ -26,6 +26,7 @@ import graphql.language.UnionTypeDefinition
 import graphql.language.UnionTypeExtensionDefinition
 import graphql.schema.idl.TypeDefinitionRegistry
 import viaduct.graphql.schema.ViaductSchema
+import viaduct.graphql.schema.graphqljava.toGraphQLJavaValue
 
 data class TypeDefinitionRegistryOptions(
     val addStubsOnEmptyTypes: Boolean
@@ -297,7 +298,7 @@ fun ViaductSchema.HasDefaultValue.inputValueDefinition() =
         .newInputValueDefinition()
         .name(name)
         .type(type.toTypeForTypeDefinition())
-        .defaultValue(if (hasDefault) effectiveDefaultValue else null)
+        .defaultValue(if (hasDefault) effectiveDefaultValue.toGraphQLJavaValue() else null)
         .directives(appliedDirectives.map { it.toDirectiveForTypeDefinition() })
         .build()
 
@@ -311,7 +312,7 @@ fun ViaductSchema.AppliedDirective<*>.toDirectiveForTypeDefinition() =
                     Argument
                         .newArgument()
                         .name(arg.key)
-                        .value(arg.value)
+                        .value(arg.value.toGraphQLJavaValue())
                         .build()
                 }
         ).build()

@@ -1,6 +1,5 @@
 package viaduct.graphql.schema.test
 
-import graphql.language.NullValue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -166,7 +165,7 @@ interface ViaductSchemaContract {
         ).apply {
             withArg("Query", "foo", "a") {
                 assertTrue(it.hasEffectiveDefault, "Query.a")
-                assertInstanceOf(NullValue::class.java, it.effectiveDefaultValue, "Query.a")
+                assertInstanceOf(ViaductSchema.NullLiteral::class.java, it.effectiveDefaultValue, "Query.a")
             }
             withArg("Query", "foo", "b") {
                 assertTrue(it.hasEffectiveDefault, "Query.b")
@@ -174,7 +173,7 @@ interface ViaductSchemaContract {
             }
             withField("I", "a") {
                 assertTrue(it.hasEffectiveDefault, "I.a")
-                assertInstanceOf(NullValue::class.java, it.effectiveDefaultValue, "I.a")
+                assertInstanceOf(ViaductSchema.NullLiteral::class.java, it.effectiveDefaultValue, "I.a")
             }
             withField("I", "b") {
                 assertTrue(it.hasEffectiveDefault, "I.b")
@@ -542,7 +541,9 @@ interface ViaductSchemaContract {
             assertEquals(1, extensionAppliedDirectives.count())
             val dir = extensionAppliedDirectives.first()
             assertEquals("d1", dir.name)
-            assertEquals("StringValue{value='$a1Value'}", dir.arguments["a1"].toString())
+            val argValue = dir.arguments["a1"]
+            assertInstanceOf(ViaductSchema.StringLiteral::class.java, argValue)
+            assertEquals(a1Value, (argValue as ViaductSchema.StringLiteral).value)
         }
         makeSchema(
             """

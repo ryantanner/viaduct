@@ -1,19 +1,11 @@
 package viaduct.graphql.schema.binary
 
-import graphql.language.ArrayValue
-import graphql.language.BooleanValue
-import graphql.language.IntValue
-import graphql.language.NullValue
-import graphql.language.ObjectField
-import graphql.language.ObjectValue
-import graphql.language.StringValue
-import graphql.language.Value
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.math.BigInteger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import viaduct.graphql.schema.SchemaWithData
+import viaduct.graphql.schema.ViaductSchema
 
 /**
  * Tests for ConstantsDecoder.decodeCompoundConstant using round-trip testing.
@@ -99,7 +91,7 @@ class CompoundValueDecoderTest {
         /**
          * Decode a compound constant by its intermediate representation.
          */
-        fun decodeCompound(value: CompoundConstant): Value<*> {
+        fun decodeCompound(value: CompoundConstant): ViaductSchema.Literal {
             val constantRef = encoder.findRef(value)
             val compoundIdx = constantRef - simpleConstantCount
             return decoder.decodeCompoundConstant(compoundIdx)
@@ -116,8 +108,8 @@ class CompoundValueDecoderTest {
         val tripper = ConstantsRoundTripper(listOf(emptyList))
 
         val result = tripper.decodeCompound(emptyList)
-        assert(result is ArrayValue)
-        assertEquals(0, (result as ArrayValue).values.size)
+        assert(result is ViaductSchema.ListLiteral)
+        assertEquals(0, (result as ViaductSchema.ListLiteral).size)
     }
 
     @Test
@@ -126,8 +118,8 @@ class CompoundValueDecoderTest {
         val tripper = ConstantsRoundTripper(listOf(emptyObj))
 
         val result = tripper.decodeCompound(emptyObj)
-        assert(result is ObjectValue)
-        assertEquals(0, (result as ObjectValue).objectFields.size)
+        assert(result is ViaductSchema.ObjectLiteral)
+        assertEquals(0, (result as ViaductSchema.ObjectLiteral).size)
     }
 
     // ========================================
@@ -136,11 +128,11 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Simple list of integers round-trips correctly`() {
-        val arrayValue = ArrayValue(
+        val arrayValue = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue(BigInteger("1")),
-                IntValue(BigInteger("2")),
-                IntValue(BigInteger("3"))
+                ViaductSchema.IntLiteral.of("1"),
+                ViaductSchema.IntLiteral.of("2"),
+                ViaductSchema.IntLiteral.of("3")
             )
         )
         val converted = ValueStringConverter.valueToString(arrayValue) as ListConstant
@@ -153,11 +145,11 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `List with null elements round-trips correctly`() {
-        val arrayValue = ArrayValue(
+        val arrayValue = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue(BigInteger("1")),
-                NullValue.newNullValue().build(),
-                IntValue(BigInteger("3"))
+                ViaductSchema.IntLiteral.of("1"),
+                ViaductSchema.NULL,
+                ViaductSchema.IntLiteral.of("3")
             )
         )
         val converted = ValueStringConverter.valueToString(arrayValue) as ListConstant
@@ -170,7 +162,7 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Single element list round-trips correctly`() {
-        val arrayValue = ArrayValue(listOf(IntValue(BigInteger("42"))))
+        val arrayValue = ViaductSchema.ListLiteral.of(listOf(ViaductSchema.IntLiteral.of("42")))
         val converted = ValueStringConverter.valueToString(arrayValue) as ListConstant
 
         val tripper = ConstantsRoundTripper(listOf(converted))
@@ -185,13 +177,13 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Nested list of integers round-trips correctly`() {
-        val innerArray1 = ArrayValue(
-            listOf(IntValue(BigInteger("1")), IntValue(BigInteger("2")))
+        val innerArray1 = ViaductSchema.ListLiteral.of(
+            listOf(ViaductSchema.IntLiteral.of("1"), ViaductSchema.IntLiteral.of("2"))
         )
-        val innerArray2 = ArrayValue(
-            listOf(IntValue(BigInteger("3")), IntValue(BigInteger("4")))
+        val innerArray2 = ViaductSchema.ListLiteral.of(
+            listOf(ViaductSchema.IntLiteral.of("3"), ViaductSchema.IntLiteral.of("4"))
         )
-        val outerArray = ArrayValue(listOf(innerArray1, innerArray2))
+        val outerArray = ViaductSchema.ListLiteral.of(listOf(innerArray1, innerArray2))
 
         val converted = ValueStringConverter.valueToString(outerArray) as ListConstant
 
@@ -207,10 +199,10 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Simple input object round-trips correctly`() {
-        val objectValue = ObjectValue(
-            listOf(
-                ObjectField("x", IntValue(BigInteger("42"))),
-                ObjectField("y", StringValue("hello"))
+        val objectValue = ViaductSchema.ObjectLiteral.of(
+            mapOf(
+                "x" to ViaductSchema.IntLiteral.of("42"),
+                "y" to ViaductSchema.StringLiteral.of("hello")
             )
         )
         val converted = ValueStringConverter.valueToString(objectValue) as InputObjectConstant
@@ -223,8 +215,8 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Single field input object round-trips correctly`() {
-        val objectValue = ObjectValue(
-            listOf(ObjectField("x", IntValue(BigInteger("1"))))
+        val objectValue = ViaductSchema.ObjectLiteral.of(
+            mapOf("x" to ViaductSchema.IntLiteral.of("1"))
         )
         val converted = ValueStringConverter.valueToString(objectValue) as InputObjectConstant
 
@@ -240,16 +232,16 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Nested input object round-trips correctly`() {
-        val simpleObjectValue = ObjectValue(
-            listOf(
-                ObjectField("x", IntValue(BigInteger("10"))),
-                ObjectField("y", StringValue("test"))
+        val simpleObjectValue = ViaductSchema.ObjectLiteral.of(
+            mapOf(
+                "x" to ViaductSchema.IntLiteral.of("10"),
+                "y" to ViaductSchema.StringLiteral.of("test")
             )
         )
-        val nestedObjectValue = ObjectValue(
-            listOf(
-                ObjectField("simple", simpleObjectValue),
-                ObjectField("name", StringValue("nested"))
+        val nestedObjectValue = ViaductSchema.ObjectLiteral.of(
+            mapOf(
+                "simple" to simpleObjectValue,
+                "name" to ViaductSchema.StringLiteral.of("nested")
             )
         )
         val converted = ValueStringConverter.valueToString(nestedObjectValue) as InputObjectConstant
@@ -266,11 +258,11 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Input object with list field round-trips correctly`() {
-        val itemsArray = ArrayValue(
-            listOf(IntValue(BigInteger("1")), IntValue(BigInteger("2")))
+        val itemsArray = ViaductSchema.ListLiteral.of(
+            listOf(ViaductSchema.IntLiteral.of("1"), ViaductSchema.IntLiteral.of("2"))
         )
-        val objectValue = ObjectValue(
-            listOf(ObjectField("items", itemsArray))
+        val objectValue = ViaductSchema.ObjectLiteral.of(
+            mapOf("items" to itemsArray)
         )
         val converted = ValueStringConverter.valueToString(objectValue) as InputObjectConstant
 
@@ -282,9 +274,9 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `List of input objects round-trips correctly`() {
-        val obj1 = ObjectValue(listOf(ObjectField("name", StringValue("a"))))
-        val obj2 = ObjectValue(listOf(ObjectField("name", StringValue("b"))))
-        val listValue = ArrayValue(listOf(obj1, obj2))
+        val obj1 = ViaductSchema.ObjectLiteral.of(mapOf("name" to ViaductSchema.StringLiteral.of("a")))
+        val obj2 = ViaductSchema.ObjectLiteral.of(mapOf("name" to ViaductSchema.StringLiteral.of("b")))
+        val listValue = ViaductSchema.ListLiteral.of(listOf(obj1, obj2))
 
         val converted = ValueStringConverter.valueToString(listValue) as ListConstant
 
@@ -296,8 +288,8 @@ class CompoundValueDecoderTest {
 
     @Test
     fun `Boolean values in list round-trip correctly`() {
-        val arrayValue = ArrayValue(
-            listOf(BooleanValue(true), BooleanValue(false))
+        val arrayValue = ViaductSchema.ListLiteral.of(
+            listOf(ViaductSchema.TRUE, ViaductSchema.FALSE)
         )
         val converted = ValueStringConverter.valueToString(arrayValue) as ListConstant
 
@@ -310,31 +302,31 @@ class CompoundValueDecoderTest {
     @Test
     fun `Complex input with lists and objects round-trips correctly`() {
         // 3-level deep structure: outer object contains nested object and list
-        val innerObject = ObjectValue(
-            listOf(
-                ObjectField("x", IntValue(BigInteger("5"))),
-                ObjectField("y", StringValue("inner"))
+        val innerObject = ViaductSchema.ObjectLiteral.of(
+            mapOf(
+                "x" to ViaductSchema.IntLiteral.of("5"),
+                "y" to ViaductSchema.StringLiteral.of("inner")
             )
         )
 
-        val nestedObject = ObjectValue(
-            listOf(
-                ObjectField("simple", innerObject),
-                ObjectField("name", StringValue("outer"))
+        val nestedObject = ViaductSchema.ObjectLiteral.of(
+            mapOf(
+                "simple" to innerObject,
+                "name" to ViaductSchema.StringLiteral.of("outer")
             )
         )
 
-        val itemsArray = ArrayValue(
+        val itemsArray = ViaductSchema.ListLiteral.of(
             listOf(
-                IntValue(BigInteger("1")),
-                IntValue(BigInteger("2"))
+                ViaductSchema.IntLiteral.of("1"),
+                ViaductSchema.IntLiteral.of("2")
             )
         )
 
-        val complexObject = ObjectValue(
-            listOf(
-                ObjectField("nested", nestedObject),
-                ObjectField("items", itemsArray)
+        val complexObject = ViaductSchema.ObjectLiteral.of(
+            mapOf(
+                "nested" to nestedObject,
+                "items" to itemsArray
             )
         )
 
@@ -354,44 +346,42 @@ class CompoundValueDecoderTest {
     // ========================================
 
     /**
-     * Deep equality check for GraphQL Value types.
+     * Deep equality check for ViaductSchema Value types.
      */
     private fun assertValuesEqual(
-        expected: Value<*>,
-        actual: Value<*>
+        expected: ViaductSchema.Literal,
+        actual: ViaductSchema.Literal
     ) {
         when (expected) {
-            is NullValue -> assert(actual is NullValue) { "Expected NullValue but got $actual" }
-            is IntValue -> {
-                assert(actual is IntValue) { "Expected IntValue but got $actual" }
-                assertEquals(expected.value, (actual as IntValue).value)
+            is ViaductSchema.NullLiteral -> assert(actual is ViaductSchema.NullLiteral) { "Expected NullValue but got $actual" }
+            is ViaductSchema.IntLiteral -> {
+                assert(actual is ViaductSchema.IntLiteral) { "Expected IntValue but got $actual" }
+                assertEquals(expected.value, (actual as ViaductSchema.IntLiteral).value)
             }
-            is StringValue -> {
-                assert(actual is StringValue) { "Expected StringValue but got $actual" }
-                assertEquals(expected.value, (actual as StringValue).value)
+            is ViaductSchema.StringLiteral -> {
+                assert(actual is ViaductSchema.StringLiteral) { "Expected StringValue but got $actual" }
+                assertEquals(expected.value, (actual as ViaductSchema.StringLiteral).value)
             }
-            is BooleanValue -> {
-                assert(actual is BooleanValue) { "Expected BooleanValue but got $actual" }
-                assertEquals(expected.isValue, (actual as BooleanValue).isValue)
+            is ViaductSchema.BooleanLiteral -> {
+                assert(actual is ViaductSchema.BooleanLiteral) { "Expected BooleanValue but got $actual" }
+                assertEquals(expected.value, (actual as ViaductSchema.BooleanLiteral).value)
             }
-            is ArrayValue -> {
-                assert(actual is ArrayValue) { "Expected ArrayValue but got $actual" }
-                val actualArray = actual as ArrayValue
-                assertEquals(expected.values.size, actualArray.values.size)
-                expected.values.zip(actualArray.values).forEach { (e, a) ->
+            is ViaductSchema.ListLiteral -> {
+                assert(actual is ViaductSchema.ListLiteral) { "Expected ListValue but got $actual" }
+                val actualList = actual as ViaductSchema.ListLiteral
+                assertEquals(expected.size, actualList.size)
+                expected.zip(actualList).forEach { (e, a) ->
                     assertValuesEqual(e, a)
                 }
             }
-            is ObjectValue -> {
-                assert(actual is ObjectValue) { "Expected ObjectValue but got $actual" }
-                val actualObj = actual as ObjectValue
-                assertEquals(expected.objectFields.size, actualObj.objectFields.size)
+            is ViaductSchema.ObjectLiteral -> {
+                assert(actual is ViaductSchema.ObjectLiteral) { "Expected ObjectValue but got $actual" }
+                val actualObj = actual as ViaductSchema.ObjectLiteral
+                assertEquals(expected.size, actualObj.size)
                 // Compare by field name since order may vary
-                val expectedFields = expected.objectFields.associateBy { it.name }
-                val actualFields = actualObj.objectFields.associateBy { it.name }
-                assertEquals(expectedFields.keys, actualFields.keys)
-                expectedFields.forEach { (name, expectedField) ->
-                    assertValuesEqual(expectedField.value, actualFields[name]!!.value)
+                assertEquals(expected.keys, actualObj.keys)
+                expected.forEach { (name, expectedValue) ->
+                    assertValuesEqual(expectedValue, actualObj[name]!!)
                 }
             }
             else -> throw IllegalArgumentException("Unexpected value type: ${expected.javaClass}")

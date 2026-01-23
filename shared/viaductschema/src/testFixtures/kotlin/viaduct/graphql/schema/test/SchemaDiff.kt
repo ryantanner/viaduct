@@ -1,12 +1,5 @@
 package viaduct.graphql.schema.test
 
-import graphql.language.ArrayValue
-import graphql.language.IntValue
-import graphql.language.Node
-import graphql.language.NullValue
-import graphql.language.StringValue
-import graphql.language.Value
-import java.lang.IllegalArgumentException
 import viaduct.graphql.schema.ViaductSchema
 import viaduct.invariants.InvariantChecker
 
@@ -69,10 +62,10 @@ class SchemaDiff(
             expectedDir.arguments.entries,
             actualDir.arguments.entries,
             "ARG",
-            Map.Entry<String, Value<*>>::key
+            Map.Entry<String, ViaductSchema.Literal>::key
         ).forEach {
             checker.withContext(it.first.key) {
-                checker.isTrue(areNodesEqual(it.first.value, it.second.value), "ARG_VALUE_AGREES")
+                checker.isTrue(areValuesEqual(it.first.value, it.second.value), "ARG_VALUE_AGREES")
             }
         }
     }
@@ -123,13 +116,13 @@ class SchemaDiff(
                     checker.isEqualTo(exp.type, act.type, "ARG_TYPE_AGREE")
                     checker.isEqualTo(exp.containingDef.name, act.containingDef.name, "CONTAINING_TYPE_NAMES_AGREE")
                     if (checker.isEqualTo(exp.hasDefault, act.hasDefault, "HAS_DEFAULTS_AGREE") && exp.hasDefault) {
-                        checker.isTrue(areNodesEqual(exp.defaultValue, act.defaultValue, exp.type), "DEFAULT_VALUES_AGREE")
+                        checker.isTrue(areValuesEqual(exp.defaultValue, act.defaultValue, exp.type), "DEFAULT_VALUES_AGREE")
                     }
                     if (checker.isEqualTo(exp.hasEffectiveDefault, act.hasEffectiveDefault, "HAS_DEFAULTS_AGREE") &&
                         exp.hasEffectiveDefault
                     ) {
                         checker.isTrue(
-                            areNodesEqual(
+                            areValuesEqual(
                                 exp.effectiveDefaultValue,
                                 act.effectiveDefaultValue,
                                 exp.type
@@ -243,21 +236,21 @@ class SchemaDiff(
         }
     }
 
-    fun areNodesEqual(
-        expectedNode: Any?,
-        actualNode: Any?,
+    fun areValuesEqual(
+        expectedValue: ViaductSchema.Literal?,
+        actualValue: ViaductSchema.Literal?,
         type: ViaductSchema.TypeExpr<*>? = null
     ): Boolean {
         // Handle null cases
-        if (expectedNode == null && actualNode == null) return true
-        if (expectedNode == null || actualNode == null) return false
+        if (expectedValue == null && actualValue == null) return true
+        if (expectedValue == null || actualValue == null) return false
 
         // For lists, recursively compare elements
-        if (type != null && expectedNode is ArrayValue && actualNode is ArrayValue) {
-            if (expectedNode.values.size != actualNode.values.size) return false
+        if (type != null && expectedValue is ViaductSchema.ListLiteral && actualValue is ViaductSchema.ListLiteral) {
+            if (expectedValue.size != actualValue.size) return false
             val elementType = type.unwrapList()
-            return expectedNode.values.zip(actualNode.values).all { (exp, act) ->
-                areNodesEqual(exp, act, elementType)
+            return expectedValue.zip(actualValue).all { (exp, act) ->
+                areValuesEqual(exp, act, elementType)
             }
         }
 
@@ -266,30 +259,30 @@ class SchemaDiff(
         if (type != null && !type.isList) {
             val baseType = type.baseTypeDef
             if (baseType is ViaductSchema.Scalar && baseType.name in setOf("Byte", "Short", "Long")) {
-                val expectedIntegral = extractIntegralValue(expectedNode)
-                val actualIntegral = extractIntegralValue(actualNode)
+                val expectedIntegral = extractIntegralValue(expectedValue)
+                val actualIntegral = extractIntegralValue(actualValue)
                 return expectedIntegral == actualIntegral
             }
         }
 
-        // Default comparison using Node.isEqualTo
-        return (expectedNode as Node<*>).isEqualTo(actualNode as Node<*>)
+        // Default comparison using value equality
+        return expectedValue == actualValue
     }
 
-    private fun extractIntegralValue(node: Any?): Any? =
-        when (node) {
-            is IntValue -> {
+    private fun extractIntegralValue(value: ViaductSchema.Literal?): Any? =
+        when (value) {
+            is ViaductSchema.IntLiteral -> {
                 try {
-                    node.value.toLong()
+                    value.value.toLong()
                 } catch (e: ArithmeticException) {
-                    throw IllegalArgumentException("Integral value out of Long range: ${node.value}", e)
+                    throw IllegalArgumentException("Integral value out of Long range: ${value.value}", e)
                 }
             }
-            is StringValue -> node.value?.toLongOrNull()
+            is ViaductSchema.StringLiteral -> value.value.toLongOrNull()
             // NullValue instances are semantically equal regardless of identity.
             // Return a sentinel object so that all NullValues compare equal with ==.
-            is NullValue -> NullValue::class
-            else -> node
+            is ViaductSchema.NullLiteral -> ViaductSchema.NullLiteral::class
+            else -> value
         }
 
     private fun hasSameKind(

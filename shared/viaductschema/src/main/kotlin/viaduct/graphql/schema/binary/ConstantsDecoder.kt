@@ -1,10 +1,6 @@
 package viaduct.graphql.schema.binary
 
-import graphql.language.ArrayValue
-import graphql.language.NullValue
-import graphql.language.ObjectField
-import graphql.language.ObjectValue
-import graphql.language.Value
+import viaduct.graphql.schema.ViaductSchema
 
 /**
  * Decodes both simple and compound constants sections.
@@ -125,7 +121,7 @@ internal class ConstantsDecoder(
     /**
      * Decode a constant value given its constant reference index.
      */
-    fun decodeConstant(constantRef: Int): Value<*> {
+    fun decodeConstant(constantRef: Int): ViaductSchema.Literal {
         return if (constantRef < simpleConstants.size) {
             // Simple constant
             decodeSimpleConstant(constantRef)
@@ -136,27 +132,27 @@ internal class ConstantsDecoder(
         }
     }
 
-    private fun decodeSimpleConstant(idx: Int): Value<*> {
+    private fun decodeSimpleConstant(idx: Int): ViaductSchema.Literal {
         val encodedStr = simpleConstants[idx]
         // Check if this is null
         if (encodedStr.isNotEmpty() && encodedStr[0].code == K_NULL_VALUE) {
-            return NullValue.newNullValue().build()
+            return ViaductSchema.NULL
         }
         // Otherwise convert using ValueStringConverter (it determines type from kind code)
         return ValueStringConverter.stringToSimpleValue(encodedStr)
     }
 
     // Internal for testing
-    internal fun decodeCompoundConstant(compoundIdx: Int): Value<*> {
+    internal fun decodeCompoundConstant(compoundIdx: Int): ViaductSchema.Literal {
         val offset = compoundConstantStarts[compoundIdx]
 
         // Check for empty markers
         val firstWord = readIntAt(offset)
         if (firstWord == EMPTY_LIST_MARKER) {
-            return ArrayValue.newArrayValue().build()
+            return ViaductSchema.ListLiteral.of(emptyList())
         }
         if (firstWord == EMPTY_OBJECT_MARKER) {
-            return ObjectValue.newObjectValue().build()
+            return ViaductSchema.ObjectLiteral.of(emptyMap())
         }
 
         // Check if this is a list (bit 30 set on first word)
@@ -167,8 +163,8 @@ internal class ConstantsDecoder(
         }
     }
 
-    private fun decodeListConstant(startOffset: Int): ArrayValue {
-        val elements = mutableListOf<Value<*>>()
+    private fun decodeListConstant(startOffset: Int): ViaductSchema.ListLiteral {
+        val elements = mutableListOf<ViaductSchema.Literal>()
         var offset = startOffset
         var word = readIntAt(offset)
 
@@ -180,11 +176,11 @@ internal class ConstantsDecoder(
             word = readIntAt(offset)
         }
 
-        return ArrayValue.newArrayValue().values(elements).build()
+        return ViaductSchema.ListLiteral.of(elements)
     }
 
-    private fun decodeInputObjectConstant(startOffset: Int): ObjectValue {
-        val fields = mutableListOf<ObjectField>()
+    private fun decodeInputObjectConstant(startOffset: Int): ViaductSchema.ObjectLiteral {
+        val fields = mutableMapOf<String, ViaductSchema.Literal>()
         var offset = startOffset
 
         while (true) {
@@ -193,13 +189,13 @@ internal class ConstantsDecoder(
             val valueRef = readIntAt(offset + 4)
 
             val value = decodeConstant(valueRef)
-            fields.add(ObjectField.newObjectField().name(fieldName).value(value).build())
+            fields[fieldName] = value
 
             if ((fieldNameRef and END_OF_LIST_BIT) != 0) break
             offset += 8
         }
 
-        return ObjectValue.newObjectValue().objectFields(fields).build()
+        return ViaductSchema.ObjectLiteral.of(fields)
     }
 
     private fun readIntAt(offset: Int): Int {

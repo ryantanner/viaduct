@@ -6,7 +6,6 @@ import graphql.language.InputValueDefinition
 import graphql.language.Node
 import graphql.language.Type
 import graphql.language.TypeName
-import graphql.language.Value
 import graphql.schema.idl.TypeDefinitionRegistry
 import viaduct.graphql.schema.SchemaWithData
 import viaduct.graphql.schema.ViaductSchema
@@ -46,7 +45,7 @@ internal class TypeDefinitionRegistryDecoder(
 
     fun decodeHasDefault(ivd: InputValueDefinition): Boolean = ivd.defaultValue != null
 
-    fun decodeDefaultValue(ivd: InputValueDefinition): Value<*>? =
+    fun decodeDefaultValue(ivd: InputValueDefinition): ViaductSchema.Literal? =
         if (ivd.defaultValue != null) {
             ValueConverter.convert(decodeTypeExpr(ivd.type), ivd.defaultValue)
         } else {
