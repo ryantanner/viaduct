@@ -1,7 +1,7 @@
 package viaduct.java.api.types;
 
 /** Tagging interface for GraphQL enum types. */
-public interface Enum extends GRT {
+public interface GraphQLEnum extends GRT {
 
   /**
    * Convert a string value to an enum constant. This is a helper method for working with generated
@@ -13,7 +13,7 @@ public interface Enum extends GRT {
    * @return The enum constant with the given name
    * @throws IllegalArgumentException if no enum constant with the given name exists
    */
-  static <T extends java.lang.Enum<T> & Enum> T enumFrom(Class<T> clazz, String value) {
+  static <T extends java.lang.Enum<T> & GraphQLEnum> T enumFrom(Class<T> clazz, String value) {
     try {
       return java.lang.Enum.valueOf(clazz, value);
     } catch (IllegalArgumentException e) {

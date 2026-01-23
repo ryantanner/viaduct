@@ -1,0 +1,294 @@
+# Test GraphQL Schema with Enum types
+
+"""
+Status of a booking request.
+"""
+enum BookingStatus {
+  "The booking is pending confirmation"
+  PENDING
+  "The booking has been confirmed"
+  CONFIRMED
+  "The booking has been cancelled"
+  CANCELLED
+  "The booking has been completed"
+  COMPLETED
+}
+
+"""
+Type of listing accommodation.
+"""
+enum ListingType {
+  ENTIRE_PLACE
+  PRIVATE_ROOM
+  SHARED_ROOM
+  HOTEL_ROOM
+}
+
+"""
+Extendable enum - base definition.
+"""
+enum ExtendableStatus {
+  ORIGINAL_VALUE
+}
+
+extend enum ExtendableStatus {
+  EXTENDED_VALUE_1
+  EXTENDED_VALUE_2
+}
+
+"""
+Enum with Java reserved keywords as values.
+"""
+enum JavaReservedKeywords {
+  CLASS
+  PUBLIC
+  PRIVATE
+  STATIC
+  FINAL
+  VOID
+}
+
+"""
+Enum with lowercase values.
+"""
+enum LowercaseEnum {
+  active
+  inactive
+  pending
+}
+
+# ============================================================================
+# Interface Types
+# ============================================================================
+
+"""
+Node interface for objects with a globally unique ID.
+"""
+interface Node {
+  id: ID!
+}
+
+"""
+Timestamped interface for objects with creation and update timestamps.
+"""
+interface Timestamped {
+  createdAt: String!
+  updatedAt: String
+}
+
+"""
+Auditable interface that extends both Node and Timestamped.
+"""
+interface Auditable implements Node & Timestamped {
+  id: ID!
+  createdAt: String!
+  updatedAt: String
+  createdBy: String!
+}
+
+"""
+Extendable interface - base definition.
+"""
+interface ExtendableInterface {
+  baseField: String!
+}
+
+extend interface ExtendableInterface {
+  extendedField: Int
+}
+
+# ============================================================================
+# Object Types
+# ============================================================================
+
+"""
+A user in the system.
+"""
+type User implements Node {
+  id: ID!
+  name: String!
+  email: String
+  age: Int
+  isActive: Boolean!
+}
+
+"""
+A listing for accommodation.
+"""
+type Listing implements Node {
+  id: ID!
+  title: String!
+  description: String
+  listingType: ListingType!
+  pricePerNight: Float!
+  host: User!
+  amenities: [String!]!
+}
+
+"""
+A booking for a listing.
+"""
+type Booking implements Node & Timestamped {
+  id: ID!
+  listing: Listing!
+  guest: User!
+  status: BookingStatus!
+  checkIn: String!
+  checkOut: String!
+  totalPrice: Float!
+  createdAt: String!
+  updatedAt: String
+}
+
+# ============================================================================
+# Input Types
+# ============================================================================
+
+"""
+Input for creating a new user.
+"""
+input CreateUserInput {
+  name: String!
+  email: String!
+  age: Int
+}
+
+"""
+Input for creating a booking.
+"""
+input CreateBookingInput {
+  listingId: ID!
+  guestId: ID!
+  checkIn: String!
+  checkOut: String!
+  guests: Int!
+  specialRequests: String
+}
+
+"""
+Input with various field types.
+"""
+input SearchFiltersInput {
+  listingType: ListingType
+  minPrice: Float
+  maxPrice: Float
+  amenities: [String!]
+  isInstantBook: Boolean
+}
+
+"""
+Extendable input - base definition.
+"""
+input ExtendableInput {
+  baseField: String!
+}
+
+extend input ExtendableInput {
+  extendedField: Int
+}
+
+# ============================================================================
+# Test type for primitive list boxing
+# ============================================================================
+
+"""
+Type to test that primitive types in lists are properly boxed.
+"""
+type PrimitiveListTest {
+  "List of non-null integers - should generate List<Integer>, not List<int>"
+  scores: [Int!]!
+  "List of nullable integers"
+  nullableScores: [Int]
+  "List of non-null floats - should generate List<Double>, not List<double>"
+  prices: [Float!]!
+  "List of non-null booleans - should generate List<Boolean>, not List<boolean>"
+  flags: [Boolean!]!
+  "Nested list"
+  matrix: [[Int!]!]
+  "Non-null int - should generate int primitive"
+  count: Int!
+  "Non-null float - should generate double primitive"
+  rate: Float!
+  "Non-null boolean - should generate boolean primitive"
+  enabled: Boolean!
+  "Nullable int - should generate Integer boxed"
+  nullableCount: Int
+  "Nullable float - should generate Double boxed"
+  nullableRate: Float
+  "Nullable boolean - should generate Boolean boxed"
+  nullableEnabled: Boolean
+}
+
+"""
+Input to test primitive list boxing in inputs.
+"""
+input PrimitiveListInput {
+  values: [Int!]!
+  ratios: [Float!]
+  options: [Boolean!]
+}
+
+# ============================================================================
+# Union Types
+# ============================================================================
+
+"""
+A search result can be a User, Listing, or Booking.
+"""
+union SearchResult = User | Listing | Booking
+
+"""
+Extendable union - base definition.
+"""
+union ExtendableUnion = User
+
+extend union ExtendableUnion = Listing | Booking
+
+"""
+Simple union without description.
+"""
+union NodeResult = User | Listing
+
+# ============================================================================
+# Root Types - Query and Mutation
+# ============================================================================
+
+"""
+Root query type.
+"""
+type Query {
+  "Get a user by ID"
+  user(id: ID!): User
+
+  "Get a listing by ID"
+  listing(id: ID!): Listing
+
+  "Search listings with filters"
+  searchListings(filters: SearchFiltersInput, limit: Int, offset: Int): [Listing!]!
+
+  "Get a booking by ID"
+  booking(id: ID!): Booking
+
+  "Get bookings for a user"
+  userBookings(userId: ID!, status: BookingStatus): [Booking!]!
+}
+
+"""
+Root mutation type.
+"""
+type Mutation {
+  "Create a new user"
+  createUser(input: CreateUserInput!): User!
+
+  "Update user profile"
+  updateUser(id: ID!, input: CreateUserInput!): User
+
+  "Create a new booking"
+  createBooking(input: CreateBookingInput!): Booking!
+
+  "Cancel a booking"
+  cancelBooking(bookingId: ID!, reason: String): Booking
+
+  "Confirm a booking"
+  confirmBooking(bookingId: ID!): Booking!
+}

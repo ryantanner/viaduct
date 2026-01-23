@@ -11,6 +11,7 @@ import viaduct.graphql.schema.graphqljava.gjSchemaFromSchema
 import viaduct.graphql.schema.graphqljava.gjSchemaFromURLs
 import viaduct.graphql.schema.graphqljava.gjSchemaRawFromFiles
 import viaduct.graphql.schema.graphqljava.gjSchemaRawFromRegistry
+import viaduct.graphql.schema.graphqljava.gjSchemaRawFromSDL
 import viaduct.graphql.schema.graphqljava.gjSchemaRawFromURLs
 import viaduct.utils.timer.Timer
 
@@ -63,3 +64,11 @@ fun ViaductSchema.Companion.fromTypeDefinitionRegistry(
     registry: TypeDefinitionRegistry,
     timer: Timer = Timer(),
 ): ViaductSchema = gjSchemaRawFromRegistry(registry, timer)
+
+/**
+ * Creates a [ViaductSchema] from a GraphQL SDL string.
+ */
+fun ViaductSchema.Companion.fromTypeDefinitionRegistry(
+    sdl: String,
+    timer: Timer = Timer(),
+): ViaductSchema = gjSchemaRawFromSDL(sdl, timer)

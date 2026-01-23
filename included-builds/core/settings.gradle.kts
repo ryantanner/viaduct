@@ -26,6 +26,7 @@ includeNamed(":tenant:wiring", "../..")
 
 // Include Java API modules
 includeNamed(":x:javaapi:api", "../..")
+includeNamed(":x:javaapi:codegen", "../..")
 includeNamed(":x:javaapi:runtime", "../..")
 
 // Include all shared modules
