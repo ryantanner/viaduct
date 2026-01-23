@@ -1,11 +1,13 @@
 package viaduct.service.api.spi
 
 import graphql.schema.DataFetchingEnvironment
+import viaduct.apiannotations.StableApi
 import viaduct.graphql.SourceLocation
 
 /**
  * Interface for reporting errors that occur during GraphQL resolver execution.
  */
+@StableApi
 fun interface ErrorReporter {
     /**
      * Reports an error that occurred during resolver execution.

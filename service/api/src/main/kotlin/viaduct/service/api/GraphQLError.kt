@@ -1,5 +1,6 @@
 package viaduct.service.api
 
+import viaduct.apiannotations.StableApi
 import viaduct.graphql.SourceLocation
 
 /**
@@ -12,6 +13,7 @@ import viaduct.graphql.SourceLocation
  * @property locations Source locations in the GraphQL query where the field was requested.
  * @property extensions Additional error metadata (e.g., "localizedMessage", custom fields).
  */
+@StableApi
 data class GraphQLError(
     val message: String,
     val path: List<Any>? = null,

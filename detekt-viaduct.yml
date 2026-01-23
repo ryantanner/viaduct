@@ -3,3 +3,5 @@ viaduct-detekt-rules:
     active: true
   NoStringDependenciesInGradle:
     active: true
+  ApiStabilityAnnotationRequired:
+    active: false

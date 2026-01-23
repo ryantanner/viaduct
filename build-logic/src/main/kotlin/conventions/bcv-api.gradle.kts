@@ -10,6 +10,8 @@ package conventions
 //
 
 import kotlinx.validation.ApiValidationExtension
+import io.gitlab.arturbosch.detekt.Detekt
+import viaduct.gradle.internal.repoRoot
 
 plugins {
     id("org.jetbrains.kotlinx.binary-compatibility-validator")
@@ -35,4 +37,10 @@ tasks.named("check").configure {
 
     dependsOn.clear()
     dependsOn.addAll(filteredDependsOn)
+}
+
+pluginManager.withPlugin("io.gitlab.arturbosch.detekt") {
+    tasks.withType(Detekt::class.java).configureEach {
+        config.from(files(repoRoot().file("detekt-viaduct-bcv.yml")))
+    }
 }

@@ -1,11 +1,13 @@
 package viaduct.service.api.spi
 
+import viaduct.apiannotations.StableApi
 import viaduct.graphql.SourceLocation
 import viaduct.service.api.GraphQLError
 
 /**
  * Helper class for building GraphQL errors.
  */
+@StableApi
 class ErrorBuilder private constructor() {
     private var message: String = ""
     private var path: List<Any>? = null

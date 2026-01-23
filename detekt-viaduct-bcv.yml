@@ -1,0 +1,5 @@
+# This ruleset is designed for use with the Viaduct BCV project to enforce specific coding standards.
+# These rules are enabled by the packages that uses the bcv-api plugin.
+viaduct-detekt-rules:
+  ApiStabilityAnnotationRequired:
+    active: true

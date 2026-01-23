@@ -13,6 +13,10 @@ class ViaductRuleSetProvider : RuleSetProvider {
     override fun instance(config: Config) =
         RuleSet(
             ruleSetId,
-            listOf(NoPrintlnInGradleRule(config), NoStringDependenciesInGradleRule(config))
+            listOf(
+                NoPrintlnInGradleRule(config),
+                NoStringDependenciesInGradleRule(config),
+                ApiStabilityAnnotationRequiredRule(config)
+            )
         )
 }
