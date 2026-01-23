@@ -14,6 +14,11 @@ interface Domain<ObjectType> {
      */
     val conv: Conv<ObjectType, IR.Value.Object>
 
-    /** Return a [Conv] between objects in this domain and the target domain */
-    infix fun <T> map(target: Domain<T>): Conv<ObjectType, T> = conv andThen target.conv.inverse()
+    /**
+     * Create a mapper from this domain to the target domain.
+     *
+     * The mapper converts values from this domain's [ObjectType] to the target domain's object type
+     * by going through the intermediate [IR] representation.
+     */
+    fun <T> mapperTo(target: Domain<T>): Conv<ObjectType, T> = conv andThen target.conv.inverse()
 }

@@ -63,7 +63,7 @@ class MappingFeatureAppTest : FeatureAppTestBase() {
     class QuerySyncGrtToJsonResolver : QueryResolvers.SyncGrtToJson() {
         override suspend fun resolve(ctx: Context): String {
             // configure an object mapper that transforms GRT values into Json strings
-            val mapper = GRTDomain(ctx) map JsonDomain(ctx)
+            val mapper = GRTDomain(ctx).mapperTo(JsonDomain(ctx))
 
             // create a synchronous GRT value
             val user = User.Builder(ctx)
@@ -83,7 +83,7 @@ class MappingFeatureAppTest : FeatureAppTestBase() {
     class QueryInputJsonToGrtResolver : QueryResolvers.InputJsonToGrt() {
         override suspend fun resolve(ctx: Context): User {
             // configure an object mapper that transforms strings into GRT values
-            val mapper = JsonDomain.forType(ctx, User.Reflection) map GRTDomain(ctx)
+            val mapper = JsonDomain.forType(ctx, User.Reflection).mapperTo(GRTDomain(ctx))
 
             // return the result of mapping the json input value through the mapper
             return mapper(ctx.arguments.json) as User

@@ -443,7 +443,7 @@ public final class viaduct/api/mapping/GRTDomain : viaduct/mapping/graphql/Domai
 	public static final field Companion Lviaduct/api/mapping/GRTDomain$Companion;
 	public synthetic fun <init> (Lviaduct/api/internal/InternalContext;Lviaduct/engine/api/RawSelectionSet;Lviaduct/api/internal/KeyMapping;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun getConv ()Lviaduct/mapping/graphql/Conv;
-	public fun map (Lviaduct/mapping/graphql/Domain;)Lviaduct/mapping/graphql/Conv;
+	public fun mapperTo (Lviaduct/mapping/graphql/Domain;)Lviaduct/mapping/graphql/Conv;
 }
 
 public final class viaduct/api/mapping/GRTDomain$Companion {

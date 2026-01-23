@@ -25,7 +25,7 @@ class DomainTest : KotestPropertyBase() {
     @Test
     fun `map -- identity`(): Unit =
         runBlocking {
-            val mapper = IR map IR
+            val mapper = IR.mapperTo(IR)
             val objects = arbSchema
                 .map { schema ->
                     Arb
@@ -42,7 +42,7 @@ class DomainTest : KotestPropertyBase() {
     @Test
     fun `map -- simple`() {
         // set up the object mapper
-        val mapper = TestDomain1 map TestDomain2
+        val mapper = TestDomain1.mapperTo(TestDomain2)
 
         // define a starting value in the "from" domain, TestDomain1
         val obj1 = TestDomain1.Value.Object(
