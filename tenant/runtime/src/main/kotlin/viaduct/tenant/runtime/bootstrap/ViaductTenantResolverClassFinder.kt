@@ -2,6 +2,9 @@ package viaduct.tenant.runtime.bootstrap
 
 import io.github.classgraph.ClassGraph
 import io.github.classgraph.ScanResult
+import java.lang.ClassLoader
+import java.net.URI
+import java.net.URLClassLoader
 import kotlin.reflect.KClass
 import viaduct.api.internal.NodeResolverFor
 import viaduct.api.internal.ObjectBase
@@ -17,10 +20,39 @@ class ViaductTenantResolverClassFinder(
         private val log by logger()
     }
 
-    private val classGraphScan: ScanResult = ClassGraph()
-        .enableAnnotationInfo()
-        .acceptPackages(packageName)
-        .scan()
+    private val filename: String = "file:///srv/viaduct/modules/${packageName
+        .replace("/", "")
+        .replace('.', '_')
+    }.jar"
+
+    private val classLoader: ClassLoader
+    private val classGraphScan: ScanResult
+
+    init {
+        // The default (for java.lang.Class.forName()) is actually to
+        // use the context classloader, not the system classloader.
+        // We emulate the same behavior here explicitly.
+        val ctxClassLoader = Thread.currentThread().contextClassLoader
+        val urlClassLoader = URLClassLoader(arrayOf(URI(filename).toURL()), ctxClassLoader)
+        val urlClassGraphScan = ClassGraph()
+            .overrideClassLoaders(urlClassLoader)
+            .ignoreParentClassLoaders()
+            .enableAnnotationInfo()
+            .acceptPackages(packageName)
+            .scan()
+        if (urlClassGraphScan.allClasses.isNotEmpty()) {
+            log.info("Using URLClassLoader({}) for {}", filename, packageName)
+            classLoader = urlClassLoader
+            classGraphScan = urlClassGraphScan
+        } else {
+            log.info("Using standard ClassLoader for {}", packageName)
+            classLoader = ctxClassLoader
+            classGraphScan = ClassGraph()
+                .enableAnnotationInfo()
+                .acceptPackages(packageName)
+                .scan()
+        }
+    }
 
     override fun resolverClassesInPackage(): Set<Class<*>> =
         classGraphScan
@@ -52,11 +84,11 @@ class ViaductTenantResolverClassFinder(
 
     override fun grtClassForName(typeName: String): KClass<ObjectBase> {
         @Suppress("UNCHECKED_CAST")
-        return Class.forName("$grtPackagePrefix.$typeName").kotlin as KClass<ObjectBase>
+        return classLoader.loadClass("$grtPackagePrefix.$typeName").kotlin as KClass<ObjectBase>
     }
 
     override fun argumentClassForName(typeName: String): KClass<out Arguments> {
         @Suppress("UNCHECKED_CAST")
-        return Class.forName("$grtPackagePrefix.$typeName").kotlin as KClass<out Arguments>
+        return classLoader.loadClass("$grtPackagePrefix.$typeName").kotlin as KClass<out Arguments>
     }
 }
