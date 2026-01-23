@@ -10,10 +10,26 @@ plugins {
 }
 
 // Suppress Dokka's internal consumable configurations to avoid Gradle variant ambiguity
-// with other plugins like jacoco-report-aggregation
+// with other plugins like jacoco-report-aggregation, but keep ModuleOutput configurations
+// consumable so that Dokka aggregation works across modules.
 configurations.configureEach {
-    if (name.contains("dokka", ignoreCase = true) && name.contains("Consumable", ignoreCase = true)) {
+    if (name.contains("dokka", ignoreCase = true) &&
+        name.contains("Consumable", ignoreCase = true) &&
+        !name.contains("ModuleOutput", ignoreCase = true)
+    ) {
         isCanBeConsumed = false
+    }
+
+    // For ModuleOutput configurations, add a Category attribute to prevent ambiguity with
+    // JaCoCo's verification category queries. Without this, JaCoCo aggregation fails because
+    // it finds multiple Dokka variants (html/javadoc) that it can't distinguish between.
+    if (name.contains("dokka", ignoreCase = true) &&
+        name.contains("ModuleOutput", ignoreCase = true) &&
+        name.contains("Consumable", ignoreCase = true)
+    ) {
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category::class.java, "documentation"))
+        }
     }
 }
 

@@ -103,6 +103,9 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-metadata-jvm = { module = "org.jetbrains.kotlinx:kotlinx-metadata-jvm", version.ref = "kotlinx-metadata" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 
+# Dokka
+dokka-all-modules-page-plugin = { module = "org.jetbrains.dokka:all-modules-page-plugin", version.ref = "dokka" }
+
 # Other libraries
 antlr-st4 = { module = "org.antlr:ST4", version.ref = "antlr-st4" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
