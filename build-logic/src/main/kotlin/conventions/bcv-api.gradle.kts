@@ -18,9 +18,9 @@ plugins {
 }
 
 configure<ApiValidationExtension> {
-    nonPublicMarkers.add("viaduct.InternalApi")
-    nonPublicMarkers.add("viaduct.TestingApi")
-    nonPublicMarkers.add("viaduct.ExperimentalApi")
+    nonPublicMarkers.add("viaduct.apiannotations.InternalApi")
+    nonPublicMarkers.add("viaduct.apiannotations.TestingApi")
+    nonPublicMarkers.add("viaduct.apiannotations.ExperimentalApi")
 }
 
 // We need to control apiCheck execution

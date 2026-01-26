@@ -1,14 +1,12 @@
 package viaduct.service.api.spi
 
-import viaduct.apiannotations.ExperimentalApi
-import viaduct.apiannotations.InternalApi
 import viaduct.apiannotations.StableApi
 import viaduct.service.api.spi.FlagManager.Flags.EXECUTE_ACCESS_CHECKS
 
 /**
  * Interface for managing feature flags.
  */
-@InternalApi
+@StableApi
 interface FlagManager {
     /**
      * Returns a boolean representing whether [flag] is enabled. Impl should execute very quickly as it could
@@ -39,7 +37,7 @@ interface FlagManager {
         val flagName: String
     }
 
-    @ExperimentalApi
+    @StableApi
     enum class Flags(
         override val flagName: String
     ) : Flag {
