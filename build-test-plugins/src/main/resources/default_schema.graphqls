@@ -18,6 +18,12 @@ directive @resolver on OBJECT | FIELD_DEFINITION
 "@scope directive"
 directive @scope(to: [String!]!) repeatable on OBJECT | INTERFACE | UNION | ENUM | INPUT_OBJECT
 
+"Marks an object type as a Relay Connection type"
+directive @connection on OBJECT
+
+"Marks an object type as a Relay Edge type"
+directive @edge on OBJECT
+
 interface Node @scope(to: ["*"]) {
   id: ID!
 }

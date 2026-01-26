@@ -158,6 +158,76 @@ class DefaultSchemaProviderTest {
     }
 
     @Test
+    fun `addDefaults should include connection directive with OBJECT location`() {
+        // Given: An empty registry
+        val registry = TypeDefinitionRegistry()
+
+        // When: Adding defaults
+        DefaultSchemaProvider.addDefaults(registry)
+
+        // Then: @connection directive should be present with correct location
+        val connectionDirective = registry.getDirectiveDefinition("connection").getOrNull()
+        assertTrue(connectionDirective != null, "Should have @connection directive")
+        assertEquals(
+            listOf("OBJECT"),
+            connectionDirective!!.directiveLocations.map { it.name },
+            "@connection should only apply to OBJECT"
+        )
+    }
+
+    @Test
+    fun `addDefaults should include edge directive with OBJECT location`() {
+        // Given: An empty registry
+        val registry = TypeDefinitionRegistry()
+
+        // When: Adding defaults
+        DefaultSchemaProvider.addDefaults(registry)
+
+        // Then: @edge directive should be present with correct location
+        val edgeDirective = registry.getDirectiveDefinition("edge").getOrNull()
+        assertTrue(edgeDirective != null, "Should have @edge directive")
+        assertEquals(
+            listOf("OBJECT"),
+            edgeDirective!!.directiveLocations.map { it.name },
+            "@edge should only apply to OBJECT"
+        )
+    }
+
+    @Test
+    fun `addDefaults should reject schema that redefines connection directive`() {
+        // Given: A schema that defines @connection
+        val sdl = """directive @connection on FIELD_DEFINITION"""
+        val registry = SchemaParser().parse(sdl)
+
+        // When/Then: Adding defaults should error
+        val exception = assertThrows<RuntimeException> {
+            DefaultSchemaProvider.addDefaults(registry)
+        }
+        assertContains(
+            exception.message ?: "",
+            "connection",
+            message = "Error should mention the conflicting directive"
+        )
+    }
+
+    @Test
+    fun `addDefaults should reject schema that redefines edge directive`() {
+        // Given: A schema that defines @edge
+        val sdl = """directive @edge on FIELD_DEFINITION"""
+        val registry = SchemaParser().parse(sdl)
+
+        // When/Then: Adding defaults should error
+        val exception = assertThrows<RuntimeException> {
+            DefaultSchemaProvider.addDefaults(registry)
+        }
+        assertContains(
+            exception.message ?: "",
+            "edge",
+            message = "Error should mention the conflicting directive"
+        )
+    }
+
+    @Test
     fun `addDefaults should not add mutation, subscription types when no extensions exist`() {
         val sdl = """
             type User {

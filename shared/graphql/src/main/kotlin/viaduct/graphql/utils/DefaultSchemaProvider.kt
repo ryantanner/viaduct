@@ -138,6 +138,40 @@ object DefaultSchemaProvider {
                     .sourceLocation(sourceLocation)
                     .build()
             }
+        },
+
+        CONNECTION("connection") {
+            override fun createDefinition(sourceLocation: SourceLocation): DirectiveDefinition {
+                val description = Description(
+                    "Marks an object type as a Relay Connection type",
+                    sourceLocation,
+                    false
+                )
+                return DirectiveDefinition
+                    .newDirectiveDefinition()
+                    .name(directiveName)
+                    .description(description)
+                    .directiveLocation(DirectiveLocation("OBJECT"))
+                    .sourceLocation(sourceLocation)
+                    .build()
+            }
+        },
+
+        EDGE("edge") {
+            override fun createDefinition(sourceLocation: SourceLocation): DirectiveDefinition {
+                val description = Description(
+                    "Marks an object type as a Relay Edge type",
+                    sourceLocation,
+                    false
+                )
+                return DirectiveDefinition
+                    .newDirectiveDefinition()
+                    .name(directiveName)
+                    .description(description)
+                    .directiveLocation(DirectiveLocation("OBJECT"))
+                    .sourceLocation(sourceLocation)
+                    .build()
+            }
         };
 
         /**
