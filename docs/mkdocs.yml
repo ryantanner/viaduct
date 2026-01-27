@@ -111,6 +111,9 @@ nav:
         - Scope: getting_started/starwars/directives/scope.md
         - IDOf: getting_started/starwars/directives/idof.md
         - OneOf: getting_started/starwars/directives/oneof.md
+        - Connection: getting_started/starwars/directives/connection.md
+        - Edge: getting_started/starwars/directives/edge.md
+      - Pagination: getting_started/starwars/pagination/index.md
       - Mutations: getting_started/starwars/mutations/index.md
       - Variables: getting_started/starwars/variables/index.md
       - Request Context: getting_started/starwars/requestcontext/index.md
