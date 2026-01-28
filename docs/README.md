@@ -20,6 +20,8 @@ Or manually:
 pip install mkdocs mkdocs-material mkdocs-macros-plugin
 ```
 
+Note: do not install mkdocs via Homebrew. Install it using `pip` as shown above.
+
 ### Development
 
 To run the site locally:
