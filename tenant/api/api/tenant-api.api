@@ -24,6 +24,9 @@ public abstract interface annotation class viaduct/api/Resolver : java/lang/anno
 	public abstract fun variables ()[Lviaduct/api/Variable;
 }
 
+public abstract interface class viaduct/api/SelectiveResolver {
+}
+
 public abstract interface class viaduct/api/TenantModule {
 	public abstract fun getMetadata ()Ljava/util/Map;
 	public abstract fun getPackageName ()Ljava/lang/String;
@@ -95,7 +98,6 @@ public abstract interface class viaduct/api/context/MutationFieldExecutionContex
 
 public abstract interface class viaduct/api/context/NodeExecutionContext : viaduct/api/context/ResolverExecutionContext {
 	public abstract fun getId ()Lviaduct/api/globalid/GlobalID;
-	public abstract fun selections ()Lviaduct/api/select/SelectionSet;
 }
 
 public abstract interface class viaduct/api/context/ResolverExecutionContext : viaduct/api/context/ExecutionContext {
@@ -111,6 +113,10 @@ public final class viaduct/api/context/ResolverExecutionContext$DefaultImpls {
 
 public final class viaduct/api/context/ResolverExecutionContextExtensionsKt {
 	public static final fun publishedGeneratedType (Ljava/lang/Class;)Lviaduct/api/reflect/Type;
+}
+
+public abstract interface class viaduct/api/context/SelectiveNodeExecutionContext : viaduct/api/context/NodeExecutionContext {
+	public abstract fun selections ()Lviaduct/api/select/SelectionSet;
 }
 
 public abstract interface class viaduct/api/context/VariablesProviderContext : viaduct/api/context/ExecutionContext {

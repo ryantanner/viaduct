@@ -4,8 +4,8 @@ import graphql.schema.GraphQLObjectType
 import viaduct.api.context.ExecutionContext
 import viaduct.api.context.FieldExecutionContext
 import viaduct.api.context.MutationFieldExecutionContext
-import viaduct.api.context.NodeExecutionContext
 import viaduct.api.context.ResolverExecutionContext
+import viaduct.api.context.SelectiveNodeExecutionContext
 import viaduct.api.globalid.GlobalID
 import viaduct.api.internal.InternalContext
 import viaduct.api.internal.ReflectionLoader
@@ -206,6 +206,6 @@ class MockNodeExecutionContext<T : NodeObject>(
     queryResults: PrebakedResults<Query> = EmptyPrebakedResults<Query>(),
     selectionSetFactory: SelectionSetFactory? = null,
 ) : MockResolverExecutionContext(internalContext, queryResults, selectionSetFactory),
-    NodeExecutionContext<T> {
+    SelectiveNodeExecutionContext<T> {
     override fun selections() = selectionsValue
 }
