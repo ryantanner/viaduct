@@ -7,6 +7,8 @@ plugins {
 dependencies {
     api(libs.graphql.java)
 
+    implementation(libs.caffeine)
+    implementation(libs.classgraph)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.slf4j.api)
     implementation(libs.viaduct.shared.apiannotations)
