@@ -1,5 +1,6 @@
 package viaduct.tenant.runtime.context
 
+import kotlin.reflect.KClass
 import viaduct.api.context.MutationFieldExecutionContext
 import viaduct.api.internal.InternalContext
 import viaduct.api.select.SelectionSet
@@ -7,7 +8,21 @@ import viaduct.api.types.Arguments
 import viaduct.api.types.CompositeOutput
 import viaduct.api.types.Mutation
 import viaduct.api.types.Query
+import viaduct.engine.api.EngineObjectData
 
+/**
+ * Implementation of [MutationFieldExecutionContext] for mutation field resolvers.
+ *
+ * This class extends [BaseFieldExecutionContextImpl] to add mutation-specific functionality,
+ * including access to the mutation object via [mutation].
+ *
+ * Mutation resolvers can access query data via [queryValue] (lazy) or [getQueryValue] (synchronous).
+ * The [getQueryValue] method returns a synchronously-accessible version where all selections
+ * declared in the resolver's `queryValueFragment` have been eagerly resolved.
+ *
+ * @param syncQueryValueGetter A suspending function that returns the synchronous query value,
+ *        or null if no query selections were declared by the resolver
+ */
 class MutationFieldExecutionContextImpl(
     baseData: InternalContext,
     engineExecutionContextWrapper: EngineExecutionContextWrapper,
@@ -15,7 +30,18 @@ class MutationFieldExecutionContextImpl(
     requestContext: Any?,
     arguments: Arguments,
     queryValue: Query,
+    syncQueryValueGetter: (suspend () -> EngineObjectData.Sync)?,
+    queryCls: KClass<Query>,
 ) : MutationFieldExecutionContext<Query, Arguments, CompositeOutput>,
-    BaseFieldExecutionContextImpl(baseData, engineExecutionContextWrapper, selections, requestContext, arguments, queryValue) {
+    BaseFieldExecutionContextImpl(
+        baseData,
+        engineExecutionContextWrapper,
+        selections,
+        requestContext,
+        arguments,
+        queryValue,
+        syncQueryValueGetter,
+        queryCls,
+    ) {
     override suspend fun <T : Mutation> mutation(selections: SelectionSet<T>) = engineExecutionContextWrapper.mutation(this, "mutation", selections)
 }

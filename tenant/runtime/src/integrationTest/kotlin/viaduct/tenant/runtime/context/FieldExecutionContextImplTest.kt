@@ -46,6 +46,10 @@ class FieldExecutionContextImplTest : ContextTestBase() {
             args,
             obj,
             query,
+            syncObjectValueGetter = null,
+            syncQueryValueGetter = null,
+            objectCls = Object::class,
+            queryCls = QueryType::class,
         )
     }
 

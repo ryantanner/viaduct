@@ -175,6 +175,11 @@ class MockFieldExecutionContext<T : Object, Q : Query, A : Arguments, O : Compos
 ) : MockResolverExecutionContext(internalContext, queryResults, selectionSetFactory),
     FieldExecutionContext<T, Q, A, O> {
     override fun selections() = selectionsValue
+
+    // In mock contexts, sync and lazy values are the same
+    override suspend fun getObjectValue(): T = objectValue
+
+    override suspend fun getQueryValue(): Q = queryValue
 }
 
 @Suppress("DIFFERENT_NAMES_FOR_THE_SAME_PARAMETER_IN_SUPERTYPES")
@@ -190,6 +195,9 @@ class MockMutationFieldExecutionContext<Q : Query, A : Arguments, O : CompositeO
 ) : MockResolverExecutionContext(internalContext, queryResults, selectionSetFactory),
     MutationFieldExecutionContext<Q, A, O> {
     override fun selections() = selectionsValue
+
+    // In mock contexts, sync and lazy values are the same
+    override suspend fun getQueryValue(): Q = queryValue
 
     override suspend fun <T : Mutation> mutation(selections: SelectionSet<T>): T {
         @Suppress("UNCHECKED_CAST")

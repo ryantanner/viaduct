@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import viaduct.api.mocks.MockInternalContext
 import viaduct.api.select.SelectionSet
+import viaduct.api.types.Query as QueryType
 import viaduct.service.api.spi.globalid.GlobalIDCodecDefault
 import viaduct.tenant.runtime.select.Mutation
 import viaduct.tenant.runtime.select.SelectTestFeatureAppTest
@@ -29,6 +30,8 @@ class MutationFieldExecutionContextImplTest : ContextTestBase() {
             null, // requestContext
             Args,
             Q,
+            syncQueryValueGetter = null,
+            queryCls = QueryType::class,
         )
     }
 

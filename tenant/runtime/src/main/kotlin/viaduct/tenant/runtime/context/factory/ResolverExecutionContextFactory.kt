@@ -143,6 +143,8 @@ class FieldExecutionContextFactory internal constructor(
         rawArguments: Map<String, Any?>,
         rawObjectValue: EngineObjectData,
         rawQueryValue: EngineObjectData,
+        syncObjectValueGetter: (suspend () -> EngineObjectData.Sync)? = null,
+        syncQueryValueGetter: (suspend () -> EngineObjectData.Sync)? = null,
     ): BaseFieldExecutionContext<*, *, *> {
         val internalContext = InternalContextImpl(engineExecutionContext.fullSchema, globalIDCodec, reflectionLoader)
         val engineExecutionContextWrapper = EngineExecutionContextWrapperImpl(engineExecutionContext)
@@ -155,6 +157,10 @@ class FieldExecutionContextFactory internal constructor(
                 rawArguments.toInputLikeGRT(internalContext, argumentsCls),
                 rawObjectValue.toObjectGRT(internalContext, objectCls),
                 rawQueryValue.toObjectGRT(internalContext, queryCls),
+                syncObjectValueGetter,
+                syncQueryValueGetter,
+                objectCls,
+                queryCls,
             )
             MutationFieldExecutionContext::class.java -> MutationFieldExecutionContextImpl(
                 internalContext,
@@ -163,6 +169,8 @@ class FieldExecutionContextFactory internal constructor(
                 requestContext,
                 rawArguments.toInputLikeGRT(internalContext, argumentsCls),
                 rawQueryValue.toObjectGRT(internalContext, queryCls),
+                syncQueryValueGetter,
+                queryCls,
             )
             else -> throw IllegalArgumentException("Expected context interface must be one of `FieldExecutionContext` or `MutationFieldExecutionContext` ($expectedContextInterface).")
         }

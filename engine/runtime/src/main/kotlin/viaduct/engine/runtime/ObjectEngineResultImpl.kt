@@ -173,6 +173,17 @@ class ObjectEngineResultImpl private constructor(
     private fun maybeInitializeKey(key: ObjectEngineResult.Key): Cell = storage.computeIfAbsent(key) { newCell() }
 
     /**
+     * Returns the cell associated with a key independent of the state of
+     * [lazyResolutionState].
+     *
+     * This is "optimistic" in that it returns the cell even if the OER's lazy
+     * resolution has failed. Your should not use this if when your result will
+     * be exposed even after lazy resolution has exposed: in those cases your
+     * should use `fetch` or `getValue`.
+     */
+    internal fun getCellOptimistically(key: ObjectEngineResult.Key): Cell = maybeInitializeKey(key)
+
+    /**
      * Resolves this OER exceptionally if it is in the pending state.
      * If already resolved with the same exception, this is a no-op.
      *
